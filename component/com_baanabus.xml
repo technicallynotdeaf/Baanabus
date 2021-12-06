@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" version="3.0" method="upgrade">
+
+	<name>Baanabus</name>
+	<!-- The following elements are optional and free of formatting constraints -->
+	<creationDate>December 2021</creationDate>
+	<author>@TechnicallyNotDeaf</author>
+	<authorUrl>https://github.com/technicallynotdeaf</authorUrl>
+	<copyright>It's hacked together from everyone else's work anyway, you're welcome to use it to create your own work</copyright>
+	<license>GPL V3.0 license - free noncommercial use</license>
+	<!--  The version string is recorded in the components table -->
+	<version>0.0.3</version>
+	<!-- The description is optional and defaults to the name -->
+	<description>Joomla Component for PIM/Tasks/Private_Feed</description>
+
+	<install> <!-- Runs on install -->
+		<sql>
+			<file driver="mysql" charset="utf8">sql/install.mysql.utf8mb4.sql</file>
+		</sql>
+	</install>
+
+
+
+	<!-- Site Main File Copy Section -->
+	<!-- Note the folder attribute: This attribute describes the folder
+		to copy FROM in the package to install therefore files copied
+		in this section are copied from /site/ in the package -->
+	<files folder="site">
+		<filename>index.html</filename>
+		<filename>baanabus.php</filename>
+		<filename>controller.php</filename>
+		<folder>views</folder>
+		<folder>helpers</folder>
+	</files>
+
+  <!-- there must actually be images in an image folder or it won't copy. -->
+  <!-- if all you want to do is create a folder, you still need to put
+       something in it, or it won't copy across when you install the component. -->
+	<media destination="com_baanabus" folder="media">
+		<folder>images</folder>
+	</media>
+
+	<administration>
+		<!-- This menu automatically shows up under "Components" when logged 
+         in to /administrator backend on Joomla site. -->
+		<menu>Baanabus</menu>
+		<submenu>
+			<menu view='start'>Start</menu>
+ 		</submenu>
+
+		<!-- Administration Main File Copy Section -->
+		<!-- Note the folder attribute: This attribute describes the folder
+			to copy FROM in the package to install therefore files copied
+			in this section are copied from /admin/ in the package -->
+		<files folder="admin">
+			<!-- Admin Main File Copy Section -->
+			<filename>index.html</filename>
+			<filename>baanabus.php</filename>
+			<filename>controller.php</filename>
+			<folder>views</folder>
+			<folder>sql</folder>
+			<folder>helpers</folder>
+		</files>
+	</administration>
+
+</extension>

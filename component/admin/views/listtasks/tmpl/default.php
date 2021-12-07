@@ -21,31 +21,28 @@ $db = BaanabusHelper::getDB();
 
 ?>
 
-<h3> Start </h3> 
+<h3> List of Tasks </h3> 
 
-<p> <a href="index.php?option=com_baanabus&view=addperson"> Add People </a> </p>
-
-<p> <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> </p>
-
-<p> <a href="index.php?option=com_baanabus&view=listtasks"> List of Tasks </a> </p>
-
-<h4> Rows from Database: </h4> 
 
 <?php 
 
 // This isn't working yet because the table creation screwed up on me for some reason.
 // Probably a syntax error in the SQL file... oops 
-$squiggle_data = BaanabusHelper::getData($db); 
+$people = BaanabusHelper::getTasks($db); 
 
-// print_r($squiggle_data);
+echo "<table>";
 
-foreach ($squiggle_data as $sdata) {
-echo "<p>";
-echo "Row ID: " . $sdata->task_id ;
-echo "<t/> Name: " . $sdata->task_description . " <t/> Context: " . $sdata->context ;
-echo "</p>";
+echo "<tr> <th> ID </th> <th> Description </th> <th> Context </th> </tr>";
+
+foreach ($people as $person) {
+echo "<tr>";
+echo "<td>" . $person->task_id . "</td> ";
+echo "<td>" . $person->task_description . "</td> ";
+echo "<td>" . $person->context . "</td> ";
+echo "</tr>";
 }
 
+echo "</table>";
 
 
 ?>

@@ -69,12 +69,21 @@ abstract class BaanabusHelper
   
     $query = $db->getQuery(true);
     $query->select('*');
-    $query->from('#__com_baanabus_tasks');
+    $query->from('#__com_baanabus_notes');
     
     // get notes relevant to a specific person... 
     //if($person_id != 0) {
-    //  $query->where(
-    //}
+
+/* ****** Syntax for Where, andWhere ... ***********
+
+
+    // Filter by just statements that are relevant to requested jurisdiction... 
+    $query->where($db->quoteName('jurisdiction') . " = " . $db->quote(strval($jurisdiction_id)));
+    
+    // Filter by just statements that are relevant to requested question... 
+    $query->andWhere($db->quoteName('question_id') . " = " . $db->quote(strval($question_id)));
+    
+    ****************** *********** */
 
     // echo "\n<br/>Question Lookup Query: " . (string)$query;
     $db->setQuery((string)$query);
@@ -85,6 +94,16 @@ abstract class BaanabusHelper
 
   }   
 
+  /* 
+   * @$db - JDatabase DBO connection object, use ::getDB() above
+   * 
+   * $task - $task object that has properties named the same as 
+   * columns in the tasks table, such as "task_description" 
+   */
+  function addTask($db, $task) {
+
+    $result = $db->insertObject('#__com_baanabus_tasks', $task, 'quote_id');
+  }
   
     
 }

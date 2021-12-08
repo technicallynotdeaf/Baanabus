@@ -14,36 +14,89 @@ defined('_JEXEC') or die('Restricted access');
 
 JViewLegacy::loadHelper('baanabushelper');
 
-//we need this if we want to read input data 
-// $jinput = JFactory::getApplication()->input;
-
+// connect to the database... 
 $db = BaanabusHelper::getDB();
+
+//we need this if we want to read input data 
+$jinput = JFactory::getApplication()->input;
+
+
+// **** Read data if a task was submitted... **** 
+$action = $jinput->get('action', '', 'STRING');
+$task_id = $jinput->get('task_id', 0, 'INT');
+$task_description = $jinput->get('task_description', '', 'STRING');
+$task_context = $jinput->get('context', '', 'STRING');
+
+if(!empty($action)) {
+  if(strcmp($action, "delete") == 0) {
+    BaanabusHelper::deleteTask($db, $task_id);
+  }
+
+}
+else if(!empty($task_description)) {
+  $new_task = new stdClass();
+  $new_task->task_description = $task_description; 
+ 
+  if(!empty($task_context)) {
+    $new_task->context = $task_context; 
+  }
+
+  BaanabusHelper::addTask($db, $new_task);    
+}
 
 ?>
 
-<h3> List of Tasks </h3> 
-
-
+<h3> Existing Tasks </h3> 
 <?php 
+
+
 
 // This isn't working yet because the table creation screwed up on me for some reason.
 // Probably a syntax error in the SQL file... oops 
-$people = BaanabusHelper::getTasks($db); 
+$tasks = BaanabusHelper::getTasks($db); 
 
 echo "<table>";
 
 echo "<tr> <th> ID </th> <th> Description </th> <th> Context </th> </tr>";
 
-foreach ($people as $person) {
-echo "<tr>";
-echo "<td>" . $person->task_id . "</td> ";
-echo "<td>" . $person->task_description . "</td> ";
-echo "<td>" . $person->context . "</td> ";
+foreach ($tasks as $task) {
+?> 
+<tr>
+<td>
+  <form action="index.php?option=com_baanabus&view=listtasks"  method="post" >
+  <input type="hidden" name="task_id" value="<?php echo $task->task_id; ?>"  />
+  <input type="hidden" name="action" value="delete"  />  
+  <input value="Delete" type="submit" class="btn btn-warning" >
+  </form>
+</td>
+
+<?php
+
+echo "<td>" . $task->task_id . "</td> ";
+echo "<td>" . $task->task_description . "</td> ";
+echo "<td>" . $task->context . "</td> ";
 echo "</tr>";
+
 }
 
 echo "</table>";
 
-
 ?>
+
+<h3> Add a task </h3> 
+
+<form method="post"> 
+
+  <form action="index.php?option=com_baanabus&view=addtask" method="post" id="newTaskForm" name="newTaskForm">
+
+  <br/>
+  <div class="label">Description: </div> 
+  <input type="text" class="form-control span6" name="task_description" value=""><br/>
+
+  <div class="label"> Context:</div> 
+  <input type="text" class="form-control span6" name="context" value="home"> <br/>
+
+  <input id="lkaje23fsr3" value="Update Changes" type="submit" class="btn btn-success" >
+
+</form>
 

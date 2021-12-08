@@ -105,5 +105,19 @@ abstract class BaanabusHelper
     $result = $db->insertObject('#__com_baanabus_tasks', $task, 'quote_id');
   }
   
+  
+  function deleteTask($db, $task_id) {
+    $query = $db->getQuery(true);
+
+    $query->delete($db->quoteName('#__com_baanabus_tasks'));
+    $query->where($db->quoteName('task_id') . ' = ' . $task_id);
+
+    $db->setQuery($query);
+
+    $result = $db->execute();
+
+  }
     
 }
+
+

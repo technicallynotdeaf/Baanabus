@@ -23,22 +23,27 @@ $db = BaanabusHelper::getDB();
 
 <h3> List of People... </h3> 
 
+<table> 
 
 <?php 
-
-// This isn't working yet because the table creation screwed up on me for some reason.
-// Probably a syntax error in the SQL file... oops 
 $people = BaanabusHelper::getPeople($db); 
 
-
 foreach ($people as $person) {
-echo "<p>";
-echo "[" . $person->person_id ;
-echo "] " . $person->name . " is " . $person->char1 ;
-echo "</p>";
-}
-
-
-
+echo "<tr>";
+echo "<td>" . $person->avatar_img . "</td>";
 ?>
+<td>
+  <form action="index.php?option=com_baanabus&view=person"  method="post" >
+  <input type="hidden" name="person_id" value="<?php echo $person->person_id; ?>"  />
+  <input value="<?php echo $person->name ?>" type="submit" class="btn" >
+  </form>
+</td>
+<?php
+echo "<td>" . $person->char1 . ", " . $person->char2 . "</td>";
+echo "</tr>";
+}
+?>
+
+</table>
+
 

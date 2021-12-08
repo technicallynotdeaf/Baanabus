@@ -27,10 +27,14 @@ What are you here for?
 
 <p> <a href="index.php?option=com_baanabus&view=reset"> Reset Button </a> (coming soon) </p>
 
+<p> <a href="index.php?option=com_baanabus&view=listtasks"> ADHD Mode </a> (coming soon) </p>
+
 <p> <a href="index.php?option=com_baanabus&view=addperson"> Add A Person </a> </p>
 
 <p> <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> </p>
 
 <p> <a href="index.php?option=com_baanabus&view=listtasks"> List of Tasks </a> </p>
+
+<p> <a href="index.php?option=com_baanabus&view=listtasks"> Organise Me </a> (coming soon) </p>
 
 

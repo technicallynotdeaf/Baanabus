@@ -14,6 +14,12 @@ defined('_JEXEC') or die('Restricted access');
 
 JViewLegacy::loadHelper('baanabushelper');
 
+JViewLegacy::loadHelper('buihelper'); // Baanabus UI helper
+
+BUIhelper::showHeader();
+
+
+
 //we need this if we want to read input data 
 // $jinput = JFactory::getApplication()->input;
 
@@ -46,4 +52,4 @@ echo "</tr>";
 
 </table>
 
-
+<?php BUIhelper::showFooter(); ?>

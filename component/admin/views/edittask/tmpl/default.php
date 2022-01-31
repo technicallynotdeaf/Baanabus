@@ -7,7 +7,7 @@ defined('_JEXEC') or die('Restricted access');
  * @package     Joomla.Administrator
  * @subpackage  com_baanabus
  *
- * @author      Spliced together using VIm in 2021 by github/technicallynotdeaf 
+ * @author      Spliced together using VIm in 2022 by github/technicallynotdeaf 
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
@@ -22,18 +22,27 @@ $jinput = JFactory::getApplication()->input;
 
 
 // **** Read data if a task was submitted... **** 
+$task_id = $jinput->get('task_description', '', 'STRING');
 $task_description = $jinput->get('task_description', '', 'STRING');
 $task_context = $jinput->get('context', '', 'STRING');
 
-if(!empty($task_description)) {
-  $new_task = new stdClass();
-  $new_task->task_description = $task_description; 
- 
-  if(!empty($task_context)) {
-    $new_task->context = $task_context; 
-  }
+if(!empty($task_id)) {
+  // we might be updating a task, or another page just called this page because
+  // user clicked "edit task"
+}
+else {
+  // Task ID not supplied, create new one if info was submitted
+  
+  if(!empty($task_title)) {
+	  $new_task = new stdClass();
+	  $new_task->task_description = $task_description; 
+	 
+	  if(!empty($task_context)) {
+	    $new_task->context = $task_context; 
+	  }
 
-  BaanabusHelper::addTask($db, $new_task);    
+	  BaanabusHelper::addTask($db, $new_task);   
+  } 
 }
 
 ?>

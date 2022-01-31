@@ -13,6 +13,11 @@ defined('_JEXEC') or die('Restricted access');
 
 
 JViewLegacy::loadHelper('baanabushelper');
+JViewLegacy::loadHelper('buihelper'); // Baanabus UI helper
+
+BUIhelper::showHeader();
+
+
 
 // connect to the database... 
 $db = BaanabusHelper::getDB();
@@ -57,11 +62,32 @@ $tasks = BaanabusHelper::getTasks($db);
 
 echo "<table>";
 
-echo "<tr> <th> ID </th> <th> Description </th> <th> Context </th> </tr>";
+?>
+
+<tr>
+ <th> ID </th>
+ <th style="width:200px; text-align:left;"> Title </th>
+ <th style="width:200px; text-align:left;"> Description </th>
+ <th style="width:100px; text-align:left;"> Doing it for... </th>
+ <th width="200px"> Context </th>
+</tr>
+
+<?php
 
 foreach ($tasks as $task) {
-?> 
-<tr>
+
+echo "<tr>";
+echo "<td>" . $task->task_title . "</td> ";
+echo "<td>" . $task->task_description . "</td> ";
+
+$person = function getPerson($db, $task->person_id);
+
+echo "<td>" . $person->name . "</td> ";
+echo "<td>" . $task->context . "</td> ";
+
+
+?>
+
 <td>
   <form action="index.php?option=com_baanabus&view=listtasks"  method="post" >
   <input type="hidden" name="task_id" value="<?php echo $task->task_id; ?>"  />
@@ -70,15 +96,10 @@ foreach ($tasks as $task) {
   </form>
 </td>
 
+</tr>
+
 <?php
-
-echo "<td>" . $task->task_id . "</td> ";
-echo "<td>" . $task->task_description . "</td> ";
-echo "<td>" . $task->context . "</td> ";
-echo "</tr>";
-
 }
-
 echo "</table>";
 
 ?>
@@ -93,10 +114,15 @@ echo "</table>";
   <div class="label">Description: </div> 
   <input type="text" class="form-control span6" name="task_description" value=""><br/>
 
+  <div class="label">Description: </div> 
+  <input type="text" class="form-control span6" name="task_description" value=""><br/>
+
   <div class="label"> Context:</div> 
   <input type="text" class="form-control span6" name="context" value="home"> <br/>
 
   <input id="lkaje23fsr3" value="Update Changes" type="submit" class="btn btn-success" >
 
 </form>
+
+<?php BUIhelper::showFooter(); ?>
 

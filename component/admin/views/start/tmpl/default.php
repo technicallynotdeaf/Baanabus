@@ -12,29 +12,55 @@ defined('_JEXEC') or die('Restricted access');
  */
 
 
-JViewLegacy::loadHelper('baanabushelper');
+//nb the helpername specified here **must be lowercase**, and correspond to a php file 
+// located in /component/admin/helpers/helpername.php 
+// ... but the class name can be capitals, and is different from this helpername
+// i.e. the class name in helpername.php might be called abstract class MYHelper 
+// and accessed by calling MYHelper::function(); 
+JViewLegacy::loadHelper('baanabushelper'); // handles data requests
+
+JViewLegacy::loadHelper('buihelper'); // Baanabus UI helper
+
+BUIhelper::showHeader();
 
 //we need this if we want to read input data 
 // $jinput = JFactory::getApplication()->input;
 
-$db = BaanabusHelper::getDB();
+$db = BaanabusHelper::getDB(); 
 
 ?>
 
-<h3> Start </h3> 
+<h3> Baanabus Home Feed </h3> 
 
-What are you here for? 
+<?php 
 
-<p> <a href="index.php?option=com_baanabus&view=reset"> Reset Button </a> (coming soon) </p>
+$heading = "Well Hello there";
 
-<p> <a href="index.php?option=com_baanabus&view=listtasks"> ADHD Mode </a> (coming soon) </p>
+$text = "This is some body text to show that the thing is generally working. Off you go!";
 
-<p> <a href="index.php?option=com_baanabus&view=addperson"> Add A Person </a> </p>
+$link3 = "index.php?option=com_baanabus&view=start";
 
-<p> <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> </p>
+$actions = array("Got it!" => $link3, "No Stress" => $link3);
 
-<p> <a href="index.php?option=com_baanabus&view=listtasks"> List of Tasks </a> </p>
+BUIhelper::showPanel($heading, $text, $icon, $image, $actions);
 
-<p> <a href="index.php?option=com_baanabus&view=listtasks"> Organise Me </a> (coming soon) </p>
+$tasks = BaanabusHelper::getTasks($db);
 
+foreach ($tasks as $task) {
 
+  $task_heading = "Task: " . $task->task_title ;
+
+  $task_text = "Task Description: " . $task->task_description;
+
+  $task_actions = array("edit" => "#", "Done it!" => "#");
+
+  BUIhelper::showPanel($task_heading, $task_text, $task_icon, $task_image, $task_actions);
+}
+
+?>
+
+<div style="width: 98%; height: 50px; border-style: dashed; border-width: 2px; border-radius: 5px;"> 
+  <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> </p>
+</div> 
+
+<?php BUIhelper::showFooter(); ?>

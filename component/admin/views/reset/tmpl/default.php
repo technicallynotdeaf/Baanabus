@@ -14,10 +14,9 @@ defined('_JEXEC') or die('Restricted access');
 
 //JViewLegacy::loadHelper('baanabushelper');
 
-//we need this if we want to read input data 
-// $jinput = JFactory::getApplication()->input;
+JViewLegacy::loadHelper('buihelper'); // Baanabus UI helper
 
-//$db = BaanabusHelper::getDB();
+BUIhelper::showHeader();
 
 ?>
 
@@ -29,4 +28,5 @@ defined('_JEXEC') or die('Restricted access');
 
 <p> Have you eaten something? </p>
 
-
+<?php BUIhelper::showFooter(); ?>
+                                     

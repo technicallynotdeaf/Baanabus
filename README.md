@@ -1,15 +1,16 @@
-
-I was so sick of FAANG social sites.
-
-I needed to quit the world of inflamed status updates and dark patterns. 
+I needed to quit the socmed world of inflamed status updates and dark patterns. 
 
 But my friends! I needed to stay in touch with my friends! And I needed to remember all the things about them that I liked and that they care about. 
 
-I needed a parent to remind me things. Like I said I would write an article for a friend by Sunday. Or I was going to message my other friend... but do I remember? nahhh. 
+I needed something to remind me about things. Like ... I said I would write an article for a friend by Sunday. Or, I was going to message my other friend... but do I remember? nahhh. 
 
-I need a new site, that instead of everyone else spamming me, and Facebook helping me be addicted... I needed a site where it supported real world connections. With anti-dark patterns. 
+I need a new site.
 
-Enter... 
+Instead of everyone else spamming me, and Facebook helping me be addicted... 
+
+I needed a site that supported real world connections. With anti-dark patterns. 
+
+Enter:
 
 # Baanabus 
 
@@ -55,4 +56,4 @@ This project is still extremely quick'n'dirty, I needed to get it up and running
 
 The code is all there, help yourself. I don't promise it's all working, or it does what you need. 
 
-Please read the Product Disclosure Statement and determine for yourself whether this product meets your needs... 
+Please read the Product Disclosure Statement and determine for yourself whether this product meets your needs... (no, there isn't one, that was a joke).

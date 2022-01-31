@@ -51,7 +51,14 @@ abstract class BaanabusHelper
   }   
   
   function getPerson($db, $person_id) {
-  
+
+    // If i'm not doing it for someone else, assume i'm doing it for myself 
+    // This is just to prevent lots of "if it's not set, then ..." NULL-queries 
+    // accidentally going to the database. 
+    if(!isset($person_id)) {
+      $person_id = 1; 
+    } 
+
     $query = $db->getQuery(true);
     $query->select('*');
     $query->from('#__com_baanabus_people');

@@ -9,7 +9,7 @@
 	<copyright>It's hacked together from everyone else's work anyway, you're welcome to use it to create your own work</copyright>
 	<license>GPL V3.0 license - free noncommercial use</license>
 	<!--  The version string is recorded in the components table -->
-	<version>0.0.77</version>
+	<version>0.0.81</version>
 	<!-- The description is optional and defaults to the name -->
 	<description>Joomla Component for PIM/Tasks</description>
 
@@ -48,6 +48,7 @@
 		<submenu>
 			<menu view='start'>Start</menu>
 			<menu view='listtasks'>Tasks</menu>
+			<menu view='settings'>Settings</menu>
  		</submenu>
 
 		<!-- Administration Main File Copy Section -->

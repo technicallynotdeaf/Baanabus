@@ -71,16 +71,16 @@ INSERT INTO `#__com_baanabus_notes` (`contents`, `person_id`) VALUES
 ('Do not forget you were going to call your mum', 2),
 ('Gertrude needs a new pair of socks for christmas', 4); 
 
-
 DROP TABLE IF EXISTS `#__com_baanabus_events`;
 
 CREATE TABLE `#__com_baanabus_events` (
-	`event_id`  INT(11)  NOT NULL AUTO_INCREMENT,
+	`event_id`  INT(11) NOT NULL AUTO_INCREMENT,
 	`title` VARCHAR(200) NOT NULL,	
-	`description` VARCHAR(1000) NOT NULL,	
+	`description` VARCHAR(1000),	
+	`context` VARCHAR(50),
 	`date_added` DATETIME default CURRENT_TIMESTAMP,
-	`event_start` DATETIME NOT NULL,
-	`event_end` DATETIME NOT NULL,
+	`event_start` DATETIME default CURRENT_TIMESTAMP,
+	`event_end` DATETIME default CURRENT_TIMESTAMP,
 	`person_id` INT(11),	
 	PRIMARY KEY (`event_id`)
 )

@@ -50,6 +50,21 @@ abstract class BaanabusHelper
 
   }   
   
+  function getEvents($db) {
+  
+    $query = $db->getQuery(true);
+    $query->select('*');
+    $query->from('#__com_baanabus_events');
+
+    // echo "\n<br/>Question Lookup Query: " . (string)$query;
+    $db->setQuery((string)$query);
+    
+    $data_returned = $db->loadObjectList();
+    
+    return $data_returned;
+
+  }  
+  
   function getPerson($db, $person_id) {
 
     // If i'm not doing it for someone else, assume i'm doing it for myself 
@@ -129,6 +144,11 @@ abstract class BaanabusHelper
   function addTask($db, $task) {
 
     $result = $db->insertObject('#__com_baanabus_tasks', $task, 'quote_id');
+  }
+  
+  function addEvent($db, $event) {
+
+    $result = $db->insertObject('#__com_baanabus_events', $event, 'event_id');
   }
   
   

@@ -61,7 +61,7 @@ echo <<<END
     <a class="nav-link" href="index.php?option=com_baanabus&view=listtasks"> Tasks </a>
   </button>
   <button class="btn">
-    <a class="nav-link" href="index.php?option=com_baanabus&view=events"> Events </a>
+    <a class="nav-link" href="index.php?option=com_baanabus&view=listevents"> Events </a>
   </button>
   <button class="btn">
     <a class="nav-link" href="index.php?option=com_baanabus&view=projects"> Projects </a>

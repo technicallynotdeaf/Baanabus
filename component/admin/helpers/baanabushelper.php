@@ -10,7 +10,7 @@
 abstract class BaanabusHelper
 {
 
-  /* Create the DB connection to the joomla database... */
+  /* Create the connection to the database... */
   function getDB() {
    
      $db = JFactory::getDbo();
@@ -49,6 +49,22 @@ abstract class BaanabusHelper
     return $data_returned;
 
   }   
+  
+  function getPeopleToReview($db)
+  {
+
+	  $query = $db->getQuery(true);
+	  $query->select('*');
+	  $query->from('#__com_baanabus_people');
+
+	  // echo "\n<br/>Question Lookup Query: " . (string)$query;
+	  $db->setQuery((string)$query);
+
+	  $data_returned = $db->loadObjectList();
+
+	  return $data_returned;
+  }
+
   
   function getEvents($db) {
   

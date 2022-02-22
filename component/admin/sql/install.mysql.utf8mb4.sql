@@ -31,8 +31,8 @@ CREATE TABLE `#__com_baanabus_people` (
 	`is_org` BOOLEAN,	
 	`context` VARCHAR(50),
 	`circles` VARCHAR(250),
-	`next_review` DATE,
-	`review_freq` INT(11),
+	`next_review` DATE, /* when person is due for review. Can be past; after review, date = today + interval */
+	`review_interval` INT(11), /* how often to review person: number of days. 0 for never */
 	`DOB` INT(11),	
 	`MOB` INT(11),		
 	`YOB` INT(11),		

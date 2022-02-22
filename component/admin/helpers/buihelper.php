@@ -4,7 +4,8 @@
  * @subpackage  com_baanabus
  *
  * @author      Spliced together using VIm in 2022 by github/technicallynotdeaf 
- * @license     GNU General Public License version 3 or later; see LICENSE.txt
+ * @license     GNU General Public License version 3 or later; see LICENSE.txt4
+ * 
  *
  * Baanabus UI Helper... because if you're gonna hard code CSS, it makes sense
  * to have it in one place and code reused instead of having to change fifteen billion
@@ -14,7 +15,10 @@
 abstract class BUIhelper
 {
 
-  function showPanel($heading, $text, $icon, $image, $actions) {
+  /*
+   *  
+   */
+  function showPanel($heading, $text, $icon, $image, $buttons) {
    
      // Display order: Icon/heading on one line, then 
      // image if present, then body text. 
@@ -31,8 +35,8 @@ abstract class BUIhelper
      else echo "<p> No icon to display.</p>";
 
      echo "<div style=\"text-align: right;\" >"; 
-     foreach ($actions as $btntxt => $href) { 
-       echo "<a class=\"btn btn-info\" href=\"" . $href . "\" >" . $btntxt . "</a>";
+     foreach ($buttons as $button) { 
+       echo "<a class=\"btn btn-". $button->css_class . " \" href=\"" . $button->link . "\" >" . $button->description . "</a>";
      }
      echo "</div>";// end buttons div
      
@@ -74,7 +78,7 @@ echo <<<END
 </div>
 </nav>
 
-<div class="content" style="max-width: 499px; margin: auto; border-style= none dashed;">
+<div class="content" style="max-width: 800px; margin: auto; border-style= none dashed;">
 END;
 
   }
@@ -93,6 +97,21 @@ echo "
 
   }
     
+}
+
+class BaanabusButton {
+	public $link;
+	public $description;
+	public $css_class;
+	
+	public function __construct(string $description, string $link, string $css_class="info")
+	{
+		$this->link = $link;
+		$this->description = $description;
+		$this->css_class = $css_class;
+	}
+	
+	
 }
 
 

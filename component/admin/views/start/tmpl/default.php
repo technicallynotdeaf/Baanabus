@@ -21,6 +21,8 @@ JViewLegacy::loadHelper('baanabushelper'); // handles data requests
 
 JViewLegacy::loadHelper('buihelper'); // Baanabus UI helper
 
+JViewLegacy::loadHelper('baanabusfeed'); // feed objects code/classes
+
 BUIhelper::showHeader();
 
 //we need this if we want to read input data 
@@ -40,7 +42,10 @@ $text = "This is some body text to show that the thing is generally working. Off
 
 $link3 = "index.php?option=com_baanabus&view=start";
 
-$actions = array("Got it!" => $link3, "No Stress" => $link3);
+$success_button = new BaanabusButton("Got It", $link3, "success");
+$dismiss_button = new BaanabusButton("Dismiss", $link3, "action");
+
+$actions = array($success_button, $dismiss_button);
 
 BUIhelper::showPanel($heading, $text, $icon, $image, $actions);
 
@@ -48,19 +53,29 @@ $tasks = BaanabusHelper::getTasks($db);
 
 foreach ($tasks as $task) {
 
-  $task_heading = "Task: " . $task->task_title ;
+  $task_heading = $task->task_title;
 
-  $task_text = "Task Description: " . $task->task_description;
+  $task_text = $task->task_description;
+  
+  $link3 = "index.php?option=com_baanabus&view=start";
+  
 
-  $task_actions = array("edit" => "#", "Done it!" => "#");
+  $success_button = new BaanabusButton("Got It", $link3, "success");
+  $dismiss_button = new BaanabusButton("Dismiss", $link3, "action");
+  
+  $task_actions = array($success_button, $dismiss_button);
 
   BUIhelper::showPanel($task_heading, $task_text, $task_icon, $task_image, $task_actions);
 }
 
+$friends = new BaanabusFriendFeed();
+
+
+
 ?>
 
 <div style="width: 98%; height: 50px; border-style: dashed; border-width: 2px; border-radius: 5px;"> 
-  <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> </p>
+  <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> 
 </div> 
 
 <?php BUIhelper::showFooter(); ?>

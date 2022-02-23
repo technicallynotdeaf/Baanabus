@@ -14,6 +14,8 @@ Enter:
 
 # Baanabus 
 
+NB These design choices aren't all implemented. The code is still really early stage. This is my thinking and what it is *meant* to be, not what it currently is... 
+
 ## Intentional design choices 
 
 * Start with a menu

@@ -25,7 +25,10 @@ JViewLegacy::loadHelper('baanabusfeed'); // feed objects code/classes
 
 BUIhelper::showHeader();
 
-//we need this if we want to read input data 
+BUIhelper::showScripts(); // spit the show/hide scripts for the news feed into the same document, 
+// instead of asking the user's browser to submit another request.
+
+//we need this if we want to read input data:
 // $jinput = JFactory::getApplication()->input;
 
 $db = BaanabusHelper::getDB(); 
@@ -68,7 +71,7 @@ foreach ($tasks as $task) {
   BUIhelper::showPanel($task_heading, $task_text, $task_icon, $task_image, $task_actions);
 }
 
-$friends = new BaanabusFriendFeed();
+// $friends = new BaanabusFriendFeed();
 
 
 

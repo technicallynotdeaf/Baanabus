@@ -7,9 +7,12 @@
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
-JViewLegacy::loadHelper('baanabushelper'); // handles data requests
+//JViewLegacy::loadHelper('baanabushelper'); // handles data requests
 
-class BFeedItem {
+//JViewLegacy::loadHelper('buihelper'); // handles data requests
+
+
+abstract class BFeedItem {
 	
 	public $title; 
 	public $text;
@@ -17,36 +20,27 @@ class BFeedItem {
 	
 }
 
+ 
 
-interface BaanabusFeed
-{	
-  // returns an array of BFeedItem objects
-  public function getFeed();
-    
-}
-
-class BaanabusFriendFeed implements BaanabusFeed {
+abstract class BaanabusFeed
+{
+  // private $feed = array(); // this will be an array of BFeedItems, not that PHP cares
 	
-  private $feed = array(); // this will be an array of BFeedItems, not that PHP cares
-  
-  function __construct() {
-	  echo "Contructor got called.";
-	  // baanabushelper:getPeopleToReview
-	  // foreach person
-	  // Title: = person.name
-	  // content = person.tasks or person.attributes
-	  // sort by review date if review date before today
+  // returns an array of BFeedItem objects
+  public function getFeed() { 
+    return null;
   }
   
-  function getFeed() {
-	  // TODO
-	  // baanabushelper:getPeopleToReview
-	  // foreach person
-	  // Title: = person.name
-	  // content = person.tasks or person.attributes
-	  // sort by review date if review date before today
-	  
+}
+
+/*
+class BaanabusFriendFeed extends BaanabusFeed {
+	
+  
+  function getFeed()
+  {
 	  return $this->feed;
   }
-}
+  
+} *
 

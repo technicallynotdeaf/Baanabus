@@ -96,6 +96,19 @@ echo "
 <!-- end page-wrap -->";
 
   }
+  
+  function showScripts() {
+  	// yeah OK, the correct thing to do would be to create a separate .js file and include that. 
+  	// but i want inline javascript because faster.. and i SO can't be bothered stuffing around 
+  	// trying to include more files because Joomla puts stuff in weird places and references it weird.
+	  echo <<<END
+
+	  <script>
+	    
+	  </script>
+END;
+  }
+  
     
 }
 

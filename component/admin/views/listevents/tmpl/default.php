@@ -29,7 +29,7 @@ $jinput = JFactory::getApplication()->input;
 // **** Read data if a event was submitted... **** 
 $action = $jinput->get('action', '', 'STRING');
 $event_id = $jinput->get('event_id', 0, 'INT');
-$title = $jinput->get('title', '', 'STRING');
+$event_title = $jinput->get('event_title', '', 'STRING');
 
 if(!empty($action)) {
  
@@ -38,14 +38,16 @@ if(!empty($action)) {
   }
 
 }
-else if(!empty($title) && empty($event_id)) {
+else if (!empty($event_title) && empty($event_id)) {
+	echo "<h2> Event submitted... </h2> ";
 
   // Create a new event from submitted strings & save to DB
 
   $new_event = new stdClass();
-  $new_event->event_title = $event_title; 
+  $new_event->title = $event_title; 
  
-  $description = $jinput->get('description', '', 'STRING');
+  $description = $jinput->get('event_description', '', 'STRING');
+  
   if(!empty($description)) {
     $new_event->description = $description; 
   }
@@ -60,9 +62,8 @@ else if(!empty($title) && empty($event_id)) {
 
 ?>
 
-<h3> Existing events </h3> 
+<h3> Events list... </h3> 
 <?php 
-
 
 
 // This isn't working yet because the table creation screwed up on me for some reason.
@@ -85,11 +86,19 @@ echo "<table>";
 
 foreach ($events as $event) {
 
+  print("<p>");
+	
+
+  print_r($event);
+  
+  print("</p>");
+  
   echo "<tr>";
-  echo "<td>" . $event->event_title . "</td> ";
-  echo "<td>" . $event->event_description . "</td> ";
+  echo "<td>" . $event->title . "</td> ";
+  echo "<td>" . $event->description . "</td> ";
 
   $person = BaanabusHelper::getPerson($db, $event->person_id);
+  
   echo "<td>" . $person->name . "</td> ";
 
   echo "<td>" . $event->context . "</td> ";
@@ -101,7 +110,7 @@ foreach ($events as $event) {
     <form action="index.php?option=com_baanabus&view=listevents"  method="post" >
     <input type="hidden" name="event_id" value="<?php echo $event->event_id; ?>"  />
     <input type="hidden" name="action" value="delete"  />  
-    <input value="Delete" type="submit" class="btn btn-warning" >
+    <input value="delete" type="submit" class="btn btn-warning" >
     </form>
   </td>
   <?php
@@ -110,11 +119,11 @@ foreach ($events as $event) {
 
 } // end foreach(event)
 
-foreach ($events as $column => $value) {
-
-  echo $column . ": " . $value . "<br/>";
-
-}
+//foreach ($events as $column => $value) {
+//
+//  echo (string)$column . ": " . (string)$value . "<br/>";
+//
+//}
 
 echo "</table>";
 

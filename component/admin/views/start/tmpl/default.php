@@ -11,6 +11,10 @@ defined('_JEXEC') or die('Restricted access');
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
+/**
+* HOME FEED / START PAGE
+* 
+*/
 
 //nb the helpername specified here **must be lowercase**, and correspond to a php file 
 // located in /component/admin/helpers/helpername.php 
@@ -33,6 +37,20 @@ BUIhelper::showScripts(); // spit the show/hide scripts for the news feed into t
 
 $db = BaanabusHelper::getDB(); 
 
+// ============ Read Input/Do Actions ===============/
+
+//we need this if we want to read input data
+$jinput = JFactory::getApplication()->input;
+
+$baanabus_action = $jinput->get('action', '', 'STRING');
+
+if ($baanabus_action = "complete_task") {
+  // don't do anthing yet
+}
+
+
+
+// ============ Display Feed ===============/
 ?>
 
 <h3> Baanabus Home Feed </h3> 
@@ -41,7 +59,7 @@ $db = BaanabusHelper::getDB();
 
 $heading = "Well Hello there";
 
-$text = "This is some body text to show that the thing is generally working. Off you go!";
+$text = "This is some body text to show that the thing is generally working. Let's do this!";
 
 $link3 = "index.php?option=com_baanabus&view=start";
 
@@ -62,6 +80,7 @@ foreach ($tasks as $task) {
   
   $link3 = "index.php?option=com_baanabus&view=start";
   
+  $task_icon = "task.jpeg";
 
   $success_button = new BaanabusButton("Got It", $link3, "success");
   $dismiss_button = new BaanabusButton("Dismiss", $link3, "action");
@@ -71,14 +90,6 @@ foreach ($tasks as $task) {
   BUIhelper::showPanel($task_heading, $task_text, $task_icon, $task_image, $task_actions);
 }
 
-// $friends = new BaanabusFriendFeed();
-
-
-
 ?>
-
-<div style="width: 98%; height: 50px; border-style: dashed; border-width: 2px; border-radius: 5px;"> 
-  <a href="index.php?option=com_baanabus&view=listpeople"> List of People </a> 
-</div> 
 
 <?php BUIhelper::showFooter(); ?>

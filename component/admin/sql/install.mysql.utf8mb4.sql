@@ -18,9 +18,11 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `#__com_baanabus_tasks` (`task_title`, `task_description`, `context`, `person_id`) VALUES
 ('Drink Water', 'trust me, you will have more energy', 'home', NULL),
-('Brush My Teeth', 'its quicker than fillings!', 'home', 1),
+('Brush My Teeth', 'its quicker than fillings!', 'home', 0),
 ('Do Grocery Shopping', 'you were going to buy milk', 'shops', NULL),  
-('Buy Gift for Fred', 'Fred likes cats, dogs, and sports', 'shops', 3); 
+('Buy Gift for Fred', 'Fred likes cats, dogs, and sports', 'shops', 3),
+('Email Quoll', 'You owe Quoll an email', 'friends', 6), 
+('Ring Mum', 'Remember to ring your mother', 'family', 2); 
 
 DROP TABLE IF EXISTS `#__com_baanabus_people`;
 
@@ -49,12 +51,13 @@ CREATE TABLE `#__com_baanabus_people` (
 )
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `#__com_baanabus_people` (`name`, `avatar_img`, `char1`, `char2`) VALUES
-('Me', 'me.png', 'smart', 'kind'),
-('Mum', 'mum.png', 'caring', 'innovative'),
-('Fred', 'fred.png', 'friendly', 'diplomatic'),
-('Gertrude', 'gertrude.png', 'creative', 'giving'),  
-('Grandma', 'grandma.png', 'resilient', 'inventive'); 
+INSERT INTO `#__com_baanabus_people` (`name`, `avatar_img`, `char1`, `char2`, `char3`) VALUES
+('Me', 'me.png', 'smart', 'kind', 'faithful'),
+('Mum', 'mum.png', 'persistent', 'innovative', 'creative'),
+('Fred', 'fred.png', 'friendly', 'diplomatic', 'enjoyable'),
+('Gertrude', 'gertrude.png', 'creative', 'giving', 'friendly'),  
+('Grandma', 'grandma.png', 'resilient', 'inventive', 'friendly'), 
+('Quoll', 'quoll.jpg', 'intelligent', 'patient', 'caring'); 
 
 DROP TABLE IF EXISTS `#__com_baanabus_notes`;
 
@@ -69,6 +72,8 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `#__com_baanabus_notes` (`contents`, `person_id`) VALUES
 ('Do not forget you were going to call your mum', 2),
+('Mum does not like lilies', 2),
+('Quoll is a good listener', 6),
 ('Gertrude needs a new pair of socks for christmas', 4); 
 
 DROP TABLE IF EXISTS `#__com_baanabus_events`;

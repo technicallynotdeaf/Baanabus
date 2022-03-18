@@ -11,6 +11,9 @@
  * to have it in one place and code reused instead of having to change fifteen billion
  * places when you change anything! 
  */
+ 
+ use Joomla\CMS\Uri\Uri;
+ use Joomla\CMS\HTML\HTMLHelper;
 
 abstract class BUIhelper
 {
@@ -21,19 +24,35 @@ abstract class BUIhelper
   function showPanel($heading, $text, $icon, $image, $buttons) {
    
      // Display order: Icon/heading on one line, then 
-     // image if present, then body text. 
+     // image if present, then image, then text (like on a FB post?)
      
      echo "\n<div class=\"well\">";
      
-     echo "<h1>" . $heading . "</h1>";
+     echo "<h1>";
      
+     if (isset($icon)) {
+       //NB I know this is hard coded and that is bad, but, it's a result of the joomla component layout
+       //I can't NOT hard code it, the location is set as a result of the manifest (component.xml)
+       $avatar_folder_location = Uri::root() . "/media/com_baanabus/avatars/";
+
+       $avatar_link = $avatar_folder_location . $icon;
+
+       // echo "<p>Filename: " . $avatar_link . "</p>";
+
+       $attributes = array("width" => "50px", "height" => "50px", "float" => "left");
+
+       $iconstr = HTMLHelper::image( $avatar_link , 'Missing Avatar', $attributes);
+
+       echo $iconstr;
+       
+     } 
+     else echo "(No icon)";
+
+     echo "&nbsp;&nbsp;&nbsp;" . $heading . "</h1>";
+
      echo "<p> " . $text . "</p>";
      
-     if(isset($icon)) {
-       echo "<p> Icon goes here. </p>"; 
-     } 
-     else echo "<p> No icon to display.</p>";
-
+     // --- show buttons, if any... -------
      echo "<div style=\"text-align: right;\" >"; 
      foreach ($buttons as $button) { 
        echo "<a class=\"btn btn-". $button->css_class . " \" href=\"" . $button->link . "\" >" . $button->description . "</a>";

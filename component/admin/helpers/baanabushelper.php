@@ -7,6 +7,9 @@
  * @license     GNU General Public License version 3 or later; see LICENSE.txt
  */
 
+ use Joomla\CMS\Uri\Uri;
+ use Joomla\CMS\HTML\HTMLHelper;
+
 abstract class BaanabusHelper
 {
 
@@ -104,22 +107,7 @@ abstract class BaanabusHelper
     return $person_obj;
 
   } 
-  
-  
-  function getTasks($db) {
-  
-    $query = $db->getQuery(true);
-    $query->select('*');
-    $query->from('#__com_baanabus_tasks');
-
-    // echo "\n<br/>Question Lookup Query: " . (string)$query;
-    $db->setQuery((string)$query);
-    
-    $data_returned = $db->loadObjectList();
-    
-    return $data_returned;
-
-  }    
+     
   
   function getNotes($db, $person_id = 0) {
   
@@ -150,6 +138,35 @@ abstract class BaanabusHelper
     return $data_returned;
 
   }   
+  
+  function getTasks($db, $person_id = 0)
+  {
+
+    $query = $db->getQuery(true);
+    $query->select('*');
+    $query->from('#__com_baanabus_tasks');
+    
+    if ( $person_id == 0) {
+
+      // we want alll notes
+    } else {
+      // filter query by person_id
+      $query->where($db->quoteName('person_id') . " = " . $person_id);
+    }
+
+  /* ****** Syntax for Where, andWhere ... ***********
+  // Filter by just statements that are relevant to requested question...
+  $query->andWhere($db->quoteName('question_id') . " = " . $db->quote(strval($question_id)));
+
+  ****************** *********** */
+
+    // echo "\n<br/>Question Lookup Query: " . (string)$query;
+    $db->setQuery((string)$query);
+
+    $data_returned = $db->loadObjectList();
+
+    return $data_returned;
+  } 
 
   /* 
    * @$db - JDatabase DBO connection object, use ::getDB() above
@@ -179,6 +196,44 @@ abstract class BaanabusHelper
     $result = $db->execute();
 
   }
+  
+  function getAvatar($filename) {
+    
+    //NB I know this is hard coded and that is bad, but, it's a result of the joomla component layout
+    //I can't NOT hard code it, the location is set as a result of the manifest (component.xml)
+    $avatar_folder_location = Uri::root() . "/media/com_baanabus/avatars/";
+
+    $avatar_link = $avatar_folder_location . $filename; 
+    
+    // echo "<p>Filename: " . $avatar_link . "</p>";
+    
+    $attributes = array("width" => "100px", "height" => "100px");
+    
+    $avatarstr = HTMLHelper::image( $avatar_link , 'Missing Avatar', $attributes);
+
+    return $avatarstr; 
+
+  }
+  
+  function showMiniAvatar($filename)
+  {
+
+    //NB I know this is hard coded and that is bad, but, it's a result of the joomla component layout
+    //I can't NOT hard code it, the location is set as a result of the manifest (component.xml)
+    $avatar_folder_location = Uri::root() . "/media/com_baanabus/avatars/";
+
+    $avatar_link = $avatar_folder_location . $filename;
+
+    echo "<p>Filename: " . $avatar_link . "</p>";
+
+    $attributes = array("width" => "50px", "height" => "50px");
+
+    $avatarstr = HTMLHelper::image( $avatar_link , 'Missing Avatar', $attributes);
+
+    echo $avatarstr;
+  }
+  
+
     
 }
 

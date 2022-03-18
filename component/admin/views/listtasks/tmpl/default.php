@@ -118,7 +118,7 @@ echo "</table>";
 
 <form method="post"> 
 
-  <form action="index.php?option=com_baanabus&view=addtask" method="post" id="newTaskForm" name="newTaskForm">
+  <form method="post" id="newTaskForm" name="newTaskForm">
 
   <br/>
   <div class="label">Title: </div> 

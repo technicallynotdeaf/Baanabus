@@ -57,19 +57,6 @@ if ($baanabus_action = "complete_task") {
 
 <?php 
 
-$heading = "Well Hello there";
-
-$text = "This is some body text to show that the thing is generally working. Let's do this!";
-
-$link3 = "index.php?option=com_baanabus&view=start";
-
-$success_button = new BaanabusButton("Got It", $link3, "success");
-$dismiss_button = new BaanabusButton("Dismiss", $link3, "action");
-
-$actions = array($success_button, $dismiss_button);
-
-BUIhelper::showPanel($heading, $text, $icon, $image, $actions);
-
 $tasks = BaanabusHelper::getTasks($db);
 
 foreach ($tasks as $task) {
@@ -81,6 +68,11 @@ foreach ($tasks as $task) {
   $link3 = "index.php?option=com_baanabus&view=start";
   
   $task_icon = "task.jpeg";
+  
+  if (isset($task->person_id)) {
+    $person_obj = BaanabusHelper::getPerson($db, $task->person_id);
+    $task_icon = $person_obj->avatar_img;
+  }
 
   $success_button = new BaanabusButton("Got It", $link3, "success");
   $dismiss_button = new BaanabusButton("Dismiss", $link3, "action");

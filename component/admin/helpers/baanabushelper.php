@@ -176,8 +176,15 @@ abstract class BaanabusHelper
    */
   function addTask($db, $task) {
 
-    $result = $db->insertObject('#__com_baanabus_tasks', $task, 'quote_id');
+    $result = $db->insertObject('#__com_baanabus_tasks', $task, 'task_id');
   }
+  
+  function addNote($db, $note)
+  {
+
+    $result = $db->insertObject('#__com_baanabus_notes', $note, 'note_id');
+  }
+
   
   function addEvent($db, $event) {
 

@@ -29,27 +29,35 @@ $db = BaanabusHelper::getDB();
 
 <h3> List of People... </h3> 
 
-<table> 
+<table> <tr>
 
 <?php 
 $people = BaanabusHelper::getPeople($db); 
 
+$count = 0;
+
 foreach ($people as $person) {
-echo "<tr>";
-echo "<td>" . $person->avatar_img . "</td>";
+  $count = $count + 1;
+  echo "<td style=\"text-align: center;\">";
+
 ?>
-<td>
-  <form action="index.php?option=com_baanabus&view=person"  method="post" >
-  <input type="hidden" name="person_id" value="<?php echo $person->person_id; ?>"  />
-  <input value="<?php echo $person->name ?>" type="submit" class="btn" >
-  </form>
-</td>
+    <a href="index.php?option=com_baanabus&view=person&person_id=<?php echo $person->person_id; ?>">
+    <?php echo BaanabusHelper::getAvatar($person->avatar_img); ?> <br/>
+    <?php echo $person->name ?> </a>
+    
 <?php
-echo "<td>" . $person->char1 . ", " . $person->char2 . "</td>";
-echo "</tr>";
+
+  echo "</td>";
+  
+  if ($count > 5) {
+    $count = 0;
+    echo "</tr><tr>";
+
+  }
 }
 ?>
 
+</tr>
 </table>
 
 <?php BUIhelper::showFooter(); ?>

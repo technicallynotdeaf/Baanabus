@@ -35,6 +35,48 @@ $jinput = JFactory::getApplication()->input;
 
 $person_id = $jinput->get('person_id', 0, 'INT');
 
+
+$task_title = $jinput->get('task_title', '', 'STRING');
+
+if (!empty($task_title)) {
+
+  // Create a new task from submitted strings & save to DB
+
+  print("New task submitted... ");
+  $new_task = new stdClass();
+  $new_task->task_title = $task_title;
+
+  $task_description = $jinput->get('task_description', '', 'STRING');
+  if (!empty($task_description)) {
+    $new_task->task_description = $task_description;
+  }
+
+  $task_context = $jinput->get('context', '', 'STRING');
+  if (!empty($task_context)) {
+    $new_task->context = $task_context;
+  }
+  
+  $new_task->person_id = $person_id;
+
+  BaanabusHelper::addTask($db, $new_task);
+}
+
+$note_contents = $jinput->get('note_contents', '', 'STRING');
+
+if (!empty($note_contents)) {
+
+  // Create a new note from submitted strings & save to DB
+
+  print("New note submitted... ");
+  $new_note = new stdClass();
+  
+  $new_note->contents = $note_contents;
+
+  $new_note->person_id = $person_id;
+
+  BaanabusHelper::addNote($db, $new_note);
+}
+
 /* person zero is now me... */
 // if($person_id == 0) {
 //  echo "<p>Can't find person zero... </p>";
@@ -114,6 +156,29 @@ $text_to_display = $text_to_display . "</ul>";
 
 BUIhelper::showPanel($heading, $text_to_display, $icon, $image, $actions);
 
+// ---------- Add Task form --------------
+
+?>
+<form method="post">
+
+<br/>
+<div class="label">Title: </div>
+<input type="text" class="form-control span6" name="task_title" ><br/>
+
+<div class="label">Description: </div>
+<input type="text" class="form-control span6" name="task_description" ><br/>
+
+<div class="label"> Context:</div>
+<input type="text" class="form-control span6" name="context" value="home"> <br/>
+
+<input type="hidden" name="person_id" value="<?php echo $person_id ?>" >
+
+<input value="Add Task!" type="submit" class="btn btn-success" >
+
+</form>
+
+<?php
+
 // ============ Notes about person ============ //
 
 
@@ -137,8 +202,23 @@ $text_to_display = implode($notes_box_info);
 BUIhelper::showPanel($heading, $text_to_display, $icon, $image, $actions);
 
 
-print_r($person_obj);
-
+// ---------- Add Note form --------------
 
 ?>
+
+<form method="post">
+
+  <br/>
+  <div class="label">New Note: </div>
+  <input type="text" class="form-control span6" name="note_contents" ><br/>
+
+  <input type="hidden" name="person_id" value="<?php echo $person_id ?>" >
+
+  <input value="Add Note!" type="submit" class="btn btn-success" >
+
+</form>
+
+<?php
+
+print_r($person_obj);
 

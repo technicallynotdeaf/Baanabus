@@ -10,21 +10,27 @@ NB These design choices aren't all implemented. The code is still really early s
 
 * Start with a menu
 
-I'm so sick of opening an app or site and being flooded with distraction so I don't do what I came there to do
+I'm so sick of opening an app or site and being flooded with distractions.
 
 * Multiple interfaces 
 
-Complex view for planning out tasks and stuff; Minimalist view for after a hard day's work when concentrating is becoming difficult
+Complex view for planning out tasks and stuff; Minimalist view for after a hard day's work when concentrating is becoming difficult.
 
 * No notifications
 
 Moving from one task to the other is much calmer without constant disruption.
 
-## Other features
+* Guided reviews
+
+Work through one-at-a-time questions and answers to help you fill in missing information, decide what you want and what you should do, in what order.
 
 * Social tasks
 
 Remind me what i was going to do for someone before I see them
+
+* Schedule Routines
+
+Allocate half an hour in the morning (for example) as 'routine' and be stepped through tasks one at a time, at that hour. Allocate a later hour as 'tasks' and set a location, and maybe assign specific tasks to do then.
 
 * Questions
 

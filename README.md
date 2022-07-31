@@ -1,14 +1,4 @@
-I needed to quit the socmed world of inflamed status updates and dark patterns. 
-
-But my friends! I needed to stay in touch with my friends! And I needed to remember all the things about them that I liked and that they care about. 
-
-I needed something to remind me about things. Like ... I said I would write an article for a friend by Sunday. Or, I was going to message my other friend... but do I remember? nahhh. 
-
-I need a new site.
-
-Instead of everyone else spamming me, and Facebook helping me be addicted... 
-
-I needed a site that supported real world connections. With anti-dark patterns. 
+After getting sick of inflammatory social media, and reading the studies on the effects of spending time there, I decided it was time to do things differently. Instead of individual-centric social media, which encourages the user to curate 'their' feed and post 'their' status, and be the center of 'their' world, I wanted something which trained your brain to support others. I wanted a system which builds friendships, instead of destroying them with too much information (Some people are lovely, when you know less about them). I wanted to be reminded about what I could do for others, not be given more chances to brag or complain. 
 
 Enter:
 
@@ -24,11 +14,11 @@ I'm so sick of opening an app or site and being flooded with distraction so I do
 
 * Multiple interfaces 
 
-Complex view for planning out tasks and stuff; Minimalist view for when it's 4pm, my brain is moosh and I can't remember what I was going to do 
+Complex view for planning out tasks and stuff; Minimalist view for after a hard day's work when concentrating is becoming difficult
 
 * No notifications
 
-I need to foster a workflow that's about intentionally looking at my next task when I am ready, not interrupts. No interrupts. I need my attention span back...!
+Moving from one task to the other is much calmer without constant disruption.
 
 ## Other features
 
@@ -44,7 +34,6 @@ Alternatively, add questions to contacts so you have something to ask and be int
 * Positive Traits
 
 People like you better when you like them, and it's easier to like them if you make a concerted effort to remember all the good things about them. Contact records store the top 3 positive things about someone (e.g. smart, decisive, good listener) as well as others ... but they have to be positive! 
-
 
 ## To use Baanabus
 

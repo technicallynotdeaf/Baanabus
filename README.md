@@ -8,17 +8,17 @@ NB These design choices aren't all implemented. The code is still really early s
 
 ## Intentional design choices 
 
-* Start with a menu
+* Start with a menu, not a feed
 
 I'm so sick of opening an app or site and being flooded with distractions.
 
-* Multiple interfaces 
+* Multiple views to suit tiredness levels
 
-Complex view for planning out tasks and stuff; Minimalist view for after a hard day's work when concentrating is becoming difficult.
+Complex view for planning out tasks etc; Minimalist "just the next thing" view for after a hard day's work when concentrating is becoming difficult.
 
 * No notifications
 
-Moving from one task to the other is much calmer without constant disruption.
+Moving from one task to the other is much calmer and more productive without constant disruption.
 
 * Guided reviews
 
@@ -30,7 +30,7 @@ Remind me what i was going to do for someone before I see them
 
 * Schedule Routines
 
-Allocate half an hour in the morning (for example) as 'routine' and be stepped through tasks one at a time, at that hour. Allocate a later hour as 'tasks' and set a location, and maybe assign specific tasks to do then.
+Allocate half an hour in the morning (for example) as 'routine' and be stepped through tasks one at a time, at that hour. Allocate a later hour as 'tasks' and set a location, and maybe assign specific tasks to do them (shout out to Brili, it's a similar idea becuase it's a good idea).
 
 * Questions
 
@@ -41,7 +41,11 @@ Alternatively, add questions to contacts so you have something to ask and be int
 
 People like you better when you like them, and it's easier to like them if you make a concerted effort to remember all the good things about them. Contact records store the top 3 positive things about someone (e.g. smart, decisive, good listener) as well as others ... but they have to be positive! 
 
-## To use Baanabus
+## Technical data
+
+Baanabus v0 was a Joomla plug-in, but I got sick of modifying it to talk to Joomla and Joomla addins that kept changing every few months and demanding updates, PHP updates, breaking my code... I wanted a service that would improve my life, not add a constance maintenance workload. 
+
+To install the joomla module: 
 
 * Zip up the entire component folder into component_0_3.zip or something
 * Open a Joomla 3 backend on a server you prepared earlier ;) 

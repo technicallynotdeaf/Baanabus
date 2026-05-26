@@ -64,8 +64,7 @@ $_SESSION['pending_username']   = $username;
 $_SESSION['pending_userid']     = $userId;
 $_SESSION['pending_invite']     = $inviteCode;
 
-$rpId    = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'baanabus.app');
-$prfSalt = b64u_rc(hash('sha256', 'baanabus-vault-v1', true));
+$rpId = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'baanabus.app');
 
 $options = [
     'challenge' => b64u_rc($challenge),
@@ -76,7 +75,7 @@ $options = [
         'displayName' => $username,
     ],
     'pubKeyCredParams' => [
-        ['type' => 'public-key', 'alg' => -7],  // ES256 only — PRF requires CTAP2
+        ['type' => 'public-key', 'alg' => -7],
     ],
     'timeout'     => 60000,
     'attestation' => 'none',
@@ -86,7 +85,6 @@ $options = [
         'userVerification'   => 'preferred',
     ],
     'excludeCredentials' => $exclude,
-    'extensions' => ['prf' => ['eval' => ['first' => $prfSalt]]],
 ];
 
 respond_rc(['publicKey' => $options]);

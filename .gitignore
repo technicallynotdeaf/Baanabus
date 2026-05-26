@@ -6,6 +6,9 @@
 
 # Secrets
 .cassowary
+
+# Scratch scripts (local dev use only)
+scratch/
 cassowary.php
 
 # Runtime user data

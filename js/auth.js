@@ -38,17 +38,20 @@ function prepGetOptions(opts) {
   if (opts.allowCredentials) {
     opts.allowCredentials = opts.allowCredentials.map(c => ({...c, id: b64urlToBuf(c.id)}));
   }
+  if (opts.extensions?.prf?.eval?.first) {
+    opts.extensions.prf.eval.first = b64urlToBuf(opts.extensions.prf.eval.first);
+  }
   return opts;
 }
 
 // ---------- main flows ----------
-async function registerPasskey(username) {
+async function registerPasskey(username, inviteCode='') {
   try {
     say('Requesting registration challenge…');
     const resp = await fetch('register-challenge.php', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ username: username.trim() })
+      body: JSON.stringify({ username: username.trim(), inviteCode })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
@@ -118,6 +121,10 @@ async function signInPasskey(hintUsername=null) {
       }
     };
 
+    // Include PRF result if the YubiKey returned one — used for vault unlock server-side
+    const prfFirst = assertion.getClientExtensionResults()?.prf?.results?.first;
+    if (prfFirst) payload.prfResult = bufToB64url(prfFirst);
+
     say('Verifying assertion…');
     const verify = await fetch('auth-response.php', {
       method: 'POST',
@@ -144,9 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnReg) {
     btnReg.addEventListener('click', async (e) => {
       e.preventDefault();
-      const u = (userEl?.value || '').trim();
+      const u    = (userEl?.value || '').trim();
+      const code = (el('#inviteCode')?.value || '').trim();
       if (!u) return say('Please enter a username.', true);
-      await registerPasskey(u);
+      await registerPasskey(u, code);
     });
   }
 
@@ -161,4 +169,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ---------- export (if you want to call from elsewhere) ----------
 window.BaanabusAuth = { registerPasskey, signInPasskey };
+// registerPasskey(username, inviteCode) — inviteCode required for new accounts
 

@@ -126,4 +126,47 @@ function vaultStatus(): array {
   ];
 }
 
+function bootstrapVaultWithPrf(string $prfKeyB64u, array $paths): void {
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = random_bytes(32);
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $plain = json_encode(['created' => date('c'), 'nickname' => 'Alison'], JSON_UNESCAPED_SLASHES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($plain, '', $nonce, $dek);
+    @mkdir($paths['base'], 0700, true);
+    file_put_contents($paths['enc'], json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    wrapDekWithPrf($dek, $prfKeyB64u, $paths);
+    $_SESSION['DEK'] = b64u_enc($dek);
+}
+
+function unlockWithPrf(string $prfKeyB64u, array $paths): void {
+    $uid      = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    $wrapPath = $paths['wraps'] . "/cred_{$uid}.json";
+    if (!is_file($wrapPath)) throw new Exception('No PRF wrap for this credential');
+    $meta  = json_decode(file_get_contents($wrapPath), true) ?: [];
+    $kek   = b64u_dec($prfKeyB64u);
+    $nonce = base64_decode($meta['nonce'] ?? '');
+    $ct    = base64_decode($meta['ct'] ?? '');
+    if (!$nonce || !$ct) throw new Exception('Invalid PRF wrap format');
+    $dek = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $kek);
+    if ($dek === false) throw new Exception('PRF unwrap failed — wrong key or corrupted wrap');
+    $_SESSION['DEK'] = b64u_enc($dek);
+}
+
+function wrapDekWithPrf(string $dek, string $prfKeyB64u, array $paths): void {
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $kek   = b64u_dec($prfKeyB64u);
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($dek, '', $nonce, $kek);
+    @mkdir($paths['wraps'], 0700, true);
+    $uid  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    file_put_contents($paths['wraps'] . "/cred_{$uid}.json", json_encode([
+        'type'  => 'prf',
+        'alg'   => 'xchacha20',
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+}
 

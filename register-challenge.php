@@ -80,9 +80,10 @@ $options = [
     'timeout'     => 60000,
     'attestation' => 'none',
     'authenticatorSelection' => [
-        'residentKey'        => 'preferred',
-        'requireResidentKey' => false,
-        'userVerification'   => 'preferred',
+        'authenticatorAttachment' => 'cross-platform',  // skip phone credential manager, go straight to hardware key
+        'residentKey'             => 'preferred',
+        'requireResidentKey'      => false,
+        'userVerification'        => 'preferred',
     ],
     'excludeCredentials' => $exclude,
 ];

@@ -1,0 +1,25 @@
+
+Baanabus is a multi-user web app which uses passkeys for authentication, with a user passphrase to unlock encrypted files in the absence of passkeys which support PRF.
+
+Each user gets a folder like /config/<credentialId>/
+
+Inside that:
+- config.enc (their encrypted data)
+- wraps/passphrase.json, wraps/[credential id].json (their wrap set) 
+- baanabus.db.enc (their encrypted sqlite task/info database)
+
+under no circumstances should credentials be stored in an unencrpyted 'credentials.json' file with public keys and usernames. this app runs on a public server and doing so is just asking for trouble. 
+
+Javascript is stored in the "js" folder - js/auth.js for authentication related javascript and js/app.js for javascript which displays content in the overlay or speech bubble div's. 
+
+CSS is stored in the "css" folder
+
+the "config" folder contains multiple config files, [credential id].json for each credential that's been registered but not encrypted yet, and [credential id].json.enc for user settings files that have been encrypted with a passphrase (or transparently if the key supports it). 
+
+the api/ folder contains php files which do not display the header navigation; these supply partial pages which are displayed in the overlay div on the main page using javascript. 
+
+scene.php draws the background of the web-app, currently only optimised for desktop.
+
+Currently scene.php is a library with the goal of having an incentive system that involves earning pages and thus collecting books for the library. 
+
+Alternate scenes are possible in future but for now let's just stick with the one.

@@ -1,0 +1,55 @@
+<?php
+session_start();
+header('Content-Type: application/json');
+
+require_once __DIR__ . '/init.php'; // if it sets up paths or config
+
+// Read posted username from onboarding
+$input = json_decode(file_get_contents('php://input'), true);
+$username = trim($input['username'] ?? '');
+
+// Basic check
+if ($username === '') {
+    echo json_encode(['error' => 'Username required']);
+    exit;
+}
+
+// Generate a random user ID for WebAuthn (server-side unique identifier)
+$userId = base64_encode(random_bytes(16));
+
+// Store temporarily in session so register-response.php can link it
+$_SESSION['pending_username'] = $username;
+$_SESSION['pending_userid'] = $userId;
+
+// Build challenge data
+$challenge = random_bytes(32);
+
+$options = [
+    'challenge' => base64_encode($challenge),
+    'rp' => [
+        'name' => 'Baanabus',
+        'id'   => $_SERVER['SERVER_NAME']
+    ],
+    'user' => [
+        'id' => $userId,
+        'name' => $username,
+        'displayName' => $username
+    ],
+    'pubKeyCredParams' => [
+        ['type' => 'public-key', 'alg' => -7],   // ES256
+        ['type' => 'public-key', 'alg' => -257]  // RS256
+    ],
+    'timeout' => 60000,
+    'attestation' => 'direct',
+    'authenticatorSelection' => [
+        'residentKey' => 'preferred',
+        'userVerification' => 'preferred'
+    ]
+];
+
+// Save challenge for later verification
+$_SESSION['register_challenge'] = base64_encode($challenge);
+
+// ✅ Wrap it correctly for navigator.credentials.create()
+echo json_encode(['publicKey' => $options], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+

@@ -1,0 +1,587 @@
+/* Styles for Baanabus: High Contrast, Calming
+* 
+* Background Color: ?
+* Text/Outline Color: ?
+* Button/Accent Color: hsl(200, 50%, 35%) 
+* Hover color: hsl(200, 50%, 45%)
+*
+*
+* Navy copilot-gen colour scheme: 
+*
+* Background Color: hsl(0, 0%, 100%)
+* Text/Outline Color: hsl(210, 100%, 20%)
+* Button/Accent Color: hsl(210, 100%, 30%)
+* Hover color: hsl(210, 100%, 40%)
+*
+*/ 
+
+
+body{
+	background-color: hsl(0, 0%, 100%);
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	margin: 0px;
+	overflow: hidden;
+}
+
+p{
+	text-align: justify;
+}
+h1{
+	text-align: center;
+}
+.highlight{
+	font-weight: 700;
+	color: hsl(210, 100%, 30%)
+}
+h1, h2{
+	color: hsl(210, 100%, 20%);
+	font-weight: 400;
+}
+.completed{
+	color: gray;
+	font-weight: 200;
+}
+.selected {
+	border: 4px solid hsl(210, 100%, 20%); 
+}
+
+
+/* Style for the navbar */
+.navbar {
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	z-index: 10; /* Keeps it above the canvas */
+	background-color: transparent; /* Transparent, no background */
+}
+
+
+ul.navbar {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	text-align: center; /* Center the contents */
+	width: 100%;
+}
+
+/* Center each list item */
+ul.navbar li {
+	display: inline-block;
+}
+
+/* Style for the navbar links */
+ul.navbar li a {
+	display: block;
+	color: hsl(210, 100%, 20%);
+	text-align: center;
+	padding: 14px 16px;
+	text-decoration: none;
+	transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+}
+
+ul.navbar li a:hover {
+	background-color: rgba(255, 255, 255, 0.2); /* Slight highlight on hover */
+	color: hsl(210, 100%, 40%); /* Slightly lighter text color */
+	border-radius: 4px;
+}
+
+.clock {
+	position: fixed;
+	text-align: center;
+	top: 75px;
+	right: 5px;
+	width: 240px;
+	border: 1px solid hsl(210, 100%, 20%);
+	border-radius: 5px;
+	background-color: hsl(0, 0%, 100%);
+}
+
+.clock h2,
+.clock p {
+	padding-left: 10px; /* Add left padding to h2 and p elements */
+}
+
+.leftnav {
+	position: fixed;
+	top: 75px;
+	left: 5px;
+	width: 240px;
+	border-radius: 10px;
+	border: 1px solid hsl(210, 100%, 20%);
+	background-color: hsl(0, 0%, 100%);
+	overflow: hidden;
+}
+
+.leftnav h2 {
+	margin-left: 10px; /* Add a left margin of at least 10px */
+}
+
+.left_actions {
+	position: fixed;
+	top: 315px;
+	left: 5px;
+	width: 240px;
+	/* background-color: #f0f0f0; */
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+
+/* style for the chat with baanabus multi-choice interface */
+
+.container {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	margin: 0 auto;
+	width: calc(100% - 540px);
+	padding: 20px;
+	border: 1px solid hsl(210, 100%, 20%);
+	border-radius: 5px;
+}
+
+.avatar-container {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.avatar {
+	width: 100px;
+	height: 100px;
+	border-radius: 20%;
+	margin: 20px;
+	cursor: pointer;
+}
+
+.avatar-sm {
+	width: 30px;
+	height: 30px;
+	border-radius: 20%;
+	margin: 0px;
+}
+
+.question {
+	font-size: 24px;
+	margin-bottom: 20px;
+	margin-left: 10px;
+	margin-right: 10px;
+	min-width: 150px;
+}
+
+.choices {
+	display: flex;
+	flex-direction: column;
+}
+
+.choice-button {
+	font-size: 15px;
+	padding: 10px 20px;
+	margin-bottom: 10px;
+	margin-left: 10px;
+	background-color: hsl(210, 100%, 30%);
+	color: #fff;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	text-decoration: none;
+	text-align: left;
+}
+
+.choice-button:hover {
+	background-color: hsl(210, 100%, 40%);
+}
+
+.action-button {
+	font-size: 15px;
+	padding: 10px 20px;
+	margin-bottom: 10px;
+	margin-left: 10px;
+	background-color: hsl(210, 100%, 30%);
+	color: #fff;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	text-decoration: none;
+	text-align: left;
+}
+
+.action-button:hover {
+	background-color: hsl(210, 100%, 40%);
+}
+
+.answer-form {
+	display: flex;
+}
+
+.answer-input {
+	font-size: 15px;
+	padding: 10px;
+	margin-right: 10px;
+	margin-bottom: 5px;
+	border: 1px solid hsl(210, 100%, 20%);
+	border-radius: 5px;
+	flex: 1;
+	width: 95%;
+	height: 90px;
+	resize: vertical;
+}
+
+
+.submit-button {
+	font-size: 15px;
+	padding: 10px 20px;
+	background-color: hsl(210, 100%, 30%);
+	color: #fff;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.submit-button:hover {
+	background-color: #45a049;
+}
+
+.actionbuttons {
+	text-align: right;
+}
+
+/* style for the People directory */
+
+.people-container {
+	font-family: 'Arial', sans-serif;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.card {
+	width: 150px;
+	/* background-color: #fff; */
+	border-radius: 5px;
+	padding: 10px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	margin: 10px;
+}
+
+.card-image {
+	width: 100%;
+	height: 100px;
+	border-radius: 5px;
+	overflow: hidden;
+	margin-bottom: 10px;
+}
+
+.card-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.card-name {
+	font-size: 20px;
+	font-weight: bold;
+	margin-bottom: 10px;
+}
+
+.card-details {
+	font-size: 16px;
+	color: #777;
+}
+
+.edit-link,
+.delete-link{
+	display: inline-block;
+	background-color: hsl(210, 100%, 30%);
+	color: #fff;
+	padding: 5px 10px;
+	border: none;
+	border-radius: 3px;
+	font-size: 14px;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+/* Style for the edit link */
+.edit-link {
+	margin-right: 5px;
+}
+
+
+/* from the add_Tasks page */
+
+.form-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	/* background-color: #fff; */
+	width: 90%;
+	padding: 20px;
+	border-radius: 5px;
+	box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.form-title {
+	font-size: 24px;
+	margin-bottom: 20px;
+}
+
+.form-input {
+	font-size: 15px;
+	padding: 10px 20px;
+	margin-bottom: 10px;
+	margin-left: 10px;
+	margin-right: 10px;
+	border: none;
+	border-radius: 5px;
+	box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.form-button {
+	font-size: 15px;
+	padding: 10px 20px;
+	margin-top: 10px;
+	background-color: hsl(210, 100%, 30%);
+	color: #fff;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.form-button:hover {
+	background-color: #45a049;
+}
+
+/* Style for the task list checkbox */
+.task-checkbox {
+	width: 20px;
+	height: 20px;
+	margin-right: 10px;
+	margin-bottom: 3px;
+	border: 2px solid hsl(210, 100%, 30%);
+	border-radius: 5px;
+	cursor: pointer;
+	display: inline-block;
+	vertical-align: middle;
+
+}
+
+.task-checkbox:checked {
+	background-color: #4CAF50;
+}
+
+/* Style for the task container */
+.task-container {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	/*background-color: #fff; */
+	border: 1px solid hsl(210, 100%, 30%);
+	padding: 10px;
+	margin: 5px;
+}
+
+/* Style for the delete link */
+.delete-link {
+	background-color: #DC3545; /* Adjust background color as needed */
+}
+
+/* Adjust button styles on hover and focus */
+.edit-link:hover,
+.delete-link:hover,
+.edit-link:focus,
+.delete-link:focus {
+	background-color: hsl(210, 100%, 40%); /* Adjust background color on hover/focus */
+}
+
+/* Style for the left content (checkbox and task title) */
+.left-content {
+	float: left;
+}
+
+/* Style for the right content (edit and delete links) */
+.right-content {
+	float: right;
+}
+
+
+/* This is used on the processing page */
+
+.information-box {
+	border: 2px solid hsl(210, 100%, 20%);
+	padding: 10px;
+	font-size: 15px;
+	/*background-color: #f1f1f1;*/
+	text-align: center;
+	margin: 10px;
+	color: #333;
+	border-radius: 5px;
+}
+
+.task-info-box {
+	border: 2px solid hsl(210, 100%, 20%);
+	font-size: 15px;
+	/* background-color: #f1f1f1;*/
+	text-align: left;  
+	justify-content: space-between;
+	margin: 10px;
+	padding: 10px;
+	color: #333;
+	border-radius: 5px;
+	min-height: 20px;    
+	overflow: hidden;
+	max-width: 100%; /* Ensures it doesn't exceed the parent width */
+	box-sizing: border-box; /* Includes padding and border in the element's total width and height */
+}
+
+.form-section {
+	display: none;
+}
+
+.hidden {
+	display: none;
+}
+
+.form-section.is-active {
+	display: block;
+}
+
+
+/* Overlay full-screen */
+.overlay {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 100;
+}
+
+/* full-screen speech bubble layer */
+.speechBubble {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	#background-color: rgba(0, 0, 0, 0.5);
+	z-index: 80;
+}
+
+/* Content box in the middle */
+.overlay-content {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: white;
+	padding: 20px;
+	width: 60%;
+	height: 70%;
+	overflow-y: auto;
+	border-radius: 8px;
+}
+
+/* Content box in the middle */
+.speechBubble-content {
+  position: absolute;
+  top: 50%;
+  left: 60%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 10px;
+  width: 40%;
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); /* Optional shadow for depth */
+  height: auto;        /* Height adjusts automatically */
+  max-height: 200px;   /* Prevents it from getting too tall */
+  overflow: hidden;    /* No scrollbars */
+}
+
+/* Close button */
+.close-button {
+	position: absolute;
+	top: 10px;
+	right: 20px;
+	font-size: 24px;
+	cursor: pointer;
+	color: #555;
+}
+
+.close-button:hover {
+	color: #000;
+}
+
+
+/* === Avatar Container Styling === */
+.avatar-container {
+	position: relative;
+	display: inline-block;
+}
+
+/* === Avatar Styling === */
+.avatar {
+	position: relative;
+	width: 150px; /* Adjust as needed */
+}
+
+/* === Speech Bubble Styling === */
+#speech-bubble {
+	position: absolute;
+	top: 0;
+	left: 160px; /* Adjust to where you want it to pop */
+	background-color: #f9f9f9;
+	border-radius: 10px;
+	border: 1px solid #ccc;
+	padding: 15px;
+	width: 250px;
+	box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.2);
+	z-index: 1000;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* === Speech Bubble Arrow === */
+#speech-bubble::after {
+	content: "";
+	position: absolute;
+	top: 20px;
+	left: -15px;
+	width: 0;
+	height: 0;
+	border-top: 10px solid transparent;
+	border-bottom: 10px solid transparent;
+	border-right: 15px solid #f9f9f9;
+}
+
+/* === Hidden class === */
+.hidden {
+	display: none;
+}
+
+/* === Shown class === */
+.shown {
+	display: block;
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.progress-container {
+    width: 95%;           /* 95% of its parent */
+    background-color: #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 20px;
+    margin: 10px auto;    /* Center it horizontally */
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #4caf50;
+    transition: width 0.4s ease;
+}

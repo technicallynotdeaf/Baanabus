@@ -3,3 +3,26 @@
 *.cached
 *.csprj
 *.clpprj
+
+# Secrets
+.cassowary
+cassowary.php
+
+# Runtime user data
+config/
+config.json
+configs/
+avatars/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# Old/archived sensitive files
+old/credentials.json.old
+old/*.log

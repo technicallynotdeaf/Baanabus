@@ -80,10 +80,10 @@ $options = [
     'timeout'     => 60000,
     'attestation' => 'none',
     'authenticatorSelection' => [
-        'authenticatorAttachment' => 'cross-platform',  // skip phone credential manager, go straight to hardware key
+        'authenticatorAttachment' => 'cross-platform',
         'residentKey'             => 'preferred',
         'requireResidentKey'      => false,
-        'userVerification'        => 'preferred',
+        'userVerification'        => 'discouraged',  // no PIN during NFC registration — tap only; PIN still requested at sign-in
     ],
     'excludeCredentials' => $exclude,
 ];

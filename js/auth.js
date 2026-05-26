@@ -56,12 +56,10 @@ async function registerPasskey(username, inviteCode='') {
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
 
-    say('Touch your key…');
     const credential = await navigator.credentials.create({
       publicKey: prepCreateOptions(data.publicKey)
     });
 
-    say('Key touched — sending to server…');
     const payload = {
       id: credential.id,
       rawId: bufToB64url(credential.rawId),
@@ -84,11 +82,6 @@ async function registerPasskey(username, inviteCode='') {
     return result;
   } catch (e) {
     say(`❌ Register error: ${e.message}`, true);
-    fetch('debug-log.php', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name: e.name, message: e.message, step: 'register' })
-    }).catch(() => {});
     throw e;
   }
 }

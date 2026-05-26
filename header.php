@@ -9,6 +9,7 @@ require_once __DIR__ . '/init.php';
   <title>Baanabus</title>
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/app.js" defer></script>
+  <script src="js/auth.js"></script>
 </head>
 <body>
 

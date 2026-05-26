@@ -3,7 +3,9 @@
 require_once __DIR__ . '/header.php';
 
 $isAuthed = !empty($_SESSION['is_authenticated']);
-if ($isAuthed) {
+require_once __DIR__ . '/config_helper.php';
+$vaultReady = $isAuthed && vaultExists() && isUnlocked();
+if ($vaultReady) {
     header('Location: index.php');
     exit;
 }

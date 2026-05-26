@@ -37,19 +37,24 @@ $s = vaultStatus();
 
 if (!$s['authenticated']) { header('Location: unauthorised.php'); exit; }
 
-if (!$s['exists']) {
+if (!$s['exists'] || !$s['unlocked']) {
+  // Vault not ready — sign in with key to bootstrap/unlock via PRF
   echo '<div class="container" style="max-width:680px;margin:2rem auto;padding:1rem;">';
   echo '<div class="card" style="padding:1.5rem;">';
-  echo '<h2>🔐 Create Your Config</h2>';
-  echo '<p>You\'re signed in but don\'t have a config yet. Create an encrypted config to get started.</p>';
-  echo '<p><a href="#" id="openCreateConfig" class="btn" style="display:inline-block;margin-top:0.5rem;">Create Config</a></p>';
+  echo '<h2>Tap your key to continue</h2>';
+  echo '<p class="muted">Your account is set up but your vault needs to be unlocked. Touch your security key to continue.</p>';
+  echo '<button id="btnVaultUnlock" class="btn" style="margin-top:0.75rem;">Touch Key</button>';
+  echo '<p id="authStatus" class="muted" style="margin-top:0.5rem;"></p>';
   echo '</div></div>';
-} elseif (!$s['unlocked']) {
-  echo '<div class="container" style="max-width:680px;margin:2rem auto;padding:1rem;">';
-  echo '<div class="card" style="padding:1.5rem;">';
-  echo '<h2>🔒 Vault Locked</h2>';
-  echo '<p>Your config exists but is locked. <a href="onboarding.php" class="btn" style="display:inline-block;margin-top:0.5rem;">Unlock Now</a></p>';
-  echo '</div></div>';
+  echo '<script>
+document.getElementById("btnVaultUnlock").addEventListener("click", async function() {
+  this.disabled = true;
+  try {
+    const result = await BaanabusAuth.signInPasskey();
+    if (result && result.vaultReady) { location.reload(); }
+  } catch(_) { this.disabled = false; }
+});
+</script>';
 } else {
   // Config exists and is unlocked - show the scene
 	#=============================

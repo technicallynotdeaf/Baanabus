@@ -1,5 +1,6 @@
 <?php
 session_start();
+@include_once __DIR__ . '/cassowary.php';
 header('Content-Type: application/json; charset=utf-8');
 
 function b64u_dec_rr(string $s): string {

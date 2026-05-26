@@ -145,32 +145,7 @@ async function signInPasskey(hintUsername=null) {
   }
 }
 
-// ---------- wire up default buttons (optional) ----------
-document.addEventListener('DOMContentLoaded', () => {
-  const btnReg = el('#btnRegister') || el('[data-action="register"]');
-  const btnIn  = el('#btnSignIn')   || el('[data-action="signin"]');
-  const userEl = el('#username')    || el('input[name="username"]');
-
-  if (btnReg) {
-    btnReg.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const u    = (userEl?.value || '').trim();
-      const code = (el('#inviteCode')?.value || '').trim();
-      if (!u) return say('Please enter a username.', true);
-      await registerPasskey(u, code);
-    });
-  }
-
-  if (btnIn) {
-    btnIn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const u = (userEl?.value || '').trim() || null; // optional hint
-      await signInPasskey(u);
-    });
-  }
-});
-
-// ---------- export (if you want to call from elsewhere) ----------
+// ---------- export ----------
 window.BaanabusAuth = { registerPasskey, signInPasskey };
 // registerPasskey(username, inviteCode) — inviteCode required for new accounts
 

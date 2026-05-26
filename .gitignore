@@ -16,6 +16,7 @@ config/
 config.json
 configs/
 avatars/
+data/
 
 # Database files
 *.db

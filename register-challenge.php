@@ -81,9 +81,9 @@ $options = [
     'attestation' => 'none',
     'authenticatorSelection' => [
         'authenticatorAttachment' => 'cross-platform',
-        'residentKey'             => 'preferred',
+        'residentKey'             => 'discouraged',  // server-side credential storage; no PIN needed to create
         'requireResidentKey'      => false,
-        'userVerification'        => 'discouraged',  // no PIN during NFC registration — tap only; PIN still requested at sign-in
+        'userVerification'        => 'discouraged',  // tap only for registration; UV still requested at sign-in
     ],
     'excludeCredentials' => $exclude,
 ];

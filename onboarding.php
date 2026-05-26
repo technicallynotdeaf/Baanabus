@@ -52,7 +52,12 @@ if ($isAuthed) {
     const u    = ($('#username')?.value || '').trim();
     const code = ($('#inviteCode')?.value || '').trim();
     if (!u) { const s=$('#authStatus'); if(s){s.textContent='Please enter a username.'; s.style.color='crimson';} return; }
-    try { handleAuthSuccess(await BaanabusAuth.registerPasskey(u, code)); } catch (_) {}
+    try {
+      await BaanabusAuth.registerPasskey(u, code);
+      // Registration succeeded but no PRF yet — sign in now to bootstrap the vault
+      say('Registered! Signing in to unlock vault…');
+      handleAuthSuccess(await BaanabusAuth.signInPasskey(u));
+    } catch (_) {}
   });
 
   $('#btnSignIn').addEventListener('click', async (e) => {

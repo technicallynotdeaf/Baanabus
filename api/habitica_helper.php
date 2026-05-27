@@ -29,3 +29,12 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
     if (!($json['success'] ?? false)) throw new Exception('Habitica: ' . ($json['message'] ?? 'unknown error'));
     return $json['data'] ?? [];
 }
+
+function habiticaGetOrCreateTag(string $name, string $userId, string $apiKey): string {
+    $tags = habiticaRequest('GET', '/tags', $userId, $apiKey);
+    foreach ((array)$tags as $tag) {
+        if (($tag['name'] ?? '') === $name) return (string)$tag['id'];
+    }
+    $tag = habiticaRequest('POST', '/tags', $userId, $apiKey, ['name' => $name]);
+    return (string)($tag['id'] ?? '');
+}

@@ -7,11 +7,15 @@ if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
 if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
 
 try {
-    $tasks    = getDoableTasks();
-    $hasTasks = !empty($tasks);
+    $tasks      = getDoableTasks();
+    $hasTasks   = !empty($tasks);
+    $inboxTasks = getInboxTasks();
+    $hasInbox   = !empty($inboxTasks);
 } catch (Throwable $e) {
-    $tasks    = [];
-    $hasTasks = false;
+    $tasks      = [];
+    $hasTasks   = false;
+    $inboxTasks = [];
+    $hasInbox   = false;
 }
 
 // Fatigue counter — increments each call, resets with the PHP session
@@ -63,18 +67,20 @@ if ($database) {
 if ($missing && $actCount === 0) json_response($missing);
 
 // Energy-aware + fatigue pool:
-//   task slots    = energy level (1 exhausted → 5 on fire)
-//   minigame slots = 6 - energy (inverse of tasks)
+//   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
 //   fatigue shift: every 4 activities, move 1 slot from task → minigame
-//
-//   Examples at act 0: energy 1 → 1t/5g, energy 3 → 3t/3g, energy 5 → 5t/1g
-//   After 8 acts:      energy 3 → 1t/5g, energy 5 → 3t/3g
+//   Inbox triage takes the task slots — doable tasks only appear once inbox is clear.
+//   Triage always gets at least 1 slot so the inbox can't starve at low energy.
 $fatigue   = (int)floor($actCount / 4);
 $taskSlots = max(0, $energy - $fatigue);
 $gameSlots = min(8, (6 - $energy) + $fatigue);
 
+$triageSlots = $hasInbox ? max(1, $taskSlots) : 0;
+$doableSlots = (!$hasInbox && $hasTasks) ? $taskSlots : 0;
+
 $pool = array_merge(
-    $hasTasks ? array_fill(0, $taskSlots, 'task') : [],
+    array_fill(0, $doableSlots, 'task'),
+    array_fill(0, $triageSlots, 'triage'),
     array_fill(0, 2, 'trivia'),
     array_fill(0, $gameSlots, 'minigame'),
     $missing ? ['missing_info'] : []
@@ -90,6 +96,10 @@ if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'minigame') {
     $games = ['tictactoe', 'numguess', 'rps', 'mathquiz'];
     json_response(['type' => 'minigame', 'game' => $games[array_rand($games)]]);
+}
+if ($choice === 'triage') {
+    $t = $inboxTasks[array_rand($inboxTasks)];
+    json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title']]);
 }
 if ($choice === 'missing_info') json_response($missing);
 

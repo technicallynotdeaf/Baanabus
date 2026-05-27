@@ -251,9 +251,22 @@ function saveTasks(array $data): void {
 function getDoableTasks(): array {
     $data = getTasks();
     $now  = time();
-    // Children surface inside their parent's block — never as standalone tasks
+    // Children surface inside their parent's block — never as standalone tasks.
+    // Inbox-typed tasks are untriaged and not yet doable; they surface as triage questions instead.
     return array_values(array_filter($data['tasks'], fn($t) =>
         $t['status'] === 'active' &&
+        empty($t['parent_id']) &&
+        ($t['task_type'] ?? '') !== 'inbox' &&
+        (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now)
+    ));
+}
+
+function getInboxTasks(): array {
+    $data = getTasks();
+    $now  = time();
+    return array_values(array_filter($data['tasks'], fn($t) =>
+        $t['status'] === 'active' &&
+        ($t['task_type'] ?? '') === 'inbox' &&
         empty($t['parent_id']) &&
         (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now)
     ));

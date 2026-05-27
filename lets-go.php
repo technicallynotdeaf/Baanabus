@@ -29,6 +29,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       case 'task':           renderTask(d);          break;
       case 'trivia':         renderTrivia(d);        break;
       case 'minigame':       renderMinigame(d);      break;
+      case 'triage':         renderTriage(d);        break;
       case 'missing_info':   renderMissingInfo(d);   break;
       case 'onboarding_step': renderOnboarding(d);   break;
       case 'empty':
@@ -326,6 +327,43 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
         fb.textContent = 'Nope — it was ' + answer + '.';
       }
       document.getElementById('math-next').style.display = 'inline-flex';
+    };
+  }
+
+  // ---- Triage ----
+  function renderTriage(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
+      <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="action-button" onclick="window._triage(${d.id},'next_action')">Next action — I can do this</button>
+        <button class="action-button" onclick="window._triage(${d.id},'someday')">Blocked or waiting on something</button>
+        <button class="action-button" onclick="window._triage(${d.id},'delete')">Not relevant anymore</button>
+      </div>
+      <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+
+    window._triage = function(taskId, action) {
+      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+      const st = document.getElementById('triage-status');
+      st.textContent = 'Saving…';
+      fetch('api/triage.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({task_id: taskId, action}),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
+        } else {
+          st.textContent = data.error || 'Could not save.';
+          document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+        }
+      })
+      .catch(() => {
+        st.textContent = 'Could not save — check connection.';
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+      });
     };
   }
 

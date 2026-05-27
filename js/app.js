@@ -82,21 +82,16 @@ function setupOverlayListeners() {
       .then(response => response.json())
       .then(data => {
           if (data.success) {
-          console.log("✅ Task marked as complete. Pages: " + data.pages + ", Books: " + data.books);
-
           updateProgressBar(data.pages);
-
-          if (data.pages === 0) {
-          alert("📚 You've added a new book to your bookshelf!");
+          if (data.newBook && typeof window.refreshScene === 'function') {
+              window.refreshScene();
           }
-
-          // Refresh the speech bubble with the next task
           loadSpeechBubble('lets-go.php');
           } else {
-          console.error("❌ Error completing task:", data.message);
+          console.error('mark_complete error:', data.message);
           }
           })
-    .catch(error => console.error('❌ Error:', error));
+    .catch(error => console.error('mark_complete fetch error:', error));
   }
 
 
@@ -191,8 +186,9 @@ function showOverlay(){ if(overlay) overlay.style.display='flex'; if(document.bo
 function hideOverlay(){ if(overlay) overlay.style.display='none'; if(document.body) document.body.style.overflow=''; if(overlayBody) overlayBody.innerHTML=''; }
 
 function updateProgressBar(pages) {
-  const bar = document.getElementById('progress-bar');
-  if (bar) bar.style.width = (pages * 10) + '%';
+  document.querySelectorAll('#scene-pips .scene-pip').forEach((pip, i) => {
+    pip.classList.toggle('filled', i < pages);
+  });
 }
 
 // ============================

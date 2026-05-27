@@ -50,9 +50,18 @@ if (!$s['exists'] || !$s['unlocked']) {
   echo '<script>
 document.getElementById("btnVaultUnlock").addEventListener("click", async function() {
   this.disabled = true;
+  const status = document.getElementById("authStatus");
+  status.textContent = "";
+  status.style.color = "";
   try {
     const result = await BaanabusAuth.signInPasskey();
-    if (result && result.vaultReady) { location.reload(); }
+    if (result && result.vaultReady) {
+      location.reload();
+    } else {
+      status.textContent = "Authenticated but vault could not be unlocked. Your browser may not support PRF for this key — try Firefox.";
+      status.style.color = "crimson";
+      this.disabled = false;
+    }
   } catch(_) { this.disabled = false; }
 });
 </script>';

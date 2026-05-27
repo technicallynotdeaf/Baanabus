@@ -2,10 +2,7 @@
 require_once __DIR__ . '/init.php';
 require_once __DIR__ . '/config_helper.php';
 
-if (empty($_SESSION['is_authenticated'])) {
-    http_response_code(403);
-    exit;
-}
+if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 
 $greetings = [
     "Hey! You showed up. That's already the hard part.",
@@ -19,10 +16,12 @@ $greetings = [
     "You showed up. That's the whole battle.",
     "Hey. Take a breath. Then let's pick one thing.",
 ];
-
-$greeting = $greetings[array_rand($greetings)];
 ?>
 <div style="padding:0.25rem 0;">
-  <p style="margin-bottom:0.75rem;"><?= htmlspecialchars($greeting) ?></p>
+  <p style="margin-bottom:0.75rem;"><?= htmlspecialchars($greetings[array_rand($greetings)]) ?></p>
   <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Let's go</button>
 </div>
+<script>
+// Daily Habitica sync — fires silently in the background
+fetch('api/habitica_sync.php').catch(() => {});
+</script>

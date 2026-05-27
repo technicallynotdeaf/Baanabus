@@ -249,22 +249,33 @@ function saveTasks(array $data): void {
 }
 
 function getDoableTasks(): array {
-    $data = getTasks();
-    $now  = time();
-    return array_values(array_filter($data['tasks'], function($t) use ($now) {
-        return $t['status'] === 'active'
-            && (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now);
-    }));
+    $data   = getTasks();
+    $now    = time();
+    $active = array_filter($data['tasks'], fn($t) =>
+        $t['status'] === 'active' && (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now)
+    );
+
+    // Suppress parent tasks while they still have active children
+    $blockedParents = [];
+    foreach ($active as $t) {
+        if (!empty($t['parent_id'])) $blockedParents[(int)$t['parent_id']] = true;
+    }
+
+    return array_values(array_filter($active, fn($t) => !isset($blockedParents[(int)$t['id']])));
 }
 
 function vaultMarkComplete(int $taskId): array {
-    $data  = getTasks();
-    $found = false;
+    $data           = getTasks();
+    $found          = false;
+    $habiticaId     = null;
+    $habiticaItemId = null;
     foreach ($data['tasks'] as &$t) {
         if ((int)$t['id'] === $taskId) {
             $t['status']       = 'complete';
             $t['completed_at'] = date('c');
-            $found = true;
+            $habiticaId        = $t['habitica_id']      ?? null;
+            $habiticaItemId    = $t['habitica_item_id'] ?? null;
+            $found             = true;
             break;
         }
     }
@@ -279,7 +290,13 @@ function vaultMarkComplete(int $taskId): array {
         $newBook = true;
     }
     saveTasks($data);
-    return ['pages' => $data['pages'], 'books' => $data['books'], 'newBook' => $newBook];
+    return [
+        'pages'            => $data['pages'],
+        'books'            => $data['books'],
+        'newBook'          => $newBook,
+        'habitica_id'      => $habiticaId,
+        'habitica_item_id' => $habiticaItemId,
+    ];
 }
 
 // ---------- Inbox vault ----------

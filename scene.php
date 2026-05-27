@@ -1,116 +1,127 @@
+<?php
+$paperCount = 0;
+if (isUnlocked()) {
+    try { $paperCount = count(getDoableTasks()); } catch (Throwable $e) {}
+}
+?>
 <canvas id="sceneCanvas"></canvas>
 
 <script>
+(function () {
+    const PAPERS = <?= (int)$paperCount ?>;
+
+    // Stable pseudo-random from seed (same seed = same value every redraw)
+    function frand(s) { return ((Math.sin(s * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1; }
+
+    function drawPapers(ctx, count, width, height, floorY) {
+        if (count <= 0) return;
+        const floorH = height - floorY - 8;
+        const W = 22, H = 28;
+        for (let i = 0; i < count; i++) {
+            const x     = width  * 0.12 + frand(i * 3)     * width  * 0.76;
+            const y     = floorY + 6    + frand(i * 3 + 1) * floorH;
+            const angle = (frand(i * 3 + 2) - 0.5) * 0.55;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            // shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            ctx.fillRect(-W/2 + 2, -H/2 + 2, W, H);
+            // paper body
+            ctx.fillStyle   = '#fdfbf0';
+            ctx.strokeStyle = '#ccc8b0';
+            ctx.lineWidth   = 0.5;
+            ctx.fillRect  (-W/2, -H/2, W, H);
+            ctx.strokeRect(-W/2, -H/2, W, H);
+            // ruled lines
+            ctx.strokeStyle = '#ddd9c4';
+            for (let l = 0; l < 3; l++) {
+                ctx.beginPath();
+                ctx.moveTo(-W/2 + 3, -H/2 + 7 + l * 6);
+                ctx.lineTo( W/2 - 3, -H/2 + 7 + l * 6);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
+
     function updateBackground() {
         const canvas = document.getElementById('sceneCanvas');
-        const ctx = canvas.getContext('2d');
-
-        const width = window.innerWidth;
+        const ctx    = canvas.getContext('2d');
+        const width  = window.innerWidth;
         const height = window.innerHeight;
 
-        // Resize canvas to full screen
-        canvas.width = width;
+        canvas.width  = width;
         canvas.height = height;
 
-        // === Main Rectangle Calculations ===
-        const innerWidth = Math.floor(width * 0.66);
+        const innerWidth  = Math.floor(width  * 0.66);
         const innerHeight = Math.floor(height * 0.66);
+        const innerLeft   = Math.floor((width  / 2) - (innerWidth  / 2));
+        const innerTop    = Math.floor((height / 2) - (innerHeight / 2));
+        const floorY      = innerTop + innerHeight;
 
-        const innerLeft = Math.floor((width / 2) - (innerWidth / 2));
-        const innerTop = Math.floor((height / 2) - (innerHeight / 2));
+        ctx.clearRect(0, 0, width, height);
 
-        // === Drawing Everything ===
-        ctx.clearRect(0, 0, width, height); // Clear canvas before drawing
-
-        // Set styles
-        ctx.strokeStyle = '#5D4037'; // Dark wood-brown color
-        ctx.lineWidth = 2;
-
-        // === Back Wall (10% clearance) ===
+        // Back wall
         const clearance = Math.floor(innerHeight * 0.1);
-        ctx.fillStyle = '#e5d0b3'; // Light beige for wall background
+        ctx.fillStyle = '#e5d0b3';
         ctx.fillRect(innerLeft, innerTop, innerWidth, clearance);
 
-        // === Draw the Main Rectangle (Bookshelf) ===
-        ctx.fillStyle = '#8B5A2B'; // Wood texture
-        ctx.fillRect(innerLeft, innerTop + clearance, innerWidth, innerHeight - clearance);
+        // Bookshelf
+        ctx.strokeStyle = '#5D4037';
+        ctx.lineWidth   = 2;
+        ctx.fillStyle   = '#8B5A2B';
+        ctx.fillRect  (innerLeft, innerTop + clearance, innerWidth, innerHeight - clearance);
         ctx.strokeRect(innerLeft, innerTop + clearance, innerWidth, innerHeight - clearance);
 
-        // === Draw Vertical Support Lines (Bookshelf) ===
+        // Vertical supports
         const sectionWidth = Math.floor(innerWidth / 3);
+        [1, 2].forEach(n => {
+            ctx.beginPath();
+            ctx.moveTo(innerLeft + sectionWidth * n, innerTop + clearance);
+            ctx.lineTo(innerLeft + sectionWidth * n, innerTop + innerHeight);
+            ctx.stroke();
+        });
 
-        // First vertical line
-        ctx.beginPath();
-        ctx.moveTo(innerLeft + sectionWidth, innerTop + clearance);
-        ctx.lineTo(innerLeft + sectionWidth, innerTop + innerHeight);
-        ctx.stroke();
-
-        // Second vertical line
-        ctx.beginPath();
-        ctx.moveTo(innerLeft + sectionWidth * 2, innerTop + clearance);
-        ctx.lineTo(innerLeft + sectionWidth * 2, innerTop + innerHeight);
-        ctx.stroke();
-
-        // === Draw Horizontal Shelves ===
-        // Shelves configuration (8, 6, 7)
-        const shelvesConfig = [8, 6, 7];
-        shelvesConfig.forEach((numShelves, index) => {
-            const startX = innerLeft + sectionWidth * index;
-            const shelfHeight = Math.floor((innerHeight - clearance) / (numShelves + 1)); // +1 to give spacing
+        // Horizontal shelves
+        [8, 6, 7].forEach((numShelves, idx) => {
+            const startX     = innerLeft + sectionWidth * idx;
+            const shelfH     = Math.floor((innerHeight - clearance) / (numShelves + 1));
             for (let i = 1; i <= numShelves; i++) {
                 ctx.beginPath();
-                ctx.moveTo(startX, innerTop + clearance + i * shelfHeight);
-                ctx.lineTo(startX + sectionWidth, innerTop + clearance + i * shelfHeight);
+                ctx.moveTo(startX,              innerTop + clearance + i * shelfH);
+                ctx.lineTo(startX + sectionWidth, innerTop + clearance + i * shelfH);
                 ctx.stroke();
             }
         });
 
-        // === Draw Corner Lines for Depth ===
+        // Perspective corner lines
         ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth   = 1.5;
+        [[0,0,innerLeft,innerTop],[width,0,innerLeft+innerWidth,innerTop],
+         [0,height,innerLeft,floorY],[width,height,innerLeft+innerWidth,floorY]
+        ].forEach(([x1,y1,x2,y2]) => {
+            ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        });
 
-        // Top Left → Inner Top Left (including clearance)
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(innerLeft, innerTop);
-        ctx.stroke();
+        // Paper scraps on the floor
+        drawPapers(ctx, PAPERS, width, height, floorY);
 
-        // Top Right → Inner Top Right (including clearance)
-        ctx.beginPath();
-        ctx.moveTo(width, 0);
-        ctx.lineTo(innerLeft + innerWidth, innerTop);
-        ctx.stroke();
-
-        // Bottom Left → Inner Bottom Left
-        ctx.beginPath();
-        ctx.moveTo(0, height);
-        ctx.lineTo(innerLeft, innerTop + innerHeight);
-        ctx.stroke();
-
-        // Bottom Right → Inner Bottom Right
-        ctx.beginPath();
-        ctx.moveTo(width, height);
-        ctx.lineTo(innerLeft + innerWidth, innerTop + innerHeight);
-        ctx.stroke();
-
-        // === Load and Draw the Avatar ===
-        const avatar = new Image();
-        avatar.src = 'avatars/baanabus_standing.png';
-        avatar.onload = function() {
-            const scaleFactor = 0.25; // Scales it down to 15%
-            const avatarWidth = avatar.width * scaleFactor;
-            const avatarHeight = avatar.height * scaleFactor;
-
-            // Positioning: 1/3 of the screen width, and slightly lower than before
-            const avatarX = Math.floor(width / 4 - avatarWidth / 3);
-            const avatarY = Math.floor(0.95 * height) - avatarHeight;
-
-            ctx.drawImage(avatar, avatarX, avatarY, avatarWidth, avatarHeight);
+        // Avatar (draws on top of papers)
+        const avatar   = new Image();
+        avatar.src     = 'avatars/baanabus_standing.png';
+        avatar.onload  = function () {
+            const scale       = 0.25;
+            const avatarW     = avatar.width  * scale;
+            const avatarH     = avatar.height * scale;
+            const avatarX     = Math.floor(width / 4 - avatarW / 3);
+            const avatarY     = Math.floor(0.95 * height) - avatarH;
+            ctx.drawImage(avatar, avatarX, avatarY, avatarW, avatarH);
         };
     }
 
     document.body.classList.add('scene-view');
     window.addEventListener('resize', updateBackground);
-    window.addEventListener('load', updateBackground);
+    window.addEventListener('load',   updateBackground);
+})();
 </script>
-

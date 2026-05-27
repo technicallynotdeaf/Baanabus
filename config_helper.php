@@ -259,6 +259,21 @@ function getDoableTasks(): array {
     ));
 }
 
+function vaultUpdateTask(int $taskId, array $fields): void {
+    $data  = getTasks();
+    $found = false;
+    foreach ($data['tasks'] as &$t) {
+        if ((int)$t['id'] === $taskId) {
+            foreach ($fields as $k => $v) $t[$k] = $v;
+            $found = true;
+            break;
+        }
+    }
+    unset($t);
+    if (!$found) throw new Exception('Task not found');
+    saveTasks($data);
+}
+
 function vaultMarkComplete(int $taskId): array {
     $data           = getTasks();
     $found          = false;

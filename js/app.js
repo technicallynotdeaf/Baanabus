@@ -97,11 +97,52 @@ function setupOverlayListeners() {
 
 
   function markAsStuck(taskId) {
-    alert(`Task ${taskId} is marked as stuck (not yet implemented).`);
+    const c = document.getElementById('activity-container');
+    if (!c) return;
+    c.innerHTML = `
+      <p style="margin-bottom:0.75rem;">OK — coming back to this tomorrow.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" id="stuck-confirm">Got it</button>
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Cancel</button>
+      </div>`;
+    document.getElementById('stuck-confirm').addEventListener('click', () => {
+      fetch('api/task_action.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({task_id: taskId, action: 'stuck'}),
+      }).then(() => loadSpeechBubble('lets-go.php'))
+        .catch(() => loadSpeechBubble('lets-go.php'));
+    });
   }
 
   function snoozeTask(taskId) {
-    alert(`Task ${taskId} is snoozed (not yet implemented).`);
+    const c = document.getElementById('activity-container');
+    if (!c) return;
+    const opts = [
+      {label: '2 hours',   when: '2h'},
+      {label: 'Tonight',   when: 'tonight'},
+      {label: 'Tomorrow',  when: 'tomorrow'},
+      {label: 'Next week', when: 'week'},
+    ];
+    const btns = opts.map(o =>
+      `<button class="action-button" data-when="${o.when}">${o.label}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p style="margin-bottom:0.75rem;">Snooze until?</p>
+      <div id="snooze-opts" style="display:flex;gap:8px;flex-wrap:wrap;">${btns}
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Cancel</button>
+      </div>`;
+    document.getElementById('snooze-opts').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-when]');
+      if (!btn) return;
+      document.querySelectorAll('#snooze-opts button').forEach(b => b.disabled = true);
+      fetch('api/task_action.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({task_id: taskId, action: 'snooze', when: btn.dataset.when}),
+      }).then(() => loadSpeechBubble('lets-go.php'))
+        .catch(() => loadSpeechBubble('lets-go.php'));
+    });
   }
 
   window.markAsStuck = markAsStuck;

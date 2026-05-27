@@ -7,7 +7,7 @@ require_once __DIR__ . '/init.php';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baanabus</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/app.css">
   <script src="js/app.js" defer></script>
   <script src="js/auth.js"></script>
 </head>
@@ -16,13 +16,13 @@ require_once __DIR__ . '/init.php';
 <?php if (!empty($_SESSION['credential_id'])): ?>
   <!-- Navigation Bar (only when logged in) -->
   <ul class="navbar">
-    <li><a href="index.php">🏠 Home</a></li>
-    <li><a href="#" id="lets-go">🎯 Let's Go</a></li>
-    <li><a href="#" id="note-to-self">📝 Note to Self</a></li>
-    <li><a href="#" id="people-book">👥 People</a></li>
-    <li><a href="#" id="task-list">📋 Tasks</a></li>
-    <li><a href="#" id="settings-page-link">⚙️ Settings</a></li>
-    <li><a href="logout.php">🚪 Logout</a></li>
+    <li><a href="index.php">🏠<span class="nav-text"> Home</span></a></li>
+    <li><a href="#" id="lets-go">🎯<span class="nav-text"> Let's Go</span></a></li>
+    <li><a href="#" id="note-to-self">📝<span class="nav-text"> Note to Self</span></a></li>
+    <li><a href="#" id="people-book">👥<span class="nav-text"> People</span></a></li>
+    <li><a href="#" id="task-list">📋<span class="nav-text"> Tasks</span></a></li>
+    <li><a href="#" id="settings-page-link">⚙️<span class="nav-text"> Settings</span></a></li>
+    <li><a href="logout.php">🚪<span class="nav-text"> Logout</span></a></li>
   </ul>
 <?php endif; ?>
 

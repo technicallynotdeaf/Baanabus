@@ -1,0 +1,165 @@
+<?php
+require_once __DIR__ . '/../init.php';
+require_once __DIR__ . '/../config_helper.php';
+header('Content-Type: application/json; charset=utf-8');
+
+if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
+if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
+
+try {
+    $tasks    = getDoableTasks();
+    $hasTasks = !empty($tasks);
+} catch (Throwable $e) {
+    $tasks    = [];
+    $hasTasks = false;
+}
+
+// Check if today's check-in is missing
+$missing = null;
+if ($database) {
+    try {
+        $today = date('Y-m-d');
+        $stmt  = $database->prepare("SELECT energy_level, day_type FROM diary WHERE date = ?");
+        $stmt->execute([$today]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || $row['energy_level'] === null) {
+            $missing = [
+                'type'    => 'missing_info',
+                'field'   => 'energy_level',
+                'prompt'  => "How's your energy today?",
+                'options' => [
+                    ['value' => 1, 'label' => 'Exhausted'],
+                    ['value' => 2, 'label' => 'Low'],
+                    ['value' => 3, 'label' => 'Okay'],
+                    ['value' => 4, 'label' => 'Good'],
+                    ['value' => 5, 'label' => 'On fire'],
+                ],
+            ];
+        } elseif ($row['day_type'] === null) {
+            $missing = [
+                'type'    => 'missing_info',
+                'field'   => 'day_type',
+                'prompt'  => 'What kind of day is it?',
+                'options' => [
+                    ['value' => 1, 'label' => 'Home'],
+                    ['value' => 2, 'label' => 'Work'],
+                    ['value' => 3, 'label' => 'Out'],
+                    ['value' => 4, 'label' => 'Rest'],
+                ],
+            ];
+        }
+    } catch (Throwable $e) { /* non-fatal */ }
+}
+
+// Weighted pool: 60% task, ~20% trivia, ~10% minigame, ~10% missing_info
+$pool = array_merge(
+    $hasTasks ? array_fill(0, 6, 'task') : [],
+    array_fill(0, 2, 'trivia'),
+    ['minigame'],
+    $missing ? ['missing_info'] : []
+);
+
+if (empty($pool)) {
+    json_response(['type' => 'empty', 'message' => "Nothing to do right now — check back later."]);
+}
+
+$choice = $pool[array_rand($pool)];
+
+if ($choice === 'trivia')       json_response(pick_trivia());
+if ($choice === 'minigame')     json_response(['type' => 'minigame', 'game' => 'tictactoe']);
+if ($choice === 'missing_info') json_response($missing);
+
+// 'task' branch — serve next onboarding step if incomplete, otherwise a real task
+try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
+$prefs = $cfg['preferences'] ?? [];
+
+if (empty($cfg['onboarding_complete'])) {
+    if (!isset($prefs['peanut_butter'])) {
+        json_response([
+            'type'    => 'onboarding_step',
+            'step'    => 'peanut_butter',
+            'prompt'  => 'Quick one — smooth or crunchy peanut butter?',
+            'options' => [
+                ['value' => 'smooth',  'label' => 'Smooth'],
+                ['value' => 'crunchy', 'label' => 'Crunchy'],
+            ],
+        ]);
+    }
+    if (!array_key_exists('uses_habitica', $prefs)) {
+        json_response([
+            'type'   => 'onboarding_step',
+            'step'   => 'habitica',
+            'prompt' => 'Do you use Habitica? I can sync your tasks with it.',
+        ]);
+    }
+    // Both answered — mark onboarding complete and fall through to task
+    try {
+        $cfg['onboarding_complete'] = true;
+        $cfg['onboarding_at']       = date('c');
+        saveConfig($cfg);
+    } catch (Throwable $e) { /* non-fatal */ }
+}
+
+if (!$hasTasks) {
+    json_response(['type' => 'empty', 'message' => "No tasks right now — check back later."]);
+}
+$t = $tasks[array_rand($tasks)];
+json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title']]);
+
+// ---------- trivia pool ----------
+function pick_trivia(): array {
+    $questions = [
+        ['q' => 'What is the only mammal capable of sustained flight?',
+         'opts' => ['Flying squirrel','Bat','Sugar glider','Flying lemur'], 'ans' => 1],
+        ['q' => 'What is the capital of Australia?',
+         'opts' => ['Sydney','Melbourne','Canberra','Brisbane'], 'ans' => 2],
+        ['q' => 'How many hearts does an octopus have?',
+         'opts' => ['One','Two','Three','Four'], 'ans' => 2],
+        ['q' => 'Which planet currently has the most known moons?',
+         'opts' => ['Jupiter','Saturn','Uranus','Neptune'], 'ans' => 1],
+        ['q' => 'What language has the most native speakers worldwide?',
+         'opts' => ['English','Hindi','Mandarin','Spanish'], 'ans' => 2],
+        ['q' => 'How many sides does a dodecagon have?',
+         'opts' => ['10','11','12','14'], 'ans' => 2],
+        ['q' => 'What is the hardest natural substance on Earth?',
+         'opts' => ['Ruby','Diamond','Quartz','Topaz'], 'ans' => 1],
+        ['q' => 'What does DNA stand for?',
+         'opts' => ['Deoxyribonucleic Acid','Deoxyribose Nucleic Acid','Double Nucleic Arrangement','Distinct Nucleotide Assembly'], 'ans' => 0],
+        ['q' => 'What is the smallest country in the world?',
+         'opts' => ['Monaco','Liechtenstein','San Marino','Vatican City'], 'ans' => 3],
+        ['q' => 'How many bones are in the adult human body?',
+         'opts' => ['196','206','216','226'], 'ans' => 1],
+        ['q' => 'What is the chemical symbol for gold?',
+         'opts' => ['Gd','Go','Au','Ag'], 'ans' => 2],
+        ['q' => 'Which ocean is the largest?',
+         'opts' => ['Atlantic','Indian','Arctic','Pacific'], 'ans' => 3],
+        ['q' => 'What year did the Berlin Wall fall?',
+         'opts' => ['1987','1988','1989','1991'], 'ans' => 2],
+        ['q' => 'What is the fastest land animal?',
+         'opts' => ['Lion','Greyhound','Cheetah','Pronghorn'], 'ans' => 2],
+        ['q' => 'What element does "Fe" represent on the periodic table?',
+         'opts' => ['Fluorine','Fermium','Iron','Francium'], 'ans' => 2],
+        ['q' => 'In which country were the first modern Olympic Games held?',
+         'opts' => ['Italy','Greece','Turkey','Egypt'], 'ans' => 1],
+        ['q' => 'What is the longest river in the world?',
+         'opts' => ['Amazon','Congo','Yangtze','Nile'], 'ans' => 3],
+        ['q' => 'How many colours are in a rainbow?',
+         'opts' => ['5','6','7','8'], 'ans' => 2],
+        ['q' => 'How many strings does a standard guitar have?',
+         'opts' => ['4','5','6','7'], 'ans' => 2],
+        ['q' => 'Which gas do plants absorb during photosynthesis?',
+         'opts' => ['Oxygen','Nitrogen','Carbon dioxide','Hydrogen'], 'ans' => 2],
+        ['q' => 'What is the currency of Japan?',
+         'opts' => ['Won','Yuan','Rupee','Yen'], 'ans' => 3],
+        ['q' => 'How many hours are in a week?',
+         'opts' => ['148','168','172','184'], 'ans' => 1],
+        ['q' => 'Which planet is known as the Red Planet?',
+         'opts' => ['Venus','Mercury','Mars','Jupiter'], 'ans' => 2],
+        ['q' => 'What is the largest organ in the human body?',
+         'opts' => ['Liver','Lungs','Brain','Skin'], 'ans' => 3],
+        ['q' => 'How many players are on a standard football (soccer) team?',
+         'opts' => ['9','10','11','12'], 'ans' => 2],
+    ];
+    $q = $questions[array_rand($questions)];
+    return ['type' => 'trivia', 'question' => $q['q'], 'options' => $q['opts'], 'answer' => $q['ans']];
+}

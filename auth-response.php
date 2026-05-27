@@ -96,12 +96,6 @@ unset($_SESSION['auth_challenge'], $_SESSION['assertion_challenge']);
 
 // Gate 2 — unlock or bootstrap vault with PRF key from YubiKey tap
 $vaultReady = false;
-error_log(sprintf(
-    'Auth: credId=%s userId=%s prfPresent=%s',
-    substr($credId_b64u, 0, 12) . '…',
-    $_SESSION['user_id'] ?? 'none',
-    $prfResultB64u ? 'YES' : 'NO'
-));
 if ($prfResultB64u) {
     try {
         $paths = getConfigPaths();
@@ -112,10 +106,8 @@ if ($prfResultB64u) {
         }
         $vaultReady = true;
     } catch (Throwable $e) {
-        error_log('Vault unlock failed: ' . $e->getMessage() . ' | credId=' . substr($credId_b64u, 0, 12) . '…');
+        error_log('Vault unlock failed: ' . $e->getMessage());
     }
-} else {
-    error_log('Vault unlock skipped — no PRF result from authenticator');
 }
 
 respond(['ok' => true, 'success' => true, 'vaultReady' => $vaultReady]);

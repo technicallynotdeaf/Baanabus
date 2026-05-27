@@ -1,13 +1,15 @@
 <?php
-// If already authenticated, send straight to index.php — no point showing the login page
 require_once __DIR__ . '/init.php';
-if (!empty($_SESSION['credential_id'])) {
+require_once __DIR__ . '/config_helper.php';
+
+// Only bounce away if fully ready — auth AND vault open — otherwise show sign-in
+if (isAuthenticated() && isUnlocked()) {
     header('Location: index.php');
     exit;
 }
+
 require_once __DIR__ . '/header.php';
 ?>
-<script>window.BAANABUS_SUPPRESS_BUBBLE = true;</script>
 <div class="container unauthorised">
   <div class="hero">
     <img id="hero-avatar" src="avatars/Baanabus.png" alt="Baanabus avatar"
@@ -31,7 +33,6 @@ document.getElementById('btn-login').addEventListener('click', async function ()
   try {
     const result = await BaanabusAuth.signInPasskey();
     if (result && result.ok) {
-      // Auth succeeded — index.php handles vault-locked vs vault-open state
       location.href = 'index.php';
     } else {
       this.disabled = false;

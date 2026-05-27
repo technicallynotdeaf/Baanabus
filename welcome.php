@@ -1,8 +1,33 @@
 <?php
-// welcome.php — first-run onboarding wizard, loaded into the overlay by index.php.
-// No header/footer — this is an overlay partial.
 require_once __DIR__ . '/init.php';
-if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; exit; }
+require_once __DIR__ . '/config_helper.php';
+if (empty($_SESSION['is_authenticated'])) { exit; }
+
+$cfg      = [];
+$cassowary = [];
+try { $cfg      = getConfig()     ?? []; } catch (Throwable $e) {}
+try { $cassowary = getCassowary() ?? []; } catch (Throwable $e) {}
+
+$prefs       = $cfg['preferences'] ?? [];
+$hasPb       = isset($prefs['peanut_butter']);
+$pbChoice    = $prefs['peanut_butter'] ?? null;
+$hasHabitica = array_key_exists('uses_habitica', $prefs);
+$usesHabitica = $prefs['uses_habitica'] ?? false;
+$habUser     = $cassowary['habitica']['user_id'] ?? '';
+$habKey      = $cassowary['habitica']['api_key']  ?? '';
+
+// First unanswered step: 1=welcome, 2=pb, 3=habitica, 4=ttt, 5=done
+if (!$hasPb)       $startStep = 1;
+elseif (!$hasHabitica) $startStep = 3;
+else               $startStep = 4;
+
+$state = json_encode([
+    'startStep'    => $startStep,
+    'pbChoice'     => $pbChoice,
+    'usesHabitica' => $hasHabitica ? $usesHabitica : null,
+    'habUser'      => $habUser,
+    'habKey'       => $habKey,
+], JSON_UNESCAPED_SLASHES);
 ?>
 <div id="setup-wizard">
 
@@ -83,6 +108,7 @@ if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; ex
 (function () {
   'use strict';
 
+  const STATE = <?= $state ?>;
   let currentStep = 1;
 
   // ---- Navigation ----
@@ -101,10 +127,7 @@ if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; ex
     document.querySelectorAll('#wiz-2 .wiz-choice').forEach(b => b.classList.remove('wiz-chosen'));
     btn.classList.add('wiz-chosen');
     document.getElementById('wiz-sheep-2').textContent = choice === 'smooth' ? '🐑😌' : '🐑😤';
-    const reactions = {
-      smooth: 'Classic. Respectable.',
-      crunchy: 'Bold choice. I respect it.'
-    };
+    const reactions = { smooth: 'Classic. Respectable.', crunchy: 'Bold choice. I respect it.' };
     document.getElementById('pb-reaction').textContent = reactions[choice];
     document.getElementById('pb-next').style.display = 'inline-flex';
     apiPost({ step: 'preferences', peanut_butter: choice });
@@ -172,8 +195,6 @@ if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; ex
   function sheepMove() {
     const empty = board.map((v,i) => v ? null : i).filter(i => i !== null);
     if (!empty.length) return;
-
-    // Sheep is bad at this: purely random
     board[empty[Math.floor(Math.random() * empty.length)]] = 'O';
     renderBoard();
     const w = winner(board);
@@ -186,16 +207,12 @@ if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; ex
     gameOver = true;
     renderBoard();
     const sheep = document.getElementById('ttt-sheep');
-    const msg = document.getElementById('ttt-msg');
-    if (w === 'X') {
-      sheep.textContent = '🐑😅'; msg.textContent = 'You win! I wasn\'t ready.';
-    } else if (w === 'O') {
-      sheep.textContent = '🐑😤'; msg.textContent = 'I win! Huh. Didn\'t expect that.';
-    } else {
-      sheep.textContent = '🐑🤝'; msg.textContent = 'A draw. Respectable.';
-    }
+    const msg   = document.getElementById('ttt-msg');
+    if (w === 'X')      { sheep.textContent = '🐑😅'; msg.textContent = "You win! I wasn't ready."; }
+    else if (w === 'O') { sheep.textContent = '🐑😤'; msg.textContent = "I win! Huh. Didn't expect that."; }
+    else                { sheep.textContent = '🐑🤝'; msg.textContent = 'A draw. Respectable.'; }
     document.getElementById('ttt-reset').style.display = 'inline-flex';
-    document.getElementById('ttt-next').style.display = 'inline-flex';
+    document.getElementById('ttt-next').style.display  = 'inline-flex';
   }
 
   function winner(b) {
@@ -222,6 +239,24 @@ if (empty($_SESSION['is_authenticated'])) { echo '<p>Not authenticated.</p>'; ex
       body: JSON.stringify(data),
       credentials: 'same-origin'
     }).catch(console.error);
+  }
+
+  // ---- Resume at the right step ----
+  if (STATE.startStep > 1) {
+    wizTo(STATE.startStep);
+  }
+
+  // Pre-fill Habitica fields if already saved
+  if (STATE.habUser) document.getElementById('hab-user').value = STATE.habUser;
+  if (STATE.habKey)  document.getElementById('hab-key').value  = STATE.habKey;
+
+  // If habitica was already answered, show the fields or the next button
+  if (STATE.usesHabitica === true) {
+    document.querySelectorAll('#wiz-3 .wiz-choice').forEach(b => b.disabled = true);
+    document.getElementById('hab-fields').style.display = 'block';
+  } else if (STATE.usesHabitica === false) {
+    document.querySelectorAll('#wiz-3 .wiz-choice').forEach(b => b.disabled = true);
+    document.getElementById('hab-next').style.display = 'inline-flex';
   }
 
 })();

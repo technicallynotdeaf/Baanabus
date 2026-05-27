@@ -31,6 +31,9 @@ function prepCreateOptions(opts) {
   if (opts.excludeCredentials) {
     opts.excludeCredentials = opts.excludeCredentials.map(c => ({...c, id: b64urlToBuf(c.id)}));
   }
+  if (opts.extensions?.prf?.eval?.first) {
+    opts.extensions.prf.eval.first = b64urlToBuf(opts.extensions.prf.eval.first);
+  }
   return opts;
 }
 function prepGetOptions(opts) {

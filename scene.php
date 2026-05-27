@@ -109,6 +109,7 @@
         };
     }
 
+    document.body.classList.add('scene-view');
     window.addEventListener('resize', updateBackground);
     window.addEventListener('load', updateBackground);
 </script>

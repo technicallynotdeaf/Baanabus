@@ -45,14 +45,16 @@ function setupOverlayListeners() {
 
   // Helper function to fetch and display content
   const loadSpeechBubble = (url) => {
-    speechBubble.style.display = 'block';
-
     fetch(url)
-      .then(response => response.text())
+      .then(response => {
+          if (!response.ok) return null;
+          return response.text();
+          })
       .then(data => {
+          if (!data) return;
+          speechBubble.style.display = 'block';
           speechBubbleContent.innerHTML = data;
 
-          // 🚀 === Execute Inline Scripts === 🚀
           const scripts = speechBubbleContent.querySelectorAll('script');
           scripts.forEach((script) => {
               const newScript = document.createElement('script');
@@ -61,17 +63,10 @@ function setupOverlayListeners() {
               document.body.removeChild(newScript);
               });
 
-          console.log("✅ Inline speech bubble scripts executed successfully.");
-
-          // 🔔 Dispatch an event to start the timed progression
           const event = new Event('speechBubbleLoaded');
           speechBubble.dispatchEvent(event);
-
           })
-    .catch(error => {
-        speechBubbleContent.innerHTML = "<p>Error loading speech bubble content.</p>";
-        console.error('Error:', error);
-        });
+      .catch(error => console.error('Speech bubble load error:', error));
   };
 
   window.loadSpeechBubble = loadSpeechBubble;
@@ -227,10 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Automatically load the speech bubble on page load
-    if (!window.BAANABUS_ONBOARDING && !window.BAANABUS_SUPPRESS_BUBBLE) {
-      loadSpeechBubble('lets-go.php');
-    }
+    loadSpeechBubble('greeting.php');
     });
 
 // close buttons/backdrop

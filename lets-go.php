@@ -1,5 +1,10 @@
 <?php
 include_once 'init.php';
+if (empty($_SESSION['is_authenticated'])) {
+    http_response_code(403);
+    echo '<p class="muted">Not authenticated.</p>';
+    exit;
+}
 include_once 'crud.php';
 
 // 🔍 Console log to indicate loading

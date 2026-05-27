@@ -38,7 +38,8 @@ $s = vaultStatus();
 if (!$s['authenticated']) { header('Location: unauthorised.php'); exit; }
 
 if (!$s['exists'] || !$s['unlocked']) {
-  // Vault not ready — need key tap to bootstrap/unlock via PRF
+  // Vault not ready — suppress auto-loaded speech bubble until vault is open
+  echo '<script>window.BAANABUS_SUPPRESS_BUBBLE = true;</script>';
   echo '<div class="container" style="max-width:680px;margin:2rem auto;padding:1rem;">';
   echo '<div class="card" style="padding:1.5rem;">';
   echo '<h2>Tap your key to continue</h2>';

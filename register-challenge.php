@@ -64,7 +64,8 @@ $_SESSION['pending_username']   = $username;
 $_SESSION['pending_userid']     = $userId;
 $_SESSION['pending_invite']     = $inviteCode;
 
-$rpId = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'baanabus.app');
+$rpId    = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'baanabus.app');
+$prfSalt = b64u_rc(hash('sha256', 'baanabus-vault-v1', true));
 
 $options = [
     'challenge' => b64u_rc($challenge),
@@ -81,10 +82,11 @@ $options = [
     'attestation' => 'none',
     'authenticatorSelection' => [
         'authenticatorAttachment' => 'cross-platform',
-        'residentKey'             => 'discouraged',  // server-side credential storage; no PIN needed to create
+        'residentKey'             => 'discouraged',
         'requireResidentKey'      => false,
-        'userVerification'        => 'discouraged',  // tap only for registration; UV still requested at sign-in
+        'userVerification'        => 'preferred',  // enable UV so HMAC-secret/PRF is available
     ],
+    'extensions'         => ['prf' => ['eval' => ['first' => $prfSalt]]],
     'excludeCredentials' => $exclude,
 ];
 

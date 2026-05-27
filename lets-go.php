@@ -1,6 +1,6 @@
 <?php
 include_once 'init.php';
-include_once 'CRUD.php';
+include_once 'crud.php';
 
 // 🔍 Console log to indicate loading
 echo "<script>console.log('🚀 Let\'s go - lets-go.php loaded!');</script>";

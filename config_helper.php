@@ -110,9 +110,10 @@ function hasPassphraseWrap(): bool {
 }
 function hasPrfWrap(): bool {
   sess();
-  $p = getConfigPaths();
-  $uid = preg_replace('/[^A-Za-z0-9_\-]/','_', $_SESSION['user_id'] ?? 'default');
-  return is_file($p['wraps']."/cred_{$uid}.json");
+  $p      = getConfigPaths();
+  $uid    = preg_replace('/[^A-Za-z0-9_\-]/','_', $_SESSION['user_id'] ?? 'default');
+  $credId = preg_replace('/[^A-Za-z0-9_\-]/','_', $_SESSION['credential_id'] ?? $uid);
+  return is_file($p['wraps']."/cred_{$credId}.json") || is_file($p['wraps']."/cred_{$uid}.json");
 }
 
 /* One-call status for UI */
@@ -147,9 +148,20 @@ function bootstrapVaultWithPrf(string $prfKeyB64u, array $paths): void {
 }
 
 function unlockWithPrf(string $prfKeyB64u, array $paths): void {
-    $uid      = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
-    $wrapPath = $paths['wraps'] . "/cred_{$uid}.json";
-    if (!is_file($wrapPath)) throw new Exception('No PRF wrap for this credential');
+    $uid    = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    $credId = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['credential_id'] ?? $uid);
+
+    // Try per-credential wrap first, fall back to legacy per-user wrap
+    $wrapPath = $paths['wraps'] . "/cred_{$credId}.json";
+    if (!is_file($wrapPath)) {
+        $legacy = $paths['wraps'] . "/cred_{$uid}.json";
+        if (is_file($legacy)) {
+            $wrapPath = $legacy;
+        } else {
+            throw new Exception('No PRF wrap for this credential');
+        }
+    }
+
     $meta  = json_decode(file_get_contents($wrapPath), true) ?: [];
     $kek   = b64u_dec($prfKeyB64u);
     $nonce = base64_decode($meta['nonce'] ?? '');
@@ -160,14 +172,17 @@ function unlockWithPrf(string $prfKeyB64u, array $paths): void {
     $_SESSION['DEK'] = b64u_enc($dek);
 }
 
-function wrapDekWithPrf(string $dek, string $prfKeyB64u, array $paths): void {
+function wrapDekWithPrf(string $dek, string $prfKeyB64u, array $paths, ?string $credIdOverride = null): void {
     if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
     $kek   = b64u_dec($prfKeyB64u);
     $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
     $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($dek, '', $nonce, $kek);
     @mkdir($paths['wraps'], 0700, true);
-    $uid  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
-    file_put_contents($paths['wraps'] . "/cred_{$uid}.json", json_encode([
+    $uid    = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    $credId = $credIdOverride
+        ? preg_replace('/[^A-Za-z0-9_\-]/', '_', $credIdOverride)
+        : preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['credential_id'] ?? $uid);
+    file_put_contents($paths['wraps'] . "/cred_{$credId}.json", json_encode([
         'type'  => 'prf',
         'alg'   => 'xchacha20',
         'nonce' => base64_encode($nonce),

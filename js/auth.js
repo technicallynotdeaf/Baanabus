@@ -120,8 +120,10 @@ async function signInPasskey(hintUsername=null) {
       }
     };
 
-    // Include PRF result if the YubiKey returned one — used for vault unlock server-side
-    const prfFirst = assertion.getClientExtensionResults()?.prf?.results?.first;
+    // Include PRF result if the authenticator returned one — used for vault unlock server-side
+    const extResults = assertion.getClientExtensionResults();
+    console.log('[Auth] extension results:', JSON.stringify(extResults, (k,v) => v instanceof ArrayBuffer ? '(ArrayBuffer)' : v));
+    const prfFirst = extResults?.prf?.results?.first;
     if (prfFirst) payload.prfResult = bufToB64url(prfFirst);
 
     say('Verifying assertion…');
@@ -141,7 +143,57 @@ async function signInPasskey(hintUsername=null) {
   }
 }
 
+// ---------- enroll a passkey into the vault (called while vault is already open) ----------
+async function enrollPasskey() {
+  try {
+    say('Touch the key you want to enroll…');
+    const resp = await fetch('enroll-challenge.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
+
+    const assertion = await navigator.credentials.get({
+      publicKey: prepGetOptions(data.publicKey)
+    });
+
+    const extResults = assertion.getClientExtensionResults();
+    console.log('[Enroll] extension results:', JSON.stringify(extResults, (k,v) => v instanceof ArrayBuffer ? '(ArrayBuffer)' : v));
+    const prfFirst = extResults?.prf?.results?.first;
+    if (!prfFirst) throw new Error('This key did not return a PRF result — it may need to be re-registered to support vault access.');
+
+    const payload = {
+      id:      assertion.id,
+      rawId:   bufToB64url(assertion.rawId),
+      type:    assertion.type,
+      response: {
+        authenticatorData: bufToB64url(assertion.response.authenticatorData),
+        clientDataJSON:    bufToB64url(assertion.response.clientDataJSON),
+        signature:         bufToB64url(assertion.response.signature),
+      },
+      prfResult: bufToB64url(prfFirst)
+    };
+
+    say('Enrolling…');
+    const verify = await fetch('enroll-response.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const result = await verify.json();
+    if (!verify.ok || result.error) throw new Error(result.error || 'Enroll failed');
+
+    say('✅ Key enrolled — it can now unlock your vault.');
+    return result;
+  } catch(e) {
+    say(`❌ ${e.message}`, true);
+    throw e;
+  }
+}
+
 // ---------- export ----------
-window.BaanabusAuth = { registerPasskey, signInPasskey };
+window.BaanabusAuth = { registerPasskey, signInPasskey, enrollPasskey };
 // registerPasskey(username, inviteCode) — inviteCode required for new accounts
 

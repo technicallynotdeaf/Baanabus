@@ -90,17 +90,112 @@ The map suggests the standing stone is beyond the third peak, but the map is fif
         ],
 
         '5_push' => [
-            'prose' => "You reach the first peak with an hour of light left. The view is staggering — four countries, allegedly. The second peak is closer than the map suggested, which means the third is too, which means the stone might be reachable by tomorrow afternoon if the weather holds.
+            'prose' => "You reach the first peak with an hour of light left. The view is staggering — four countries, allegedly. The second peak is closer than the map suggested, which means the third is too.
 
 The blade is warm against your ribs. You take it out and it catches the last of the light in a way that metal usually doesn't.",
-            'choices' => [],
-            'terminal' => true,
+            'choices' => [
+                ['text' => 'Push for the second peak before dark', 'next' => '6_second_peak'],
+                ['text' => 'Camp here — the second peak in the morning', 'next' => '6_second_peak'],
+            ],
         ],
 
         '5_camp' => [
             'prose' => "The night on the glacier is spectacular and cold. You're woken twice: once by a sound like a door opening somewhere beneath the ice, once by nothing you can name.
 
-In the morning the air is still and the first peak is lit gold before the rest of the mountain. The path is obvious. You eat the last of the cardamom bread and start climbing, and the blade is warm against your ribs in a way that has nothing to do with body heat.",
+In the morning the air is still and the first peak is lit gold before the rest of the mountain. You eat the last of the cardamom bread and start climbing, and the blade is warm against your ribs in a way that has nothing to do with body heat.",
+            'choices' => [
+                ['text' => 'Continue toward the second peak', 'next' => '6_second_peak'],
+            ],
+        ],
+
+        '6_second_peak' => [
+            'prose' => "The second peak is different from the first. The path narrows here — not difficult, just deliberate, like it was made narrower on purpose. The ice on either side is older, blue-white and compressed, and the sounds Miriam mentioned have started: not wind, not ice settling. Something below the surface, rhythmic.
+
+The blade is so warm you've unbuttoned your coat.",
+            'choices' => [
+                ['text' => 'Stop and listen to the rhythm', 'next' => '7_listen'],
+                ['text' => "Keep moving — don't give it the attention", 'next' => '7_keep_moving'],
+            ],
+        ],
+
+        '7_listen' => [
+            'prose' => "Three beats, pause, three beats. You stand still long enough to be certain of the pattern. Then you take one step forward and it changes: four beats, pause, one.
+
+Like it noticed you.
+
+You stand there a while longer. The pattern doesn't change again. Whatever is down there has said what it wanted to say.",
+            'choices' => [
+                ['text' => 'Continue to the third peak', 'next' => '8_third_peak'],
+            ],
+        ],
+
+        '7_keep_moving' => [
+            'prose' => "Whatever is below the ice knows you're there. You can tell because when you stop, the sound stops too — and when you move, it matches your pace for thirty seconds before falling back into its own rhythm.
+
+Easier not to test it. You reach the top of the second peak before noon and do not look back at the path you came up.",
+            'choices' => [
+                ['text' => 'Continue to the third peak', 'next' => '8_third_peak'],
+            ],
+        ],
+
+        '8_third_peak' => [
+            'prose' => "The standing stone is visible from the third peak — smaller than you expected, and darker. Black basalt, grandmother's map said. From here you can see something at its base that catches the light the same way the blade does.
+
+Around the stone the ice is oldest: compressed over centuries, almost grey. The path to it crosses thirty metres of open glacier with no cover, and the wind has picked up.",
+            'choices' => [
+                ['text' => "Cross directly — it's thirty metres", 'next' => '9_cross_direct'],
+                ['text' => 'Circle the long way and find a stable line', 'next' => '9_circle'],
+            ],
+        ],
+
+        '9_cross_direct' => [
+            'prose' => "The ice holds. Halfway across, the blade vibrates once — a single pulse, felt more than heard, like a struck bell heard through water. You stop. Nothing else happens. You keep walking.
+
+The stone is waist-high, as described. Grandmother's initials are cut into the base, exactly where the map said. Below them: a small brass door, set flush into the basalt, so flush you'd miss it without knowing to look.",
+            'choices' => [
+                ['text' => 'Try the blade in the lock', 'next' => '10_the_door'],
+            ],
+        ],
+
+        '9_circle' => [
+            'prose' => "The long route takes forty minutes and is better ice — older, more stable. You reach the stone from the north side, which isn't shown on the map, and find something the map doesn't mark: a second set of initials cut shallower, in a different hand, in a script you don't recognise.
+
+You take a photograph. Then you walk around to the south face where grandmother's initials are, and below them the small brass door, set so flush into the basalt that you feel it before you see it.",
+            'choices' => [
+                ['text' => 'Try the blade in the lock', 'next' => '10_the_door'],
+            ],
+        ],
+
+        '10_the_door' => [
+            'prose' => "The blade fits the keyhole — not perfectly, but it was never quite meant for this, which is perhaps the point. You feel two catches, then a third. Something inside the stone moves, deliberate and unhurried, like it's been waiting to be polite about this.
+
+The door opens inward. Behind it: a recess about the size of a shoebox, dry despite everything. Inside the recess, a tin box, dented, sealed with wax.",
+            'choices' => [
+                ['text' => 'Open it', 'next' => '11_open'],
+                ['text' => 'Sit with it a moment first', 'next' => '11_wait'],
+            ],
+        ],
+
+        '11_open' => [
+            'prose' => "Inside the tin: a letter, folded twice, in grandmother's handwriting.
+
+Not her old handwriting. Her handwriting from three years ago — the careful, slightly compressed script she used after her hands started troubling her. Which is impossible, because grandmother died four years ago.
+
+The letter begins:
+
+I knew you'd be quick about it. That was always your way. Sit down. The ice will hold.",
+            'choices' => [],
+            'terminal' => true,
+        ],
+
+        '11_wait' => [
+            'prose' => "You sit on the ice with the tin in your lap for ten minutes. The glacier is quiet. Whatever was below the surface has stopped. The wind has dropped to nothing, which at this altitude means something but you're not sure what.
+
+Then you open it. Inside: a letter, folded twice, in grandmother's handwriting — not her old handwriting but the careful, compressed script she used in her last years. Which is impossible because grandmother died four years ago.
+
+The letter begins:
+
+I knew you'd take your time. Good. You'll need that patience.",
             'choices' => [],
             'terminal' => true,
         ],

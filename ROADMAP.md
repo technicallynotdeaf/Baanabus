@@ -19,20 +19,23 @@
 - ✅ Navbar wired: Let's Go → speech bubble, Tasks/People/Notes/Settings → overlay
 - ✅ Mobile CSS: `css/app.css` (body scrollable, `scene-view` locks it for canvas only)
 - ✅ fail2ban (apache jails) + ModSecurity DetectionOnly on server
-- ✅ Habitica secrets: moved from PHP constants → `cassowary.enc`; `api/cassowary.php` for settings
+- ✅ Habitica secrets: moved from PHP constants → `cassowary.enc`; `api/integrations.php` for settings
 
 ---
 
-## M1 — Working Loop
+## M1 — Working Loop ✅
 
-Make the core task loop functional end-to-end. Success: sign in, see a task, mark it done, see progress update.
+Make the core task loop functional end-to-end.
 
-- [ ] `api/mark_complete.php` — POST endpoint: marks task done, updates pages/books in vault, returns JSON (replaces the GET action in lets-go.php)
-- [ ] `updateProgressBar(pages)` in app.js — wire to pages value returned from mark_complete
-- [ ] `lets-go.php` — refactor: remove inline `?action=complete` handler; use `markAsDone()` → `api/mark_complete.php`; style task card for speech bubble context (big, touch-friendly)
-- [ ] `api/settings.php` — settings overlay: Habitica creds form (GET pre-fills masked values from `api/cassowary.php`; POST saves); nickname field; app version/debug info
-- [ ] `brain_dump.php` — quick capture overlay: single text input + optional context tag → saves to `inbox` table; confirm and close
-- [ ] Deploy M1 and test the full loop on phone
+- ✅ `api/mark_complete.api.php` — marks task done, updates pages in vault, returns JSON; Habitica scoring wired
+- ✅ `updateProgressBar(pages)` in app.js — 10-pip bar on scene, updates on task completion
+- ✅ `lets-go.php` — fetches from `api/next_activity.php`; weighted pool (tasks/trivia/minigame/check-in); touch-friendly buttons
+- ✅ `markAsDone()` / `markAsStuck()` / `snoozeTask()` — all implemented in app.js
+- ✅ Stuck: snoozes task until tomorrow 08:00, sets `stuck: true` flag
+- ✅ Snooze: inline time picker (2h / tonight / tomorrow / next week) via `api/task_action.php`
+- ✅ `vaultUpdateTask()` helper in config_helper.php
+- [ ] `api/settings.php` — settings overlay: nickname, Habitica creds form
+- [ ] `brain_dump.php` — quick capture overlay → saves to inbox
 
 ---
 
@@ -44,7 +47,6 @@ The two main data views.
 - [ ] Add task form: title, context (dropdown), urgency selector; submits via AJAX, refreshes list
 - [ ] `list_people.php` — people overlay: contacts list sorted by next_review; overdue contacts highlighted; tap person → person panel
 - [ ] Person panel: name, contact notes, task list for that person; "Mark reviewed" / "Snooze 1 day" / "Add note" actions
-- [ ] Task snooze: 1 day / 1 week options (updates `show_after` in DB)
 - [ ] Inbox triage overlay or tab: list inbox items; for each: "Make task" / "Discard"; "Make task" opens add-task form pre-filled from inbox content
 
 ---
@@ -53,11 +55,11 @@ The two main data views.
 
 The daily rhythm that makes the game loop feel intentional.
 
-- [ ] Check-in overlay (shown once per day on first scene load): energy level selector (1–5) + day type selector → saved to diary table; sets session context
-- [ ] `lets-go.php` respects energy: low energy (1–2) surfaces low-effort tasks first; high energy (4–5) surfaces high-urgency tasks
+- ✅ Check-in: energy level (1–5) + day type surfaced via `next_activity.php` when missing for the day
+- ✅ Stuck flow: task marked stuck → snoozes until tomorrow, flagged for review
+- [ ] `lets-go.php` respects energy: low energy surfaces low-effort tasks first; high energy surfaces high-urgency tasks
 - [ ] Day type affects task filtering (e.g., "Home" day = home context tasks)
-- [ ] Pages/books persisted correctly across sign-ins (read from `config.enc` on vault unlock)
-- [ ] "Stuck" flow: task marked stuck → snooze options shown; optionally add a note about the blocker
+- [ ] GTD inbox triage: one-question-at-a-time flow in speech bubble; `task_type` changes last; produces next-actions, reference, someday, or deleted
 - [ ] Context filter in tasks overlay: quick filter chips (Home / Work / etc.)
 
 ---
@@ -66,33 +68,39 @@ The daily rhythm that makes the game loop feel intentional.
 
 Make the world feel alive without adding complexity.
 
-- [ ] Bookshelf draws filled books based on `config.books` count (canvas update in scene.php)
-- [ ] Book/page counter shown on scene (subtle, bottom corner or on bookshelf)
-- [ ] Sheep click → greeting speech bubble + current task (replace auto-load-on-page-load with click trigger; keep auto on first visit of the day)
-- [ ] Time-of-day tint: warm morning / neutral afternoon / cooler evening (based on hour)
-- [ ] Daily NPC message: first load of each day shows a short greeting (drawn from a small pool, or from current state)
-- [ ] "New book" animation / notification when books increments
+- ✅ 6 story books on bookshelf canvas (correct spine colours; book 1 gold-highlighted when unlocked)
+- ✅ Paper scraps on floor = count of inbox-type tasks
+- ✅ 10-pip progress bar (bottom of scene); fills as tasks are completed; resets when a story page unlocks
+- [ ] Sheep click → greeting speech bubble + current task (replace auto-load with click trigger; keep auto on first visit of the day)
+- [ ] Time-of-day tint: warm morning / neutral afternoon / cooler evening
+- [ ] Daily NPC message: first load of each day shows a short greeting
+- [ ] "New book" animation / notification when a story page unlocks
 
 ---
 
-## M5 — Storybook Rewards
+## M5 — Storybook Rewards ✅ (first story complete)
 
 The long-term engagement layer.
 
-- [ ] Story content: short CYOA stories authored and stored as JSON in `data/stories/`
-- [ ] Story unlock: every N pages (TBD), a story fragment unlocks → stored in `config.enc` under `stories.unlocked[]`
-- [ ] Storybook overlay: list unlocked stories; tap to read
-- [ ] CYOA reader: present passage → choices → follow path through branching JSON tree
-- [ ] Story progress saved per story in vault
-- [ ] Write 3 seed stories before launch (short, 5–10 nodes each)
+- ✅ Story format: CYOA nodes keyed `"{page}_{branch}"`, prose + choices, terminal flag; stored in `content/stories/`
+- ✅ Story content base64-encoded in source so user can't read ahead in git
+- ✅ Story unlock: every 10 completed tasks increments `pages_available` in vault; choices gated by `pages_available > depth`
+- ✅ Story reader overlay: `api/story_read.php` — renders current page, shows choices or "earn more tasks" message
+- ✅ Choice endpoint: `api/story_choose.php` — validates choice, advances `current_key`, increments depth
+- ✅ Story progress saved per story in `config.enc` under `config['stories'][$id]`
+- ✅ **The Chai Meridian** — 19-node CYOA story: branching path from Chandrapur tea house to a standing stone above the snowline and grandmother's impossible letter
+- [ ] Write stories 2–6 to match remaining book slots
 
 ---
 
-## M6 — Integrations
+## M6 — Integrations ✅ (Habitica)
 
 Connect to services Alison already uses.
 
-- [ ] Habitica sync fully working: `api/habitica_sync.php` — pull incomplete Habitica tasks → upsert to local tasks table; mark_complete pushes score up
+- ✅ Habitica sync: `api/habitica_sync.php` — once-per-day pull of todos + checklist items into tasks.enc; deduplicates; triggered silently from `greeting.php`
+- ✅ Habitica score-up: `api/mark_complete.api.php` scores back to Habitica when task completed (checklist items + parent todos handled separately)
+- ✅ Block task system: Habitica tasks with checklists surface as parent + subtask checklist in speech bubble; children never appear standalone; subtasks check off inline
+- ✅ Imported tasks get `task_type: 'inbox'`; paper scraps on floor count inbox tasks only
 - [ ] CalDAV (Radicale): pull calendar events → show upcoming events as tasks/reminders
 - [ ] CardDAV (Radicale): sync contacts → people directory
 - [ ] Proton Mail IMAP: pull unread emails → land in inbox for triage
@@ -103,8 +111,7 @@ Connect to services Alison already uses.
 
 - [ ] Android WebView wrapper (PWA-style, fullscreen, no browser chrome)
 - [ ] Share target: receive text/URLs from other apps → lands in inbox
-- [ ] SMS triage: read SMS and surface in inbox (requires permission; accessibility service or SMS reader)
-- [ ] Push notifications: due tasks / overdue reviews (via Firebase or self-hosted)
+- [ ] Push notifications: due tasks / overdue reviews
 - [ ] Contact call prompts: before a call, app surfaces person notes + last contact date
 
 ---
@@ -113,12 +120,11 @@ Connect to services Alison already uses.
 
 - [ ] CSP headers: move inline `<script>` blocks to external `.js` files first; then add `Content-Security-Policy` header in Apache
 - [ ] ModSecurity: switch from DetectionOnly → enforcement (after confirming no false positives in logs)
-- [ ] Fix SEO for pipeproject.info (separate project)
-- [ ] Rate limiting on auth endpoints beyond fail2ban (consider nginx upstream for all vhosts)
-- [ ] Automated deploy: git push → auto-pull on server (simple post-receive hook, no CD pipeline needed at this scale)
+- [ ] Automated deploy: git push → auto-pull on server (simple post-receive hook)
+- [ ] Rate limiting on auth endpoints beyond fail2ban
 
 ---
 
 ## Next up
 
-**M1 is the priority.** Start with `api/mark_complete.php` since it unblocks the let's-go loop, then settings overlay so Habitica creds can be entered, then brain_dump.php for capture.
+M1 is nearly done — two items remain: `api/settings.php` (Habitica creds + nickname) and `brain_dump.php` (quick capture). After those, focus shifts to M3 GTD triage and M2 task/people views.

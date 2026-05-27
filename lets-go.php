@@ -41,13 +41,61 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 
   // ---- Task ----
   function renderTask(d) {
+    if (d.subtasks && d.subtasks.length > 0) {
+      renderBlockTask(d);
+    } else {
+      c.innerHTML = `
+        <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
+          <button class="action-button" onclick="markAsStuck(${d.id})">Stuck</button>
+          <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
+        </div>`;
+    }
+  }
+
+  function renderBlockTask(d) {
+    const rows = d.subtasks.map(s => `
+      <div class="subtask-row" style="display:flex;align-items:flex-start;gap:8px;padding:0.35rem 0;border-bottom:1px solid rgba(0,0,0,0.07);">
+        <span style="flex:1;line-height:1.4;font-size:0.95em;">${esc(s.title)}</span>
+        <button class="action-button" data-id="${s.id}"
+          style="flex-shrink:0;padding:0.2rem 0.6rem;font-size:0.82em;"
+          onclick="window._subtaskDone(${s.id}, this)">Done</button>
+      </div>`).join('');
+
     c.innerHTML = `
-      <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
+      <p style="font-size:0.72em;color:#999;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:0.06em;">Block task</p>
+      <p style="font-weight:600;margin-bottom:0.5rem;">${esc(d.title)}</p>
+      <div id="subtask-list" style="margin-bottom:0.75rem;">${rows}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
         <button class="action-button" onclick="markAsStuck(${d.id})">Stuck</button>
         <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
       </div>`;
+
+    window._subtaskDone = function(taskId, btn) {
+      const row = btn.closest('.subtask-row');
+      btn.disabled = true;
+      row.style.transition = 'opacity 0.2s';
+      row.style.opacity    = '0';
+      fetch(`api/mark_complete.api.php?task_id=${taskId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            updateProgressBar(data.pages);
+            if (data.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
+            setTimeout(() => {
+              row.remove();
+              if (!document.querySelector('#subtask-list .subtask-row')) {
+                loadSpeechBubble('lets-go.php');
+              }
+            }, 220);
+          } else {
+            btn.disabled    = false;
+            row.style.opacity = '1';
+          }
+        })
+        .catch(() => { btn.disabled = false; row.style.opacity = '1'; });
+    };
   }
 
   // ---- Trivia ----

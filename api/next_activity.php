@@ -103,8 +103,22 @@ if (empty($cfg['onboarding_complete'])) {
 if (!$hasTasks) {
     json_response(['type' => 'empty', 'message' => "No tasks right now — check back later."]);
 }
-$t = $tasks[array_rand($tasks)];
-json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title']]);
+$t   = $tasks[array_rand($tasks)];
+$now = time();
+try {
+    $allTasks = getTasks()['tasks'];
+    $subtasks = array_values(array_filter($allTasks, fn($s) =>
+        !empty($s['parent_id']) &&
+        (int)$s['parent_id'] === (int)$t['id'] &&
+        $s['status'] === 'active' &&
+        (!$s['snoozed_until'] || strtotime($s['snoozed_until']) <= $now)
+    ));
+    usort($subtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+    $subtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $subtasks);
+} catch (Throwable $e) {
+    $subtasks = [];
+}
+json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks]);
 
 // ---------- trivia pool ----------
 function pick_trivia(): array {

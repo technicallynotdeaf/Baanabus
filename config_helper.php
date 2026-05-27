@@ -249,19 +249,14 @@ function saveTasks(array $data): void {
 }
 
 function getDoableTasks(): array {
-    $data   = getTasks();
-    $now    = time();
-    $active = array_filter($data['tasks'], fn($t) =>
-        $t['status'] === 'active' && (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now)
-    );
-
-    // Suppress parent tasks while they still have active children
-    $blockedParents = [];
-    foreach ($active as $t) {
-        if (!empty($t['parent_id'])) $blockedParents[(int)$t['parent_id']] = true;
-    }
-
-    return array_values(array_filter($active, fn($t) => !isset($blockedParents[(int)$t['id']])));
+    $data = getTasks();
+    $now  = time();
+    // Children surface inside their parent's block — never as standalone tasks
+    return array_values(array_filter($data['tasks'], fn($t) =>
+        $t['status'] === 'active' &&
+        empty($t['parent_id']) &&
+        (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now)
+    ));
 }
 
 function vaultMarkComplete(int $taskId): array {

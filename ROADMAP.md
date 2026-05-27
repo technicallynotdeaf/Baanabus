@@ -34,8 +34,8 @@ Make the core task loop functional end-to-end.
 - ✅ Stuck: snoozes task until tomorrow 08:00, sets `stuck: true` flag
 - ✅ Snooze: inline time picker (2h / tonight / tomorrow / next week) via `api/task_action.php`
 - ✅ `vaultUpdateTask()` helper in config_helper.php
-- [ ] `api/settings.php` — settings overlay: nickname, Habitica creds form
-- [ ] `brain_dump.php` — quick capture overlay → saves to inbox
+- ✅ `api/settings.php` — settings overlay: nickname, Habitica creds form
+- ✅ `brain_dump.php` — quick capture overlay → saves to inbox
 
 ---
 
@@ -127,4 +127,4 @@ Connect to services Alison already uses.
 
 ## Next up
 
-M1 is nearly done — two items remain: `api/settings.php` (Habitica creds + nickname) and `brain_dump.php` (quick capture). After those, focus shifts to M3 GTD triage and M2 task/people views.
+M1 is complete. Focus shifts to M3 GTD triage (energy-aware task selection, inbox triage flow) and M2 task/people views.

@@ -129,7 +129,10 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 
   // ---- Mini-game ----
   function renderMinigame(d) {
-    if (d.game === 'tictactoe') renderTicTacToe();
+    if (d.game === 'tictactoe')  renderTicTacToe();
+    if (d.game === 'numguess')   renderNumGuess();
+    if (d.game === 'rps')        renderRPS();
+    if (d.game === 'mathquiz')   renderMathQuiz();
   }
 
   function renderTicTacToe() {
@@ -196,6 +199,134 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     };
 
     draw();
+  }
+
+  function renderNumGuess() {
+    const target = Math.floor(Math.random() * 20) + 1;
+    let attempts = 0;
+    const max = 5;
+
+    function drawNG(msg) {
+      c.innerHTML = `
+        <p style="margin-bottom:0.5rem;">${msg}</p>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="ng-input" min="1" max="20" placeholder="1 – 20"
+            style="width:5.5rem;padding:0.4rem 0.5rem;font-size:1rem;border:1px solid #ccc;border-radius:6px;">
+          <button class="action-button" onclick="window._ngGuess()">Guess</button>
+        </div>
+        <p id="ng-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+        <p class="muted" style="font-size:0.85em;margin-top:0.25rem;">Attempts left: <span id="ng-left">${max - attempts}</span></p>`;
+      const inp = document.getElementById('ng-input');
+      inp.focus();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') window._ngGuess(); });
+    }
+
+    drawNG("I'm thinking of a number between 1 and 20.");
+
+    window._ngGuess = function() {
+      const inp = document.getElementById('ng-input');
+      const val = parseInt(inp.value, 10);
+      if (!val || val < 1 || val > 20) {
+        document.getElementById('ng-feedback').textContent = 'Pick a number between 1 and 20.';
+        return;
+      }
+      attempts++;
+      inp.value = '';
+      if (val === target) {
+        c.innerHTML = `
+          <p>Yes! It was ${target}. You got it in ${attempts} ${attempts === 1 ? 'try' : 'tries'}.</p>
+          <button class="action-button" style="margin-top:0.75rem;" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+      } else if (attempts >= max) {
+        c.innerHTML = `
+          <p>Out of guesses — it was ${target}.</p>
+          <button class="action-button" style="margin-top:0.75rem;" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+      } else {
+        document.getElementById('ng-feedback').textContent = val < target ? 'Too low.' : 'Too high.';
+        document.getElementById('ng-left').textContent = max - attempts;
+        inp.focus();
+      }
+    };
+  }
+
+  function renderRPS() {
+    const choices = ['Rock', 'Paper', 'Scissors'];
+    function sheepPick() { return choices[Math.floor(Math.random() * 3)]; }
+    function result(p, s) {
+      if (p === s) return 'draw';
+      if ((p==='Rock'&&s==='Scissors')||(p==='Paper'&&s==='Rock')||(p==='Scissors'&&s==='Paper')) return 'win';
+      return 'lose';
+    }
+    const btns = choices.map(ch =>
+      `<button class="action-button" onclick="window._rps('${ch}')">${ch}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p style="margin-bottom:0.75rem;">Rock, paper, scissors...</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="rps-btns">${btns}</div>
+      <p id="rps-result" class="muted" style="margin-top:0.75rem;min-height:1.4em;"></p>
+      <button id="rps-next" class="action-button" style="display:none;margin-top:0.5rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+
+    window._rps = function(player) {
+      document.querySelectorAll('#rps-btns .action-button').forEach(b => b.disabled = true);
+      const sheep = sheepPick();
+      const r = result(player, sheep);
+      const msg = r === 'win'  ? `You played ${player}, I played ${sheep}. You win.`
+                : r === 'lose' ? `You played ${player}, I played ${sheep}. I win.`
+                :                `We both played ${player}. Draw.`;
+      document.getElementById('rps-result').textContent = msg;
+      document.getElementById('rps-next').style.display = 'inline-flex';
+    };
+  }
+
+  function renderMathQuiz() {
+    const ops = ['+', '-', '*'];
+    const op  = ops[Math.floor(Math.random() * ops.length)];
+    let a, b, answer;
+    if (op === '+') {
+      a = Math.floor(Math.random() * 50) + 1;
+      b = Math.floor(Math.random() * 50) + 1;
+      answer = a + b;
+    } else if (op === '-') {
+      a = Math.floor(Math.random() * 50) + 10;
+      b = Math.floor(Math.random() * a) + 1;
+      answer = a - b;
+    } else {
+      a = Math.floor(Math.random() * 11) + 2;
+      b = Math.floor(Math.random() * 11) + 2;
+      answer = a * b;
+    }
+    const symbol = op === '*' ? '×' : op;
+    const wrongs = new Set();
+    while (wrongs.size < 3) {
+      const delta = Math.floor(Math.random() * 8) + 1;
+      const w = answer + (Math.random() < 0.5 ? delta : -delta);
+      if (w !== answer && w >= 0) wrongs.add(w);
+    }
+    const opts = [...wrongs, answer].sort(() => Math.random() - 0.5);
+    const ci   = opts.indexOf(answer);
+    const btns = opts.map((o, i) =>
+      `<button class="action-button" onclick="window._mathAns(${i},${ci})">${o}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p style="font-size:1.15em;font-weight:600;margin-bottom:0.75rem;">${a} ${symbol} ${b} = ?</p>
+      <div id="math-opts" style="display:flex;gap:8px;flex-wrap:wrap;">${btns}</div>
+      <p id="math-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <button id="math-next" class="action-button" style="display:none;margin-top:0.5rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+
+    window._mathAns = function(idx, correct) {
+      document.querySelectorAll('#math-opts .action-button').forEach(b => b.disabled = true);
+      const fb = document.getElementById('math-feedback');
+      if (idx === correct) {
+        document.querySelectorAll('#math-opts .action-button')[idx].style.background = '#4caf50';
+        fb.textContent = 'Correct!';
+      } else {
+        document.querySelectorAll('#math-opts .action-button')[idx].style.background = '#e53935';
+        document.querySelectorAll('#math-opts .action-button')[correct].style.background = '#4caf50';
+        fb.textContent = 'Nope — it was ' + answer + '.';
+      }
+      document.getElementById('math-next').style.display = 'inline-flex';
+    };
   }
 
   // ---- Missing info (daily check-in) ----

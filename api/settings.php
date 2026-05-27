@@ -12,14 +12,34 @@ $hasPrf       = $vaultOpen && hasPrfWrap();
 $cassowary    = [];
 $habiticaUser = '';
 $habiticaKey  = '';
+$nickname     = '';
 if ($vaultOpen) {
-    try { $cassowary = getCassowary(); } catch (Throwable $e) {}
+    try {
+        $cassowary = getCassowary();
+        $cfg       = getConfig() ?? [];
+    } catch (Throwable $e) { $cfg = []; }
     $habiticaUser = $cassowary['habitica']['user_id'] ?? '';
     $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
+    $nickname     = $cfg['nickname'] ?? '';
 }
 ?>
 <div style="position:relative;">
-  <h2>⚙️ Settings</h2>
+  <h2>Settings</h2>
+
+  <!-- Nickname section -->
+  <div class="card" style="margin-bottom:1rem;">
+    <h3 style="margin-bottom:0.5rem;">Your name</h3>
+    <?php if ($vaultOpen): ?>
+      <form id="nickname-form">
+        <label style="display:block;margin-bottom:0.4rem;font-size:0.9em;color:#555;">What should the sheep call you?</label>
+        <input type="text" id="nickname-input" name="nickname" value="<?= htmlspecialchars($nickname) ?>" placeholder="e.g. Alison" maxlength="50">
+        <button type="submit" class="btn" style="margin-top:0.75rem;">Save</button>
+        <p id="nicknameStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      </form>
+    <?php else: ?>
+      <p class="muted">Vault locked — unlock to change your name.</p>
+    <?php endif; ?>
+  </div>
 
   <!-- Passkey section -->
   <div class="card" style="margin-bottom:1rem;">
@@ -56,6 +76,29 @@ if ($vaultOpen) {
 
 <?php if ($vaultOpen): ?>
 <script>
+document.getElementById('nickname-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const statusEl = document.getElementById('nicknameStatus');
+  statusEl.style.color = '';
+  statusEl.textContent = 'Saving…';
+  try {
+    const resp = await fetch('api/nickname.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nickname: document.getElementById('nickname-input').value.trim() })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      statusEl.textContent = 'Saved.';
+    } else {
+      throw new Error(result.error || 'Save failed');
+    }
+  } catch(e) {
+    statusEl.textContent = e.message;
+    statusEl.style.color = 'crimson';
+  }
+});
+
 document.getElementById('btn-enroll').addEventListener('click', async function() {
   const statusEl = document.getElementById('enrollStatus');
   this.disabled = true;

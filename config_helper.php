@@ -348,12 +348,12 @@ function saveInbox(array $data): void {
 }
 
 function addToInbox(string $content): array {
-    $data  = getInbox();
-    $item  = ['id' => $data['next_id'], 'content' => $content, 'created_at' => date('c')];
-    $data['items'][]  = $item;
+    $data            = getInbox();
+    $item            = ['id' => $data['next_id'], 'content' => $content, 'created_at' => date('c')];
+    $data['items'][] = $item;
     $data['next_id']++;
     saveInbox($data);
-    return $item;
+    return $data;
 }
 
 // ---------- Story progress (stored in config.enc under config['stories'][$id]) ----------

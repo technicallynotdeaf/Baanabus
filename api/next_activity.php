@@ -14,8 +14,13 @@ try {
     $hasTasks = false;
 }
 
-// Check if today's check-in is missing
+// Fatigue counter — increments each call, resets with the PHP session
+$actCount = (int)($_SESSION['activity_count'] ?? 0);
+$_SESSION['activity_count'] = $actCount + 1;
+
+// Pull today's check-in; capture energy for pool weighting at the same time
 $missing = null;
+$energy  = 3; // default: Okay
 if ($database) {
     try {
         $today = date('Y-m-d');
@@ -36,6 +41,7 @@ if ($database) {
                 ],
             ];
         } elseif ($row['day_type'] === null) {
+            $energy  = max(1, min(5, (int)$row['energy_level']));
             $missing = [
                 'type'    => 'missing_info',
                 'field'   => 'day_type',
@@ -47,15 +53,30 @@ if ($database) {
                     ['value' => 4, 'label' => 'Rest'],
                 ],
             ];
+        } else {
+            $energy = max(1, min(5, (int)$row['energy_level']));
         }
     } catch (Throwable $e) { /* non-fatal */ }
 }
 
-// Weighted pool: 60% task, ~20% trivia, ~10% minigame, ~10% missing_info
+// Always surface the check-in on the very first activity of a session
+if ($missing && $actCount === 0) json_response($missing);
+
+// Energy-aware + fatigue pool:
+//   task slots    = energy level (1 exhausted → 5 on fire)
+//   minigame slots = 6 - energy (inverse of tasks)
+//   fatigue shift: every 4 activities, move 1 slot from task → minigame
+//
+//   Examples at act 0: energy 1 → 1t/5g, energy 3 → 3t/3g, energy 5 → 5t/1g
+//   After 8 acts:      energy 3 → 1t/5g, energy 5 → 3t/3g
+$fatigue   = (int)floor($actCount / 4);
+$taskSlots = max(0, $energy - $fatigue);
+$gameSlots = min(8, (6 - $energy) + $fatigue);
+
 $pool = array_merge(
-    $hasTasks ? array_fill(0, 6, 'task') : [],
+    $hasTasks ? array_fill(0, $taskSlots, 'task') : [],
     array_fill(0, 2, 'trivia'),
-    ['minigame'],
+    array_fill(0, $gameSlots, 'minigame'),
     $missing ? ['missing_info'] : []
 );
 
@@ -65,8 +86,11 @@ if (empty($pool)) {
 
 $choice = $pool[array_rand($pool)];
 
-if ($choice === 'trivia')       json_response(pick_trivia());
-if ($choice === 'minigame')     json_response(['type' => 'minigame', 'game' => 'tictactoe']);
+if ($choice === 'trivia') json_response(pick_trivia());
+if ($choice === 'minigame') {
+    $games = ['tictactoe', 'numguess', 'rps', 'mathquiz'];
+    json_response(['type' => 'minigame', 'game' => $games[array_rand($games)]]);
+}
 if ($choice === 'missing_info') json_response($missing);
 
 // 'task' branch — serve next onboarding step if incomplete, otherwise a real task

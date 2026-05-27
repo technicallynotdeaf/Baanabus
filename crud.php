@@ -333,37 +333,41 @@ function mark_complete($database, $task_id) {
         if ($result && isset($result['habitica_id'])) {
             $habiticaId = $result['habitica_id'];
             
-            // Get Habitica user credentials
+            // Get Habitica user credentials from vault secrets
             include_once 'config_helper.php';
-            $config = getConfig();
-            $habiticaUserId = $config['habitica']['user_id'];
-            $habiticaApiKey = $config['habitica']['api_key'];
+            $cassowary = getCassowary();
+            $habiticaUserId = $cassowary['habitica']['user_id'] ?? null;
+            $habiticaApiKey = $cassowary['habitica']['api_key'] ?? null;
 
-            // Make the Habitica API request
-            $updateCurl = curl_init();
-            curl_setopt($updateCurl, CURLOPT_URL, "https://habitica.com/api/v3/tasks/{$habiticaId}/score/up");
-            curl_setopt($updateCurl, CURLOPT_POST, true);
-            curl_setopt($updateCurl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($updateCurl, CURLOPT_HTTPHEADER, [
-                "x-api-user: $habiticaUserId",
-                "x-api-key: $habiticaApiKey",
-                "Content-Type: application/json"
-            ]);
+            if ($habiticaUserId && $habiticaApiKey) {
+                // Make the Habitica API request
+                $updateCurl = curl_init();
+                curl_setopt($updateCurl, CURLOPT_URL, "https://habitica.com/api/v3/tasks/{$habiticaId}/score/up");
+                curl_setopt($updateCurl, CURLOPT_POST, true);
+                curl_setopt($updateCurl, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($updateCurl, CURLOPT_HTTPHEADER, [
+                    "x-api-user: $habiticaUserId",
+                    "x-api-key: $habiticaApiKey",
+                    "Content-Type: application/json"
+                ]);
 
-            $response = curl_exec($updateCurl);
+                $response = curl_exec($updateCurl);
 
-            if ($response === false) {
-                $habiticaSyncMessage = '❌ Error updating Habitica: ' . curl_error($updateCurl);
-            } else {
-                $responseData = json_decode($response, true);
-                if ($responseData['success'] === true) {
-                    $habiticaSyncMessage = '✅ Task synced with Habitica successfully.';
+                if ($response === false) {
+                    $habiticaSyncMessage = '❌ Error updating Habitica: ' . curl_error($updateCurl);
                 } else {
-                    $habiticaSyncMessage = '❌ Error from Habitica: ' . json_encode($responseData);
+                    $responseData = json_decode($response, true);
+                    if ($responseData['success'] === true) {
+                        $habiticaSyncMessage = '✅ Task synced with Habitica successfully.';
+                    } else {
+                        $habiticaSyncMessage = '❌ Error from Habitica: ' . json_encode($responseData);
+                    }
                 }
+
+                curl_close($updateCurl);
+            } else {
+                $habiticaSyncMessage = null;
             }
-            
-            curl_close($updateCurl);
         }
 
         // === Step 3: Page Progress Logic ===

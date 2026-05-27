@@ -222,8 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Automatically load the speech bubble on page load
-    loadSpeechBubble('lets-go.php');
+    // Automatically load the speech bubble on page load (suppress during onboarding)
+    if (!window.BAANABUS_ONBOARDING) {
+      loadSpeechBubble('lets-go.php');
+    }
     });
 
 // close buttons/backdrop

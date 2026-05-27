@@ -117,12 +117,17 @@ function hasPrfWrap(): bool {
 
 /* One-call status for UI */
 function vaultStatus(): array {
+  $onboarding = false;
+  if (isUnlocked()) {
+    try { $cfg = getConfig(); $onboarding = !empty($cfg['onboarding_complete']); } catch (\Throwable $e) {}
+  }
   return [
-    'authenticated' => isAuthenticated(),
-    'exists'        => vaultExists(),
-    'unlocked'      => isUnlocked(),
-    'hasPass'       => hasPassphraseWrap(),
-    'hasPrf'        => hasPrfWrap(),
+    'authenticated'      => isAuthenticated(),
+    'exists'             => vaultExists(),
+    'unlocked'           => isUnlocked(),
+    'hasPass'            => hasPassphraseWrap(),
+    'hasPrf'             => hasPrfWrap(),
+    'onboarding_complete' => $onboarding,
   ];
 }
 
@@ -168,5 +173,47 @@ function wrapDekWithPrf(string $dek, string $prfKeyB64u, array $paths): void {
         'nonce' => base64_encode($nonce),
         'ct'    => base64_encode($ct),
     ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+}
+
+// ---------- Cassowary vault (API keys / integration secrets) ----------
+
+function cassowaryPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/cassowary.enc";
+}
+
+function getCassowary(): array {
+    $path = cassowaryPath();
+    if (!is_file($path)) return [];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Cassowary: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Cassowary decrypt failed');
+    return json_decode($plain, true) ?? [];
+}
+
+function saveCassowary(array $data): void {
+    $path = cassowaryPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault is locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium extension missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    if (file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        throw new Exception('Failed to write cassowary.enc');
+    }
+    @chmod($path, 0600);
 }
 

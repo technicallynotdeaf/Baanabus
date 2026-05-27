@@ -1,7 +1,9 @@
 <?php
 $paperCount = 0;
 if (isUnlocked()) {
-    try { $paperCount = count(getDoableTasks()); } catch (Throwable $e) {}
+    try {
+        $paperCount = count(array_filter(getDoableTasks(), fn($t) => ($t['task_type'] ?? '') === 'inbox'));
+    } catch (Throwable $e) {}
 }
 ?>
 <canvas id="sceneCanvas"></canvas>

@@ -56,6 +56,7 @@ try {
             $task = [
                 'id'            => $data['next_id']++,
                 'title'         => $todo['text'],
+                'task_type'     => 'inbox',
                 'urgency'       => 'low',
                 'energy'        => 'low',
                 'status'        => 'active',
@@ -79,6 +80,7 @@ try {
             $data['tasks'][] = [
                 'id'               => $data['next_id']++,
                 'title'            => $item['text'],
+                'task_type'        => 'inbox',
                 'urgency'          => 'low',
                 'energy'           => 'low',
                 'status'           => 'active',

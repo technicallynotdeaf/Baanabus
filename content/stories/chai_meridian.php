@@ -1,7 +1,7 @@
 <?php
-// The Chai Meridian — CYOA story pages
+// The Chai Meridian -- CYOA story pages
 // Node keys: "{page_number}_{branch}"
-// Each node: prose, choices (array of {text, next}) or empty for terminal nodes
+// Prose and choice texts are base64-encoded.
 return [
     'id'    => 1,
     'title' => 'The Chai Meridian',
@@ -10,192 +10,140 @@ return [
     'pages' => [
 
         '1_start' => [
-            'prose' => "The map is written on the back of a prayer flag, grandmother's handwriting faded but still legible. You're sitting in a tea house at the edge of Chandrapur, six days' walk above the valley floor, and the woman across the table has been watching you since you sat down.
-
-The blade is tucked inside your coat — not grandmother's blade, that one is locked in the collector's house in Delhi, which is why you borrowed this one from his kitchen. The meridian is somewhere above the snowline. According to the map, you'll know it when you see it.
-
-The woman stands.",
+            'prose' => 'VGhlIG1hcCBpcyB3cml0dGVuIG9uIHRoZSBiYWNrIG9mIGEgcHJheWVyIGZsYWcsIGdyYW5kbW90aGVyJ3MgaGFuZHdyaXRpbmcgZmFkZWQgYnV0IHN0aWxsIGxlZ2libGUuIFlvdSdyZSBzaXR0aW5nIGluIGEgdGVhIGhvdXNlIGF0IHRoZSBlZGdlIG9mIENoYW5kcmFwdXIsIHNpeCBkYXlzJyB3YWxrIGFib3ZlIHRoZSB2YWxsZXkgZmxvb3IsIGFuZCB0aGUgd29tYW4gYWNyb3NzIHRoZSB0YWJsZSBoYXMgYmVlbiB3YXRjaGluZyB5b3Ugc2luY2UgeW91IHNhdCBkb3duLgoKVGhlIGJsYWRlIGlzIHR1Y2tlZCBpbnNpZGUgeW91ciBjb2F0IOKAlCBub3QgZ3JhbmRtb3RoZXIncyBibGFkZSwgdGhhdCBvbmUgaXMgbG9ja2VkIGluIHRoZSBjb2xsZWN0b3IncyBob3VzZSBpbiBEZWxoaSwgd2hpY2ggaXMgd2h5IHlvdSBib3Jyb3dlZCB0aGlzIG9uZSBmcm9tIGhpcyBraXRjaGVuLiBUaGUgbWVyaWRpYW4gaXMgc29tZXdoZXJlIGFib3ZlIHRoZSBzbm93bGluZS4gQWNjb3JkaW5nIHRvIHRoZSBtYXAsIHlvdSdsbCBrbm93IGl0IHdoZW4geW91IHNlZSBpdC4KClRoZSB3b21hbiBzdGFuZHMu',
             'choices' => [
-                ['text' => 'Fold the map before she can see it', 'next' => '2_fold'],
-                ['text' => 'Let her approach',                   'next' => '2_approach'],
+                ['text' => 'Rm9sZCB0aGUgbWFwIGJlZm9yZSBzaGUgY2FuIHNlZSBpdA==', 'next' => '2_fold'],
+                ['text' => 'TGV0IGhlciBhcHByb2FjaA==', 'next' => '2_approach'],
             ],
         ],
 
         '2_fold' => [
-            'prose' => "You fold the prayer flag twice, tuck it away, and are out the door before she reaches your table. The streets of Chandrapur wind upward. Thin air. A dog watches you from a doorway.
-
-At the north gate, a boy is selling cardamom from a sack, and he looks at you the same way the woman did — like he's been told to expect you.",
+            'prose' => 'WW91IGZvbGQgdGhlIHByYXllciBmbGFnIHR3aWNlLCB0dWNrIGl0IGF3YXksIGFuZCBhcmUgb3V0IHRoZSBkb29yIGJlZm9yZSBzaGUgcmVhY2hlcyB5b3VyIHRhYmxlLiBUaGUgc3RyZWV0cyBvZiBDaGFuZHJhcHVyIHdpbmQgdXB3YXJkLiBUaGluIGFpci4gQSBkb2cgd2F0Y2hlcyB5b3UgZnJvbSBhIGRvb3J3YXkuCgpBdCB0aGUgbm9ydGggZ2F0ZSwgYSBib3kgaXMgc2VsbGluZyBjYXJkYW1vbSBmcm9tIGEgc2FjaywgYW5kIGhlIGxvb2tzIGF0IHlvdSB0aGUgc2FtZSB3YXkgdGhlIHdvbWFuIGRpZCDigJQgbGlrZSBoZSdzIGJlZW4gdG9sZCB0byBleHBlY3QgeW91Lg==',
             'choices' => [
-                ['text' => 'Buy a handful and ask what he knows', 'next' => '3_cardamom'],
-                ['text' => 'Walk through the gate without stopping', 'next' => '3_gate'],
+                ['text' => 'QnV5IGEgaGFuZGZ1bCBhbmQgYXNrIHdoYXQgaGUga25vd3M=', 'next' => '3_cardamom'],
+                ['text' => 'V2FsayB0aHJvdWdoIHRoZSBnYXRlIHdpdGhvdXQgc3RvcHBpbmc=', 'next' => '3_gate'],
             ],
         ],
 
         '2_approach' => [
-            'prose' => "Her name is Miriam. She says it matter-of-factly, like she's been rehearsing. She sits across from you and orders two chais without asking. She speaks good Hindi, better Nepali.
-
-She says she's been to the meridian and come back, which almost nobody does. She says the path is technically easy but geographically unkind.",
+            'prose' => 'SGVyIG5hbWUgaXMgTWlyaWFtLiBTaGUgc2F5cyBpdCBtYXR0ZXItb2YtZmFjdGx5LCBsaWtlIHNoZSdzIGJlZW4gcmVoZWFyc2luZy4gU2hlIHNpdHMgYWNyb3NzIGZyb20geW91IGFuZCBvcmRlcnMgdHdvIGNoYWlzIHdpdGhvdXQgYXNraW5nLiBTaGUgc3BlYWtzIGdvb2QgSGluZGksIGJldHRlciBOZXBhbGkuCgpTaGUgc2F5cyBzaGUncyBiZWVuIHRvIHRoZSBtZXJpZGlhbiBhbmQgY29tZSBiYWNrLCB3aGljaCBhbG1vc3Qgbm9ib2R5IGRvZXMuIFNoZSBzYXlzIHRoZSBwYXRoIGlzIHRlY2huaWNhbGx5IGVhc3kgYnV0IGdlb2dyYXBoaWNhbGx5IHVua2luZC4=',
             'choices' => [
-                ['text' => 'Ask what she means by unkind',  'next' => '3_unkind'],
-                ['text' => 'Ask if she will take you there', 'next' => '3_guide'],
+                ['text' => 'QXNrIHdoYXQgc2hlIG1lYW5zIGJ5IHVua2luZA==', 'next' => '3_unkind'],
+                ['text' => 'QXNrIGlmIHNoZSB3aWxsIHRha2UgeW91IHRoZXJl', 'next' => '3_guide'],
             ],
         ],
 
         '3_cardamom' => [
-            'prose' => "The boy's name is Babu. He doesn't know much about the meridian specifically, but he knows about the ice cave at the third false peak — everyone local does. He says it's not a cave, really. More of a threshold.
-
-He draws a mark in the dust with his heel that matches something in the corner of grandmother's map. You give him more cardamom money than the handful cost.",
+            'prose' => 'VGhlIGJveSdzIG5hbWUgaXMgQmFidS4gSGUgZG9lc24ndCBrbm93IG11Y2ggYWJvdXQgdGhlIG1lcmlkaWFuIHNwZWNpZmljYWxseSwgYnV0IGhlIGtub3dzIGFib3V0IHRoZSBpY2UgY2F2ZSBhdCB0aGUgdGhpcmQgZmFsc2UgcGVhayDigJQgZXZlcnlvbmUgbG9jYWwgZG9lcy4gSGUgc2F5cyBpdCdzIG5vdCBhIGNhdmUsIHJlYWxseS4gTW9yZSBvZiBhIHRocmVzaG9sZC4KCkhlIGRyYXdzIGEgbWFyayBpbiB0aGUgZHVzdCB3aXRoIGhpcyBoZWVsIHRoYXQgbWF0Y2hlcyBzb21ldGhpbmcgaW4gdGhlIGNvcm5lciBvZiBncmFuZG1vdGhlcidzIG1hcC4gWW91IGdpdmUgaGltIG1vcmUgY2FyZGFtb20gbW9uZXkgdGhhbiB0aGUgaGFuZGZ1bCBjb3N0Lg==',
             'choices' => [
-                ['text' => 'Continue to the glacier', 'next' => '4_glacier'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIGdsYWNpZXI=', 'next' => '4_glacier'],
             ],
         ],
 
         '3_gate' => [
-            'prose' => "The north gate guard is a woman with a thermos of something that isn't tea. She doesn't stop you, but she stamps a chit you didn't know you needed, which means someone now has a record of you going up.
-
-You're three hours above the town before you stop thinking about that.",
+            'prose' => 'VGhlIG5vcnRoIGdhdGUgZ3VhcmQgaXMgYSB3b21hbiB3aXRoIGEgdGhlcm1vcyBvZiBzb21ldGhpbmcgdGhhdCBpc24ndCB0ZWEuIFNoZSBkb2Vzbid0IHN0b3AgeW91LCBidXQgc2hlIHN0YW1wcyBhIGNoaXQgeW91IGRpZG4ndCBrbm93IHlvdSBuZWVkZWQsIHdoaWNoIG1lYW5zIHNvbWVvbmUgbm93IGhhcyBhIHJlY29yZCBvZiB5b3UgZ29pbmcgdXAuCgpZb3UncmUgdGhyZWUgaG91cnMgYWJvdmUgdGhlIHRvd24gYmVmb3JlIHlvdSBzdG9wIHRoaW5raW5nIGFib3V0IHRoYXQu',
             'choices' => [
-                ['text' => 'Continue to the glacier', 'next' => '4_glacier'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIGdsYWNpZXI=', 'next' => '4_glacier'],
             ],
         ],
 
         '3_unkind' => [
-            'prose' => "Miriam says: the path is easy to follow, difficult to finish. The glacier speaks. She means it literally — there are sounds, cracks, movements that have no meteorological cause.
-
-The stone at the top is marked in a language that isn't Sanskrit or Tibetan. She's had a linguist look at photographs. The linguist had questions that Miriam wasn't prepared to answer.",
+            'prose' => 'TWlyaWFtIHNheXM6IHRoZSBwYXRoIGlzIGVhc3kgdG8gZm9sbG93LCBkaWZmaWN1bHQgdG8gZmluaXNoLiBUaGUgZ2xhY2llciBzcGVha3MuIFNoZSBtZWFucyBpdCBsaXRlcmFsbHkg4oCUIHRoZXJlIGFyZSBzb3VuZHMsIGNyYWNrcywgbW92ZW1lbnRzIHRoYXQgaGF2ZSBubyBtZXRlb3JvbG9naWNhbCBjYXVzZS4KClRoZSBzdG9uZSBhdCB0aGUgdG9wIGlzIG1hcmtlZCBpbiBhIGxhbmd1YWdlIHRoYXQgaXNuJ3QgU2Fuc2tyaXQgb3IgVGliZXRhbi4gU2hlJ3MgaGFkIGEgbGluZ3Vpc3QgbG9vayBhdCBwaG90b2dyYXBocy4gVGhlIGxpbmd1aXN0IGhhZCBxdWVzdGlvbnMgdGhhdCBNaXJpYW0gd2Fzbid0IHByZXBhcmVkIHRvIGFuc3dlci4=',
             'choices' => [
-                ['text' => 'Continue to the glacier', 'next' => '4_glacier'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIGdsYWNpZXI=', 'next' => '4_glacier'],
             ],
         ],
 
         '3_guide' => [
-            'prose' => "She says no immediately, but then asks why you're going. You tell her about grandmother. She asks if you know what the blade unlocks.
-
-You don't.
-
-She says that's honest, and that honest people have a better time at the meridian than clever ones. She gives you the name of a lodge keeper near the snowline and writes it in her own handwriting, which is different from grandmother's but not entirely unlike it.",
+            'prose' => 'U2hlIHNheXMgbm8gaW1tZWRpYXRlbHksIGJ1dCB0aGVuIGFza3Mgd2h5IHlvdSdyZSBnb2luZy4gWW91IHRlbGwgaGVyIGFib3V0IGdyYW5kbW90aGVyLiBTaGUgYXNrcyBpZiB5b3Uga25vdyB3aGF0IHRoZSBibGFkZSB1bmxvY2tzLgoKWW91IGRvbid0LgoKU2hlIHNheXMgdGhhdCdzIGhvbmVzdCwgYW5kIHRoYXQgaG9uZXN0IHBlb3BsZSBoYXZlIGEgYmV0dGVyIHRpbWUgYXQgdGhlIG1lcmlkaWFuIHRoYW4gY2xldmVyIG9uZXMuIFNoZSBnaXZlcyB5b3UgdGhlIG5hbWUgb2YgYSBsb2RnZSBrZWVwZXIgbmVhciB0aGUgc25vd2xpbmUgYW5kIHdyaXRlcyBpdCBpbiBoZXIgb3duIGhhbmR3cml0aW5nLCB3aGljaCBpcyBkaWZmZXJlbnQgZnJvbSBncmFuZG1vdGhlcidzIGJ1dCBub3QgZW50aXJlbHkgdW5saWtlIGl0Lg==',
             'choices' => [
-                ['text' => 'Continue to the glacier', 'next' => '4_glacier'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIGdsYWNpZXI=', 'next' => '4_glacier'],
             ],
         ],
 
         '4_glacier' => [
-            'prose' => "The glacier is steel-coloured under a high thin sky. You can see the false peaks from here — three of them, arranged like a question mark. The path is obvious in the morning: darker rock beneath the ice. By afternoon it will be camouflaged.
-
-The map suggests the standing stone is beyond the third peak, but the map is fifty years old and glaciers move. The blade is still warm inside your coat, which is strange, because you've been walking in single digits for hours.",
+            'prose' => 'VGhlIGdsYWNpZXIgaXMgc3RlZWwtY29sb3VyZWQgdW5kZXIgYSBoaWdoIHRoaW4gc2t5LiBZb3UgY2FuIHNlZSB0aGUgZmFsc2UgcGVha3MgZnJvbSBoZXJlIOKAlCB0aHJlZSBvZiB0aGVtLCBhcnJhbmdlZCBsaWtlIGEgcXVlc3Rpb24gbWFyay4gVGhlIHBhdGggaXMgb2J2aW91cyBpbiB0aGUgbW9ybmluZzogZGFya2VyIHJvY2sgYmVuZWF0aCB0aGUgaWNlLiBCeSBhZnRlcm5vb24gaXQgd2lsbCBiZSBjYW1vdWZsYWdlZC4KClRoZSBtYXAgc3VnZ2VzdHMgdGhlIHN0YW5kaW5nIHN0b25lIGlzIGJleW9uZCB0aGUgdGhpcmQgcGVhaywgYnV0IHRoZSBtYXAgaXMgZmlmdHkgeWVhcnMgb2xkIGFuZCBnbGFjaWVycyBtb3ZlLiBUaGUgYmxhZGUgaXMgc3RpbGwgd2FybSBpbnNpZGUgeW91ciBjb2F0LCB3aGljaCBpcyBzdHJhbmdlLCBiZWNhdXNlIHlvdSd2ZSBiZWVuIHdhbGtpbmcgaW4gc2luZ2xlIGRpZ2l0cyBmb3IgaG91cnMu',
             'choices' => [
-                ['text' => 'Push for the first peak before making camp', 'next' => '5_push'],
-                ['text' => 'Camp here and take the first peak in morning light', 'next' => '5_camp'],
+                ['text' => 'UHVzaCBmb3IgdGhlIGZpcnN0IHBlYWsgYmVmb3JlIG1ha2luZyBjYW1w', 'next' => '5_push'],
+                ['text' => 'Q2FtcCBoZXJlIGFuZCB0YWtlIHRoZSBmaXJzdCBwZWFrIGluIG1vcm5pbmcgbGlnaHQ=', 'next' => '5_camp'],
             ],
         ],
 
         '5_push' => [
-            'prose' => "You reach the first peak with an hour of light left. The view is staggering — four countries, allegedly. The second peak is closer than the map suggested, which means the third is too.
-
-The blade is warm against your ribs. You take it out and it catches the last of the light in a way that metal usually doesn't.",
+            'prose' => 'WW91IHJlYWNoIHRoZSBmaXJzdCBwZWFrIHdpdGggYW4gaG91ciBvZiBsaWdodCBsZWZ0LiBUaGUgdmlldyBpcyBzdGFnZ2VyaW5nIOKAlCBmb3VyIGNvdW50cmllcywgYWxsZWdlZGx5LiBUaGUgc2Vjb25kIHBlYWsgaXMgY2xvc2VyIHRoYW4gdGhlIG1hcCBzdWdnZXN0ZWQsIHdoaWNoIG1lYW5zIHRoZSB0aGlyZCBpcyB0b28uCgpUaGUgYmxhZGUgaXMgd2FybSBhZ2FpbnN0IHlvdXIgcmlicy4gWW91IHRha2UgaXQgb3V0IGFuZCBpdCBjYXRjaGVzIHRoZSBsYXN0IG9mIHRoZSBsaWdodCBpbiBhIHdheSB0aGF0IG1ldGFsIHVzdWFsbHkgZG9lc24ndC4=',
             'choices' => [
-                ['text' => 'Push for the second peak before dark', 'next' => '6_second_peak'],
-                ['text' => 'Camp here — the second peak in the morning', 'next' => '6_second_peak'],
+                ['text' => 'UHVzaCBmb3IgdGhlIHNlY29uZCBwZWFrIGJlZm9yZSBkYXJr', 'next' => '6_second_peak'],
+                ['text' => 'Q2FtcCBoZXJlIOKAlCB0aGUgc2Vjb25kIHBlYWsgaW4gdGhlIG1vcm5pbmc=', 'next' => '6_second_peak'],
             ],
         ],
 
         '5_camp' => [
-            'prose' => "The night on the glacier is spectacular and cold. You're woken twice: once by a sound like a door opening somewhere beneath the ice, once by nothing you can name.
-
-In the morning the air is still and the first peak is lit gold before the rest of the mountain. You eat the last of the cardamom bread and start climbing, and the blade is warm against your ribs in a way that has nothing to do with body heat.",
+            'prose' => 'VGhlIG5pZ2h0IG9uIHRoZSBnbGFjaWVyIGlzIHNwZWN0YWN1bGFyIGFuZCBjb2xkLiBZb3UncmUgd29rZW4gdHdpY2U6IG9uY2UgYnkgYSBzb3VuZCBsaWtlIGEgZG9vciBvcGVuaW5nIHNvbWV3aGVyZSBiZW5lYXRoIHRoZSBpY2UsIG9uY2UgYnkgbm90aGluZyB5b3UgY2FuIG5hbWUuCgpJbiB0aGUgbW9ybmluZyB0aGUgYWlyIGlzIHN0aWxsIGFuZCB0aGUgZmlyc3QgcGVhayBpcyBsaXQgZ29sZCBiZWZvcmUgdGhlIHJlc3Qgb2YgdGhlIG1vdW50YWluLiBZb3UgZWF0IHRoZSBsYXN0IG9mIHRoZSBjYXJkYW1vbSBicmVhZCBhbmQgc3RhcnQgY2xpbWJpbmcsIGFuZCB0aGUgYmxhZGUgaXMgd2FybSBhZ2FpbnN0IHlvdXIgcmlicyBpbiBhIHdheSB0aGF0IGhhcyBub3RoaW5nIHRvIGRvIHdpdGggYm9keSBoZWF0Lg==',
             'choices' => [
-                ['text' => 'Continue toward the second peak', 'next' => '6_second_peak'],
+                ['text' => 'Q29udGludWUgdG93YXJkIHRoZSBzZWNvbmQgcGVhaw==', 'next' => '6_second_peak'],
             ],
         ],
 
         '6_second_peak' => [
-            'prose' => "The second peak is different from the first. The path narrows here — not difficult, just deliberate, like it was made narrower on purpose. The ice on either side is older, blue-white and compressed, and the sounds Miriam mentioned have started: not wind, not ice settling. Something below the surface, rhythmic.
-
-The blade is so warm you've unbuttoned your coat.",
+            'prose' => 'VGhlIHNlY29uZCBwZWFrIGlzIGRpZmZlcmVudCBmcm9tIHRoZSBmaXJzdC4gVGhlIHBhdGggbmFycm93cyBoZXJlIOKAlCBub3QgZGlmZmljdWx0LCBqdXN0IGRlbGliZXJhdGUsIGxpa2UgaXQgd2FzIG1hZGUgbmFycm93ZXIgb24gcHVycG9zZS4gVGhlIGljZSBvbiBlaXRoZXIgc2lkZSBpcyBvbGRlciwgYmx1ZS13aGl0ZSBhbmQgY29tcHJlc3NlZCwgYW5kIHRoZSBzb3VuZHMgTWlyaWFtIG1lbnRpb25lZCBoYXZlIHN0YXJ0ZWQ6IG5vdCB3aW5kLCBub3QgaWNlIHNldHRsaW5nLiBTb21ldGhpbmcgYmVsb3cgdGhlIHN1cmZhY2UsIHJoeXRobWljLgoKVGhlIGJsYWRlIGlzIHNvIHdhcm0geW91J3ZlIHVuYnV0dG9uZWQgeW91ciBjb2F0Lg==',
             'choices' => [
-                ['text' => 'Stop and listen to the rhythm', 'next' => '7_listen'],
-                ['text' => "Keep moving — don't give it the attention", 'next' => '7_keep_moving'],
+                ['text' => 'U3RvcCBhbmQgbGlzdGVuIHRvIHRoZSByaHl0aG0=', 'next' => '7_listen'],
+                ['text' => 'S2VlcCBtb3Zpbmcg4oCUIGRvbid0IGdpdmUgaXQgdGhlIGF0dGVudGlvbg==', 'next' => '7_keep_moving'],
             ],
         ],
 
         '7_listen' => [
-            'prose' => "Three beats, pause, three beats. You stand still long enough to be certain of the pattern. Then you take one step forward and it changes: four beats, pause, one.
-
-Like it noticed you.
-
-You stand there a while longer. The pattern doesn't change again. Whatever is down there has said what it wanted to say.",
+            'prose' => 'VGhyZWUgYmVhdHMsIHBhdXNlLCB0aHJlZSBiZWF0cy4gWW91IHN0YW5kIHN0aWxsIGxvbmcgZW5vdWdoIHRvIGJlIGNlcnRhaW4gb2YgdGhlIHBhdHRlcm4uIFRoZW4geW91IHRha2Ugb25lIHN0ZXAgZm9yd2FyZCBhbmQgaXQgY2hhbmdlczogZm91ciBiZWF0cywgcGF1c2UsIG9uZS4KCkxpa2UgaXQgbm90aWNlZCB5b3UuCgpZb3Ugc3RhbmQgdGhlcmUgYSB3aGlsZSBsb25nZXIuIFRoZSBwYXR0ZXJuIGRvZXNuJ3QgY2hhbmdlIGFnYWluLiBXaGF0ZXZlciBpcyBkb3duIHRoZXJlIGhhcyBzYWlkIHdoYXQgaXQgd2FudGVkIHRvIHNheS4=',
             'choices' => [
-                ['text' => 'Continue to the third peak', 'next' => '8_third_peak'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIHRoaXJkIHBlYWs=', 'next' => '8_third_peak'],
             ],
         ],
 
         '7_keep_moving' => [
-            'prose' => "Whatever is below the ice knows you're there. You can tell because when you stop, the sound stops too — and when you move, it matches your pace for thirty seconds before falling back into its own rhythm.
-
-Easier not to test it. You reach the top of the second peak before noon and do not look back at the path you came up.",
+            'prose' => 'V2hhdGV2ZXIgaXMgYmVsb3cgdGhlIGljZSBrbm93cyB5b3UncmUgdGhlcmUuIFlvdSBjYW4gdGVsbCBiZWNhdXNlIHdoZW4geW91IHN0b3AsIHRoZSBzb3VuZCBzdG9wcyB0b28g4oCUIGFuZCB3aGVuIHlvdSBtb3ZlLCBpdCBtYXRjaGVzIHlvdXIgcGFjZSBmb3IgdGhpcnR5IHNlY29uZHMgYmVmb3JlIGZhbGxpbmcgYmFjayBpbnRvIGl0cyBvd24gcmh5dGhtLgoKRWFzaWVyIG5vdCB0byB0ZXN0IGl0LiBZb3UgcmVhY2ggdGhlIHRvcCBvZiB0aGUgc2Vjb25kIHBlYWsgYmVmb3JlIG5vb24gYW5kIGRvIG5vdCBsb29rIGJhY2sgYXQgdGhlIHBhdGggeW91IGNhbWUgdXAu',
             'choices' => [
-                ['text' => 'Continue to the third peak', 'next' => '8_third_peak'],
+                ['text' => 'Q29udGludWUgdG8gdGhlIHRoaXJkIHBlYWs=', 'next' => '8_third_peak'],
             ],
         ],
 
         '8_third_peak' => [
-            'prose' => "The standing stone is visible from the third peak — smaller than you expected, and darker. Black basalt, grandmother's map said. From here you can see something at its base that catches the light the same way the blade does.
-
-Around the stone the ice is oldest: compressed over centuries, almost grey. The path to it crosses thirty metres of open glacier with no cover, and the wind has picked up.",
+            'prose' => 'VGhlIHN0YW5kaW5nIHN0b25lIGlzIHZpc2libGUgZnJvbSB0aGUgdGhpcmQgcGVhayDigJQgc21hbGxlciB0aGFuIHlvdSBleHBlY3RlZCwgYW5kIGRhcmtlci4gQmxhY2sgYmFzYWx0LCBncmFuZG1vdGhlcidzIG1hcCBzYWlkLiBGcm9tIGhlcmUgeW91IGNhbiBzZWUgc29tZXRoaW5nIGF0IGl0cyBiYXNlIHRoYXQgY2F0Y2hlcyB0aGUgbGlnaHQgdGhlIHNhbWUgd2F5IHRoZSBibGFkZSBkb2VzLgoKQXJvdW5kIHRoZSBzdG9uZSB0aGUgaWNlIGlzIG9sZGVzdDogY29tcHJlc3NlZCBvdmVyIGNlbnR1cmllcywgYWxtb3N0IGdyZXkuIFRoZSBwYXRoIHRvIGl0IGNyb3NzZXMgdGhpcnR5IG1ldHJlcyBvZiBvcGVuIGdsYWNpZXIgd2l0aCBubyBjb3ZlciwgYW5kIHRoZSB3aW5kIGhhcyBwaWNrZWQgdXAu',
             'choices' => [
-                ['text' => "Cross directly — it's thirty metres", 'next' => '9_cross_direct'],
-                ['text' => 'Circle the long way and find a stable line', 'next' => '9_circle'],
+                ['text' => 'Q3Jvc3MgZGlyZWN0bHkg4oCUIGl0J3MgdGhpcnR5IG1ldHJlcw==', 'next' => '9_cross_direct'],
+                ['text' => 'Q2lyY2xlIHRoZSBsb25nIHdheSBhbmQgZmluZCBhIHN0YWJsZSBsaW5l', 'next' => '9_circle'],
             ],
         ],
 
         '9_cross_direct' => [
-            'prose' => "The ice holds. Halfway across, the blade vibrates once — a single pulse, felt more than heard, like a struck bell heard through water. You stop. Nothing else happens. You keep walking.
-
-The stone is waist-high, as described. Grandmother's initials are cut into the base, exactly where the map said. Below them: a small brass door, set flush into the basalt, so flush you'd miss it without knowing to look.",
+            'prose' => 'VGhlIGljZSBob2xkcy4gSGFsZndheSBhY3Jvc3MsIHRoZSBibGFkZSB2aWJyYXRlcyBvbmNlIOKAlCBhIHNpbmdsZSBwdWxzZSwgZmVsdCBtb3JlIHRoYW4gaGVhcmQsIGxpa2UgYSBzdHJ1Y2sgYmVsbCBoZWFyZCB0aHJvdWdoIHdhdGVyLiBZb3Ugc3RvcC4gTm90aGluZyBlbHNlIGhhcHBlbnMuIFlvdSBrZWVwIHdhbGtpbmcuCgpUaGUgc3RvbmUgaXMgd2Fpc3QtaGlnaCwgYXMgZGVzY3JpYmVkLiBHcmFuZG1vdGhlcidzIGluaXRpYWxzIGFyZSBjdXQgaW50byB0aGUgYmFzZSwgZXhhY3RseSB3aGVyZSB0aGUgbWFwIHNhaWQuIEJlbG93IHRoZW06IGEgc21hbGwgYnJhc3MgZG9vciwgc2V0IGZsdXNoIGludG8gdGhlIGJhc2FsdCwgc28gZmx1c2ggeW91J2QgbWlzcyBpdCB3aXRob3V0IGtub3dpbmcgdG8gbG9vay4=',
             'choices' => [
-                ['text' => 'Try the blade in the lock', 'next' => '10_the_door'],
+                ['text' => 'VHJ5IHRoZSBibGFkZSBpbiB0aGUgbG9jaw==', 'next' => '10_the_door'],
             ],
         ],
 
         '9_circle' => [
-            'prose' => "The long route takes forty minutes and is better ice — older, more stable. You reach the stone from the north side, which isn't shown on the map, and find something the map doesn't mark: a second set of initials cut shallower, in a different hand, in a script you don't recognise.
-
-You take a photograph. Then you walk around to the south face where grandmother's initials are, and below them the small brass door, set so flush into the basalt that you feel it before you see it.",
+            'prose' => 'VGhlIGxvbmcgcm91dGUgdGFrZXMgZm9ydHkgbWludXRlcyBhbmQgaXMgYmV0dGVyIGljZSDigJQgb2xkZXIsIG1vcmUgc3RhYmxlLiBZb3UgcmVhY2ggdGhlIHN0b25lIGZyb20gdGhlIG5vcnRoIHNpZGUsIHdoaWNoIGlzbid0IHNob3duIG9uIHRoZSBtYXAsIGFuZCBmaW5kIHNvbWV0aGluZyB0aGUgbWFwIGRvZXNuJ3QgbWFyazogYSBzZWNvbmQgc2V0IG9mIGluaXRpYWxzIGN1dCBzaGFsbG93ZXIsIGluIGEgZGlmZmVyZW50IGhhbmQsIGluIGEgc2NyaXB0IHlvdSBkb24ndCByZWNvZ25pc2UuCgpZb3UgdGFrZSBhIHBob3RvZ3JhcGguIFRoZW4geW91IHdhbGsgYXJvdW5kIHRvIHRoZSBzb3V0aCBmYWNlIHdoZXJlIGdyYW5kbW90aGVyJ3MgaW5pdGlhbHMgYXJlLCBhbmQgYmVsb3cgdGhlbSB0aGUgc21hbGwgYnJhc3MgZG9vciwgc2V0IHNvIGZsdXNoIGludG8gdGhlIGJhc2FsdCB0aGF0IHlvdSBmZWVsIGl0IGJlZm9yZSB5b3Ugc2VlIGl0Lg==',
             'choices' => [
-                ['text' => 'Try the blade in the lock', 'next' => '10_the_door'],
+                ['text' => 'VHJ5IHRoZSBibGFkZSBpbiB0aGUgbG9jaw==', 'next' => '10_the_door'],
             ],
         ],
 
         '10_the_door' => [
-            'prose' => "The blade fits the keyhole — not perfectly, but it was never quite meant for this, which is perhaps the point. You feel two catches, then a third. Something inside the stone moves, deliberate and unhurried, like it's been waiting to be polite about this.
-
-The door opens inward. Behind it: a recess about the size of a shoebox, dry despite everything. Inside the recess, a tin box, dented, sealed with wax.",
+            'prose' => 'VGhlIGJsYWRlIGZpdHMgdGhlIGtleWhvbGUg4oCUIG5vdCBwZXJmZWN0bHksIGJ1dCBpdCB3YXMgbmV2ZXIgcXVpdGUgbWVhbnQgZm9yIHRoaXMsIHdoaWNoIGlzIHBlcmhhcHMgdGhlIHBvaW50LiBZb3UgZmVlbCB0d28gY2F0Y2hlcywgdGhlbiBhIHRoaXJkLiBTb21ldGhpbmcgaW5zaWRlIHRoZSBzdG9uZSBtb3ZlcywgZGVsaWJlcmF0ZSBhbmQgdW5odXJyaWVkLCBsaWtlIGl0J3MgYmVlbiB3YWl0aW5nIHRvIGJlIHBvbGl0ZSBhYm91dCB0aGlzLgoKVGhlIGRvb3Igb3BlbnMgaW53YXJkLiBCZWhpbmQgaXQ6IGEgcmVjZXNzIGFib3V0IHRoZSBzaXplIG9mIGEgc2hvZWJveCwgZHJ5IGRlc3BpdGUgZXZlcnl0aGluZy4gSW5zaWRlIHRoZSByZWNlc3MsIGEgdGluIGJveCwgZGVudGVkLCBzZWFsZWQgd2l0aCB3YXgu',
             'choices' => [
-                ['text' => 'Open it', 'next' => '11_open'],
-                ['text' => 'Sit with it a moment first', 'next' => '11_wait'],
+                ['text' => 'T3BlbiBpdA==', 'next' => '11_open'],
+                ['text' => 'U2l0IHdpdGggaXQgYSBtb21lbnQgZmlyc3Q=', 'next' => '11_wait'],
             ],
         ],
 
         '11_open' => [
-            'prose' => "Inside the tin: a letter, folded twice, in grandmother's handwriting.
-
-Not her old handwriting. Her handwriting from three years ago — the careful, slightly compressed script she used after her hands started troubling her. Which is impossible, because grandmother died four years ago.
-
-The letter begins:
-
-I knew you'd be quick about it. That was always your way. Sit down. The ice will hold.",
+            'prose' => 'SW5zaWRlIHRoZSB0aW46IGEgbGV0dGVyLCBmb2xkZWQgdHdpY2UsIGluIGdyYW5kbW90aGVyJ3MgaGFuZHdyaXRpbmcuCgpOb3QgaGVyIG9sZCBoYW5kd3JpdGluZy4gSGVyIGhhbmR3cml0aW5nIGZyb20gdGhyZWUgeWVhcnMgYWdvIOKAlCB0aGUgY2FyZWZ1bCwgc2xpZ2h0bHkgY29tcHJlc3NlZCBzY3JpcHQgc2hlIHVzZWQgYWZ0ZXIgaGVyIGhhbmRzIHN0YXJ0ZWQgdHJvdWJsaW5nIGhlci4gV2hpY2ggaXMgaW1wb3NzaWJsZSwgYmVjYXVzZSBncmFuZG1vdGhlciBkaWVkIGZvdXIgeWVhcnMgYWdvLgoKVGhlIGxldHRlciBiZWdpbnM6CgpJIGtuZXcgeW91J2QgYmUgcXVpY2sgYWJvdXQgaXQuIFRoYXQgd2FzIGFsd2F5cyB5b3VyIHdheS4gU2l0IGRvd24uIFRoZSBpY2Ugd2lsbCBob2xkLg==',
             'choices' => [],
             'terminal' => true,
         ],
 
         '11_wait' => [
-            'prose' => "You sit on the ice with the tin in your lap for ten minutes. The glacier is quiet. Whatever was below the surface has stopped. The wind has dropped to nothing, which at this altitude means something but you're not sure what.
-
-Then you open it. Inside: a letter, folded twice, in grandmother's handwriting — not her old handwriting but the careful, compressed script she used in her last years. Which is impossible because grandmother died four years ago.
-
-The letter begins:
-
-I knew you'd take your time. Good. You'll need that patience.",
+            'prose' => 'WW91IHNpdCBvbiB0aGUgaWNlIHdpdGggdGhlIHRpbiBpbiB5b3VyIGxhcCBmb3IgdGVuIG1pbnV0ZXMuIFRoZSBnbGFjaWVyIGlzIHF1aWV0LiBXaGF0ZXZlciB3YXMgYmVsb3cgdGhlIHN1cmZhY2UgaGFzIHN0b3BwZWQuIFRoZSB3aW5kIGhhcyBkcm9wcGVkIHRvIG5vdGhpbmcsIHdoaWNoIGF0IHRoaXMgYWx0aXR1ZGUgbWVhbnMgc29tZXRoaW5nIGJ1dCB5b3UncmUgbm90IHN1cmUgd2hhdC4KClRoZW4geW91IG9wZW4gaXQuIEluc2lkZTogYSBsZXR0ZXIsIGZvbGRlZCB0d2ljZSwgaW4gZ3JhbmRtb3RoZXIncyBoYW5kd3JpdGluZyDigJQgbm90IGhlciBvbGQgaGFuZHdyaXRpbmcgYnV0IHRoZSBjYXJlZnVsLCBjb21wcmVzc2VkIHNjcmlwdCBzaGUgdXNlZCBpbiBoZXIgbGFzdCB5ZWFycy4gV2hpY2ggaXMgaW1wb3NzaWJsZSBiZWNhdXNlIGdyYW5kbW90aGVyIGRpZWQgZm91ciB5ZWFycyBhZ28uCgpUaGUgbGV0dGVyIGJlZ2luczoKCkkga25ldyB5b3UnZCB0YWtlIHlvdXIgdGltZS4gR29vZC4gWW91J2xsIG5lZWQgdGhhdCBwYXRpZW5jZS4=',
             'choices' => [],
             'terminal' => true,
         ],

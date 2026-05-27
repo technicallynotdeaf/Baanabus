@@ -13,6 +13,7 @@ $pageKey  = $prog['current_key'];
 $page     = $story['pages'][$pageKey] ?? null;
 if (!$page) { echo '<p>Story page not found.</p>'; exit; }
 
+$prose     = base64_decode($page['prose']);
 $canChoose = $prog['pages_available'] > $prog['depth'];
 $choices   = $page['choices'] ?? [];
 $terminal  = !empty($page['terminal']);
@@ -23,7 +24,7 @@ $terminal  = !empty($page['terminal']);
   </p>
 
   <div style="line-height:1.75;margin-bottom:1.25rem;">
-    <?php foreach (explode("\n\n", trim($page['prose'])) as $para): ?>
+    <?php foreach (explode("\n\n", trim($prose)) as $para): ?>
       <p style="margin:0 0 0.9rem;"><?= nl2br(htmlspecialchars(trim($para))) ?></p>
     <?php endforeach; ?>
   </div>
@@ -41,7 +42,7 @@ $terminal  = !empty($page['terminal']);
     <?php else: ?>
       <?php if (count($choices) === 1): ?>
         <button class="action-button" onclick="window._storyChoose('<?= htmlspecialchars($choices[0]['next']) ?>')">
-          <?= htmlspecialchars($choices[0]['text']) ?>
+          <?= htmlspecialchars(base64_decode($choices[0]['text'])) ?>
         </button>
       <?php else: ?>
         <div style="display:flex;flex-direction:column;gap:0.5rem;">
@@ -49,7 +50,7 @@ $terminal  = !empty($page['terminal']);
             <button class="action-button"
                     style="text-align:left;background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
                     onclick="window._storyChoose('<?= htmlspecialchars($choice['next']) ?>')">
-              <?= htmlspecialchars($choice['text']) ?>
+              <?= htmlspecialchars(base64_decode($choice['text'])) ?>
             </button>
           <?php endforeach; ?>
         </div>

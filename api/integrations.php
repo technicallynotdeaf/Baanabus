@@ -43,6 +43,14 @@ if ($method === 'POST') {
         $existing = getCassowary();
         $merged   = array_replace_recursive($existing, $filtered);
         saveCassowary($merged);
+
+        // If Habitica creds were just set, mark uses_habitica = true in config
+        if (!empty($filtered['habitica']['user_id']) && !empty($filtered['habitica']['api_key'])) {
+            $cfg = getConfig() ?? [];
+            $cfg['preferences']['uses_habitica'] = true;
+            saveConfig($cfg);
+        }
+
         respond(['ok' => true]);
     } catch (Exception $e) {
         respond(['error' => $e->getMessage()], 500);

@@ -75,7 +75,7 @@ document.getElementById('habitica-form').addEventListener('submit', async functi
   const statusEl = document.getElementById('habStatus');
   statusEl.textContent = 'Saving…';
   try {
-    const resp = await fetch('api/cassowary.php', {
+    const resp = await fetch('api/integrations.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -87,12 +87,12 @@ document.getElementById('habitica-form').addEventListener('submit', async functi
     });
     const result = await resp.json();
     if (result.ok) {
-      statusEl.textContent = '✅ Saved.';
+      statusEl.textContent = 'Saved.';
     } else {
       throw new Error(result.error || 'Save failed');
     }
   } catch(e) {
-    statusEl.textContent = '❌ ' + e.message;
+    statusEl.textContent = e.message;
     statusEl.style.color = 'crimson';
   }
 });

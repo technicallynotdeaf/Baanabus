@@ -83,7 +83,7 @@ function setupOverlayListeners() {
       .then(data => {
           if (data.success) {
           updateProgressBar(data.pages);
-          if (data.newBook && typeof window.refreshScene === 'function') {
+          if (data.newStoryPage && typeof window.refreshScene === 'function') {
               window.refreshScene();
           }
           loadSpeechBubble('lets-go.php');

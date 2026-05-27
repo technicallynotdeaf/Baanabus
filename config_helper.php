@@ -283,17 +283,15 @@ function vaultMarkComplete(int $taskId): array {
     if (!$found) throw new Exception('Task not found');
 
     $data['pages'] = ($data['pages'] ?? 0) + 1;
-    $newBook = false;
+    $newStoryPage = false;
     if ($data['pages'] >= 10) {
         $data['pages'] = 0;
-        $data['books'] = ($data['books'] ?? 0) + 1;
-        $newBook = true;
+        $newStoryPage = true;
     }
     saveTasks($data);
     return [
         'pages'            => $data['pages'],
-        'books'            => $data['books'],
-        'newBook'          => $newBook,
+        'newStoryPage'     => $newStoryPage,
         'habitica_id'      => $habiticaId,
         'habitica_item_id' => $habiticaItemId,
     ];
@@ -346,6 +344,31 @@ function addToInbox(string $content): array {
     $data['next_id']++;
     saveInbox($data);
     return $item;
+}
+
+// ---------- Story progress (stored in config.enc under config['stories'][$id]) ----------
+
+function getStoryProgress(int $storyId): array {
+    $cfg      = getConfig() ?? [];
+    $progress = $cfg['stories'][$storyId] ?? [];
+    return [
+        'pages_available' => (int)($progress['pages_available'] ?? 1),
+        'depth'           => (int)($progress['depth']           ?? 0),
+        'current_key'     => $progress['current_key']            ?? '1_start',
+    ];
+}
+
+function saveStoryProgress(int $storyId, array $progress): void {
+    $cfg = getConfig() ?? [];
+    $cfg['stories'][$storyId] = $progress;
+    saveConfig($cfg);
+}
+
+function incrementStoryPages(int $storyId): int {
+    $p = getStoryProgress($storyId);
+    $p['pages_available']++;
+    saveStoryProgress($storyId, $p);
+    return $p['pages_available'];
 }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------

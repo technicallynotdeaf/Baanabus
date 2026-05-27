@@ -18,6 +18,10 @@ if (!$taskId) respond_mc(['error' => 'Missing task_id'], 400);
 try {
     $result = vaultMarkComplete($taskId);
 
+    if ($result['newStoryPage']) {
+        try { incrementStoryPages(1); } catch (Throwable $e) { /* non-fatal */ }
+    }
+
     if (!empty($result['habitica_id'])) {
         require_once __DIR__ . '/habitica_helper.php';
         $cass   = getCassowary();
@@ -39,7 +43,7 @@ try {
         }
     }
 
-    respond_mc(['success' => true, 'pages' => $result['pages'], 'books' => $result['books'], 'newBook' => $result['newBook']]);
+    respond_mc(['success' => true, 'pages' => $result['pages'], 'newStoryPage' => $result['newStoryPage']]);
 } catch (Throwable $e) {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);
 }

@@ -195,6 +195,11 @@ const overlayBody = document.getElementById('overlay-body');   // inner scroll a
 function showOverlay(){ if(overlay) overlay.style.display='flex'; if(document.body) document.body.style.overflow='hidden'; }
 function hideOverlay(){ if(overlay) overlay.style.display='none'; if(document.body) document.body.style.overflow=''; if(overlayBody) overlayBody.innerHTML=''; }
 
+function updateProgressBar(pages) {
+  const bar = document.getElementById('progress-bar');
+  if (bar) bar.style.width = (pages * 10) + '%';
+}
+
 // ============================
 // Call the initializers
 // ============================

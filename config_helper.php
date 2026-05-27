@@ -190,6 +190,98 @@ function wrapDekWithPrf(string $dek, string $prfKeyB64u, array $paths, ?string $
     ], JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
+// ---------- Tasks vault ----------
+
+function tasksPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/tasks.enc";
+}
+
+function _defaultTasks(): array {
+    $now = date('c');
+    return [
+        'next_id' => 6,
+        'pages'   => 0,
+        'books'   => 0,
+        'tasks'   => [
+            ['id'=>1,'title'=>'Do one thing that makes tomorrow easier',          'urgency'=>'low','energy'=>'low',   'status'=>'active','snoozed_until'=>null,'created_at'=>$now],
+            ['id'=>2,'title'=>'Write down three things that went well today',      'urgency'=>'low','energy'=>'low',   'status'=>'active','snoozed_until'=>null,'created_at'=>$now],
+            ['id'=>3,'title'=>'Message one person you have not spoken to lately',  'urgency'=>'low','energy'=>'medium','status'=>'active','snoozed_until'=>null,'created_at'=>$now],
+            ['id'=>4,'title'=>'Spend 10 minutes tidying your space',               'urgency'=>'low','energy'=>'low',   'status'=>'active','snoozed_until'=>null,'created_at'=>$now],
+            ['id'=>5,'title'=>'Review your task list and pick the easiest win',    'urgency'=>'low','energy'=>'low',   'status'=>'active','snoozed_until'=>null,'created_at'=>$now],
+        ],
+    ];
+}
+
+function getTasks(): array {
+    $path = tasksPath();
+    if (!is_file($path)) return _defaultTasks();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Tasks: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Tasks decrypt failed');
+    return json_decode($plain, true) ?? _defaultTasks();
+}
+
+function saveTasks(array $data): void {
+    $path = tasksPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    if (file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        throw new Exception('Failed to write tasks.enc');
+    }
+    @chmod($path, 0600);
+}
+
+function getDoableTasks(): array {
+    $data = getTasks();
+    $now  = time();
+    return array_values(array_filter($data['tasks'], function($t) use ($now) {
+        return $t['status'] === 'active'
+            && (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now);
+    }));
+}
+
+function vaultMarkComplete(int $taskId): array {
+    $data  = getTasks();
+    $found = false;
+    foreach ($data['tasks'] as &$t) {
+        if ((int)$t['id'] === $taskId) {
+            $t['status']       = 'complete';
+            $t['completed_at'] = date('c');
+            $found = true;
+            break;
+        }
+    }
+    unset($t);
+    if (!$found) throw new Exception('Task not found');
+
+    $data['pages'] = ($data['pages'] ?? 0) + 1;
+    $newBook = false;
+    if ($data['pages'] >= 10) {
+        $data['pages'] = 0;
+        $data['books'] = ($data['books'] ?? 0) + 1;
+        $newBook = true;
+    }
+    saveTasks($data);
+    return ['pages' => $data['pages'], 'books' => $data['books'], 'newBook' => $newBook];
+}
+
 // ---------- Cassowary vault (API keys / integration secrets) ----------
 
 function cassowaryPath(): string {

@@ -147,12 +147,6 @@ function _ensureSchema(PDO $db): void {
             (6,'You are doing better than you think.'),
             (7,'Start somewhere. Anywhere. Just start.');
 
-        INSERT OR IGNORE INTO tasks (task_id,task_title,task_type,context,task_urgency) VALUES
-            (1,'Drink a glass of water','habit','home',3),
-            (2,'Take a 5-minute walk outside','habit','anywhere',4),
-            (3,'Check your inbox — action or archive anything urgent','admin','online',2),
-            (4,'Write down 3 things you want to get done today','planning','anywhere',2),
-            (5,'Do one thing that makes tomorrow easier','habit','anywhere',4);
     ");
 }
 

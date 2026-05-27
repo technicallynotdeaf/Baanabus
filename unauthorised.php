@@ -17,58 +17,22 @@
 </div>
 
 <script>
-// Small helpers
-const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
-
-async function loginWithPasskey() {
-  const status = document.getElementById('status');
-  status.textContent = 'Preparing login…';
-
+// BaanabusAuth is loaded globally by header.php (js/auth.js)
+document.getElementById('btn-login').addEventListener('click', async function () {
+  this.disabled = true;
   try {
-    // 1) Get auth options
-    const optRes = await fetch('auth-challenge.php', { method: 'POST' });
-    const optionsWrapper = await optRes.json();               // { publicKey: {...} }
-    if (!optionsWrapper.publicKey) throw new Error('Bad challenge payload');
-
-    // 2) Request assertion
-    const assertion = await navigator.credentials.get(optionsWrapper);
-
-    // 3) Encode for server
-    const payload = {
-      id: assertion.id,
-      type: assertion.type,
-      rawId: b64(assertion.rawId),
-      response: {
-        clientDataJSON: b64(assertion.response.clientDataJSON),
-        authenticatorData: b64(assertion.response.authenticatorData),
-        signature: b64(assertion.response.signature),
-        userHandle: assertion.response.userHandle ? b64(assertion.response.userHandle) : null
-      }
-    };
-
-    status.textContent = 'Verifying…';
-
-    // 4) Send to server
-    const verifyRes = await fetch('auth-response.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ credential: payload })
-    });
-
-    const result = await verifyRes.json();
-    if (result.success) {
-      status.textContent = '✅ Logged in. Loading…';
+    const result = await BaanabusAuth.signInPasskey();
+    if (result && result.vaultReady) {
       location.href = 'index.php';
     } else {
-      status.textContent = '❌ ' + (result.message || 'Login failed');
+      document.getElementById('status').textContent = '⚠️ Signed in but vault could not be unlocked.';
+      document.getElementById('status').style.color = 'crimson';
+      this.disabled = false;
     }
-  } catch (e) {
-    console.error(e);
-    document.getElementById('status').textContent = '❌ ' + e.message;
+  } catch (_) {
+    this.disabled = false;
   }
-}
-
-document.getElementById('btn-login').addEventListener('click', loginWithPasskey);
+});
 </script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

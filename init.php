@@ -43,6 +43,7 @@ function _ensureMigrations(PDO $db): void {
         "ALTER TABLE diary         ADD COLUMN recurrent_events TEXT",
         "ALTER TABLE diary         ADD COLUMN due_tasks        TEXT",
         "ALTER TABLE diary         ADD COLUMN gratitude        TEXT",
+        "ALTER TABLE tasks         ADD COLUMN created_at       DATETIME",
         "ALTER TABLE tasks         ADD COLUMN task_importance  INTEGER",
         "ALTER TABLE tasks         ADD COLUMN conditions       TEXT",
         "ALTER TABLE tasks         ADD COLUMN subtasks         TEXT",

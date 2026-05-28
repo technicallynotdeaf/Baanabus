@@ -143,13 +143,15 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 
   // ---- Mini-game ----
   function renderMinigame(d) {
-    if (d.game === 'tictactoe')  renderTicTacToe();
-    if (d.game === 'numguess')   renderNumGuess();
-    if (d.game === 'rps')        renderRPS();
-    if (d.game === 'mathquiz')   renderMathQuiz();
-    if (d.game === 'truefalse')  renderTrueFalse();
-    if (d.game === 'sequence')   renderSequence();
-    if (d.game === 'reaction')   renderReaction();
+    if (d.game === 'tictactoe')    renderTicTacToe();
+    if (d.game === 'numguess')     renderNumGuess();
+    if (d.game === 'rps')          renderRPS();
+    if (d.game === 'mathquiz')     renderMathQuiz();
+    if (d.game === 'truefalse')    renderTrueFalse();
+    if (d.game === 'sequence')     renderSequence();
+    if (d.game === 'reaction')     renderReaction();
+    if (d.game === 'wordscramble') renderWordScramble();
+    if (d.game === 'highlow')      renderHighLow();
   }
 
   function renderTicTacToe() {
@@ -497,50 +499,208 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     });
   }
 
+  function renderWordScramble() {
+    const words = [
+      'bridge','carpet','planet','silver','hammer','bottle','castle','garden',
+      'lantern','crayon','puzzle','basket','jungle','winter','purple','corner',
+      'frozen','pillow','candle','gravel','lizard','button','velvet','mirror',
+      'forest','temple','cobalt','finger','ladder','pepper'
+    ];
+    const correct = words[Math.floor(Math.random() * words.length)];
+    function scramble(w) {
+      let arr = w.split(''), s;
+      do { arr.sort(() => Math.random() - 0.5); s = arr.join(''); } while (s === w);
+      return s;
+    }
+    const scrambled = scramble(correct);
+    const pool = words.filter(w => w !== correct);
+    const distractors = [];
+    while (distractors.length < 3) {
+      const w = pool[Math.floor(Math.random() * pool.length)];
+      if (!distractors.includes(w)) distractors.push(w);
+    }
+    const opts = [...distractors, correct].sort(() => Math.random() - 0.5);
+    const ci   = opts.indexOf(correct);
+    const btns = opts.map((o, i) =>
+      `<button class="action-button" onclick="window._scrambleAns(${i},${ci})">${o}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p class="muted" style="font-size:0.8em;margin-bottom:0.3rem;">Unscramble the word:</p>
+      <p style="font-size:1.6em;font-weight:700;letter-spacing:0.12em;margin-bottom:0.75rem;">${scrambled}</p>
+      <div id="scramble-opts" style="display:flex;gap:8px;flex-wrap:wrap;">${btns}</div>
+      <p id="scramble-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <button id="scramble-next" class="action-button" style="display:none;margin-top:0.5rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    window._scrambleAns = function(idx, ci) {
+      document.querySelectorAll('#scramble-opts .action-button').forEach(b => b.disabled = true);
+      const fb = document.getElementById('scramble-feedback');
+      if (idx === ci) {
+        document.querySelectorAll('#scramble-opts .action-button')[idx].style.background = '#4caf50';
+        fb.textContent = 'Correct!';
+        earnPip();
+      } else {
+        document.querySelectorAll('#scramble-opts .action-button')[idx].style.background = '#e53935';
+        document.querySelectorAll('#scramble-opts .action-button')[ci].style.background = '#4caf50';
+        fb.textContent = `It was "${correct}".`;
+      }
+      document.getElementById('scramble-next').style.display = 'inline-flex';
+    };
+  }
+
+  function renderHighLow() {
+    const totalRounds = 5;
+    let round = 0, score = 0;
+    let current = Math.floor(Math.random() * 100) + 1;
+
+    function drawRound() {
+      c.innerHTML = `
+        <p class="muted" style="font-size:0.8em;margin-bottom:0.25rem;">Higher or lower? (${round + 1}/${totalRounds})</p>
+        <p style="font-size:2em;font-weight:700;margin-bottom:0.75rem;">${current}</p>
+        <div style="display:flex;gap:8px;">
+          <button class="action-button" style="flex:1;" onclick="window._hl('higher')">Higher</button>
+          <button class="action-button" style="flex:1;" onclick="window._hl('lower')">Lower</button>
+        </div>
+        <p id="hl-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+        <p class="muted" style="font-size:0.82em;">Score: ${score}/${round}</p>`;
+      window._hl = function(guess) {
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+        const next = Math.floor(Math.random() * 100) + 1;
+        const fb   = document.getElementById('hl-feedback');
+        if (next === current) {
+          fb.textContent = `Also ${next} — no change.`;
+          current = next; round++;
+          setTimeout(round < totalRounds ? drawRound : finish, 1100);
+          return;
+        }
+        const ok = (next > current && guess === 'higher') || (next < current && guess === 'lower');
+        if (ok) { score++; fb.textContent = `${next} — correct!`; }
+        else    { fb.textContent = `${next} — nope.`; }
+        current = next; round++;
+        setTimeout(round < totalRounds ? drawRound : finish, 1100);
+      };
+    }
+
+    function finish() {
+      if (score >= 3) earnPip();
+      c.innerHTML = `
+        <p style="font-size:1.1em;font-weight:600;margin-bottom:0.25rem;">${score} / ${totalRounds}</p>
+        <p class="muted" style="margin-bottom:0.75rem;">${score >= 4 ? 'Sharp.' : score >= 3 ? 'Good enough.' : 'Bad luck.'}</p>
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    }
+
+    drawRound();
+  }
+
   // ---- Triage ----
   function renderTriage(d) {
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
-      <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
+      <textarea id="triage-title"
+        style="width:100%;min-height:56px;margin-bottom:0.75rem;font-size:1em;resize:vertical;"
+        >${esc(d.title)}</textarea>
       <div style="display:flex;flex-direction:column;gap:8px;" id="triage-actions">
-        <button class="action-button" onclick="window._triageWhen(${d.id}, '${esc(d.title).replace(/'/g,"\\'")}')">Next action — I can do this</button>
-        <button class="action-button" onclick="window._triageSave(${d.id},'someday',null)">Blocked or waiting on something</button>
-        <button class="action-button" onclick="window._triageSave(${d.id},'delete',null)">Not relevant anymore</button>
+        <button class="action-button" onclick="window._triageNextAction(${d.id})">This is my next action</button>
+        <button class="action-button" onclick="window._triageBreakDown(${d.id})">Too big — break it down</button>
+        <button class="action-button" onclick="window._triageQuick(${d.id},'waiting')" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);">Waiting on someone</button>
+        <button class="action-button" onclick="window._triageQuick(${d.id},'someday')" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);">Maybe someday</button>
+        <button class="action-button" onclick="window._triageQuick(${d.id},'delete')" style="background:transparent;color:#c0392b;border:1.5px solid #c0392b;">Not relevant</button>
       </div>
       <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
 
-    window._triageWhen = function(taskId, title) {
-      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const now      = new Date();
-      const today    = fmt(now);
-      const tom      = new Date(now); tom.setDate(now.getDate() + 1);
-      const tomorrow = fmt(tom);
+    // Next action: urgency + when
+    window._triageNextAction = function(taskId) {
+      const fmt  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const now  = new Date();
+      const tom  = new Date(now); tom.setDate(now.getDate() + 1);
       const daysToFri = (5 - now.getDay() + 7) % 7 || 7;
-      const fri = new Date(now); fri.setDate(now.getDate() + daysToFri);
-      const friday = fmt(fri);
+      const fri  = new Date(now); fri.setDate(now.getDate() + daysToFri);
 
-      const dateOpts = [
-        { label: 'Today',    date: today },
-        { label: 'Tomorrow', date: tomorrow },
+      const whenOpts = [
+        { label: 'Today',      date: fmt(now) },
+        { label: 'Tomorrow',   date: fmt(tom) },
       ];
-      if (daysToFri > 1) dateOpts.push({ label: 'This Friday', date: friday });
-      dateOpts.push({ label: 'No date yet', date: null });
+      if (daysToFri > 1) whenOpts.push({ label: 'This Friday', date: fmt(fri) });
+      whenOpts.push({ label: 'No date yet', date: null });
 
-      const btns = dateOpts.map(o =>
-        `<button class="action-button" onclick="window._triageSave(${taskId},'next_action',${o.date ? `'${o.date}'` : 'null'})">${esc(o.label)}</button>`
+      const urgencyBtns = ['High','Medium','Low'].map(u =>
+        `<button class="action-button triage-urgency" data-u="${u.toLowerCase()}"
+           style="flex:1;background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+           onclick="window._selectUrgency(this)">${u}</button>`
+      ).join('');
+
+      const whenBtns = whenOpts.map(o =>
+        `<button class="action-button" style="width:100%;"
+           onclick="window._triageSave(${taskId},'next_action',${o.date ? `'${o.date}'` : 'null'})">${esc(o.label)}</button>`
       ).join('');
 
       document.getElementById('triage-actions').outerHTML = `
-        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">When?</p>
-        <div style="display:flex;flex-direction:column;gap:8px;" id="triage-actions">${btns}</div>`;
+        <div id="triage-actions">
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Urgency</p>
+          <div style="display:flex;gap:6px;margin-bottom:0.75rem;">${urgencyBtns}</div>
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">When?</p>
+          <div style="display:flex;flex-direction:column;gap:6px;">${whenBtns}</div>
+        </div>`;
     };
 
-    window._triageSave = function(taskId, action, date) {
+    window._selectUrgency = function(btn) {
+      document.querySelectorAll('.triage-urgency').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'hsl(210,100%,30%)';
+        b.style.fontWeight = '';
+      });
+      btn.style.background = 'hsl(210,100%,30%)';
+      btn.style.color = '#fff';
+      btn.style.fontWeight = '600';
+    };
+
+    // Break it down: prompt for first subtask, mark parent as project
+    window._triageBreakDown = function(taskId) {
+      document.getElementById('triage-actions').outerHTML = `
+        <div id="triage-actions">
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">What is the first concrete step?</p>
+          <input type="text" id="triage-first-step" placeholder="e.g. Email Jane to confirm date"
+            style="margin-bottom:0.5rem;" autofocus>
+          <button class="action-button" style="width:100%;" onclick="window._triageSaveProject(${taskId})">Save</button>
+        </div>`;
+      document.getElementById('triage-first-step').focus();
+      document.getElementById('triage-first-step').addEventListener('keydown', e => {
+        if (e.key === 'Enter') window._triageSaveProject(taskId);
+      });
+    };
+
+    window._triageSaveProject = function(taskId) {
+      const firstStep = document.getElementById('triage-first-step').value.trim();
+      if (!firstStep) {
+        document.getElementById('triage-status').textContent = 'Enter the first step first.';
+        return;
+      }
+      const title = document.getElementById('triage-title').value.trim();
+      window._triageSave(taskId, 'project', null, { first_step: firstStep, title: title || undefined });
+    };
+
+    // Quick save (waiting / someday / delete)
+    window._triageQuick = function(taskId, action) {
+      const title = document.getElementById('triage-title').value.trim();
+      window._triageSave(taskId, action, null, title ? { title } : {});
+    };
+
+    window._triageSave = function(taskId, action, date, extra = {}) {
       document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
       const st = document.getElementById('triage-status');
       st.textContent = 'Saving…';
-      const body = {task_id: taskId, action};
-      if (date) body.scheduled_date = date;
+
+      const urgencyBtn = document.querySelector('.triage-urgency[style*="rgb"]') ||
+                         document.querySelector('.triage-urgency[style*="#fff"]');
+      const urgency = urgencyBtn ? urgencyBtn.dataset.u : null;
+
+      const titleEl = document.getElementById('triage-title');
+      const title   = (titleEl ? titleEl.value.trim() : '') || undefined;
+
+      const body = { task_id: taskId, action, ...extra };
+      if (date)    body.scheduled_date = date;
+      if (urgency) body.urgency        = urgency;
+      if (title)   body.title          = title;
+
       fetch('api/triage.php', {
         method:  'POST',
         headers: {'Content-Type': 'application/json'},

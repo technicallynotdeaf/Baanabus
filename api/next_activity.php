@@ -90,11 +90,18 @@ if (empty($pool)) {
     json_response(['type' => 'empty', 'message' => "Nothing to do right now — check back later."]);
 }
 
+// Avoid the same activity type twice in a row
+$lastActivity = $_SESSION['last_activity'] ?? null;
+if ($lastActivity && count(array_unique($pool)) > 1) {
+    $pool = array_values(array_filter($pool, fn($t) => $t !== $lastActivity));
+}
+
 $choice = $pool[array_rand($pool)];
+$_SESSION['last_activity'] = $choice;
 
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'minigame') {
-    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction'];
+    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction', 'wordscramble', 'highlow'];
     $lastGame = $_SESSION['last_minigame'] ?? null;
     if ($lastGame && count($games) > 1) {
         $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));

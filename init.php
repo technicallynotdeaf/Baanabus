@@ -200,7 +200,7 @@ function _ensureSchema(PDO $db): void {
             (3,'🛍️ Out','Out and about'),
             (4,'🌿 Rest','Rest and recovery');
 
-        INSERT OR IGNORE INTO contexts VALUES
+        INSERT OR IGNORE INTO contexts (context) VALUES
             ('home'),('work'),('shops'),('online'),('phone'),('anywhere');
 
         INSERT OR IGNORE INTO quotes VALUES

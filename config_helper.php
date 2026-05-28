@@ -287,7 +287,7 @@ function vaultUpdateTask(int $taskId, array $fields): void {
     saveTasks($data);
 }
 
-function vaultMarkComplete(int $taskId): array {
+function vaultMarkComplete(int $taskId, int $target = 15): array {
     $data           = getTasks();
     $found          = false;
     $habiticaId     = null;
@@ -307,13 +307,14 @@ function vaultMarkComplete(int $taskId): array {
 
     $data['pages'] = ($data['pages'] ?? 0) + 1;
     $newStoryPage = false;
-    if ($data['pages'] >= 10) {
+    if ($data['pages'] >= $target) {
         $data['pages'] = 0;
         $newStoryPage = true;
     }
     saveTasks($data);
     return [
         'pages'            => $data['pages'],
+        'pages_target'     => $target,
         'newStoryPage'     => $newStoryPage,
         'habitica_id'      => $habiticaId,
         'habitica_item_id' => $habiticaItemId,

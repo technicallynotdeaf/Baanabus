@@ -10,15 +10,20 @@ if (isUnlocked()) {
 ?>
 <canvas id="sceneCanvas"></canvas>
 
-<div id="scene-pips" class="scene-pips">
 <?php
-$pageCount = 0;
+$pageCount   = 0;
+$pageTarget  = 15;
 if (isUnlocked()) {
-    try { $t = getTasks(); $pageCount = (int)($t['pages'] ?? 0); } catch (Throwable $e) {}
+    try {
+        $t = getTasks();
+        $pageCount  = (int)($t['pages'] ?? 0);
+        $pageTarget = todayPagesTarget();
+    } catch (Throwable $e) {}
 }
-for ($i = 0; $i < 10; $i++): ?>
-  <div class="scene-pip<?= $i < $pageCount ? ' filled' : '' ?>"></div>
-<?php endfor; ?>
+$fillPct = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0;
+?>
+<div id="scene-progress" class="scene-progress" data-target="<?= $pageTarget ?>">
+  <div id="scene-progress-fill" class="scene-progress-fill" style="width:<?= $fillPct ?>%"></div>
 </div>
 
 <script>

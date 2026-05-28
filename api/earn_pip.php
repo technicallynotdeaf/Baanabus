@@ -7,10 +7,11 @@ if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
 if (!isUnlocked())      json_response(['error' => 'Vault locked'], 423);
 
 try {
+    $target        = todayPagesTarget();
     $data          = getTasks();
     $data['pages'] = ($data['pages'] ?? 0) + 1;
     $newStoryPage  = false;
-    if ($data['pages'] >= 10) {
+    if ($data['pages'] >= $target) {
         $data['pages'] = 0;
         $newStoryPage  = true;
     }
@@ -18,7 +19,7 @@ try {
     if ($newStoryPage) {
         try { incrementStoryPages(1); } catch (Throwable $e) {}
     }
-    json_response(['ok' => true, 'pages' => $data['pages'], 'newStoryPage' => $newStoryPage]);
+    json_response(['ok' => true, 'pages' => $data['pages'], 'pages_target' => $target, 'newStoryPage' => $newStoryPage]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

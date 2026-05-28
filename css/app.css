@@ -362,27 +362,27 @@ input:focus, textarea:focus, select:focus {
     justify-content: center;
 }
 
-/* === Progress pips (scene overlay) === */
-.scene-pips {
+/* === Progress bar (scene overlay) === */
+.scene-progress {
     position: fixed;
-    bottom: 1.2rem;
-    right: 1.2rem;
+    bottom: 1.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(260px, 78vw);
+    height: 6px;
+    background: rgba(180, 160, 130, 0.35);
+    border-radius: 3px;
     display: none;
-    gap: 5px;
     z-index: 50;
     pointer-events: none;
 }
-body.scene-view .scene-pips { display: flex; }
-.scene-pip {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: rgba(180, 160, 130, 0.5);
-    transition: background 0.3s, box-shadow 0.3s;
-}
-.scene-pip.filled {
-    background: #f5a623;
-    box-shadow: 0 0 5px rgba(245, 166, 35, 0.7);
+body.scene-view .scene-progress { display: block; }
+.scene-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f5a623, #f7c96a);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+    min-width: 0;
 }
 
 /* === Onboarding wizard === */

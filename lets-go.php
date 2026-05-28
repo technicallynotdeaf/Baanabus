@@ -24,7 +24,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
-          updateProgressBar(d.pages);
+          updateProgressBar(d.pages, d.pages_target);
           if (d.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
         }
       })
@@ -94,7 +94,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            updateProgressBar(data.pages);
+            updateProgressBar(data.pages, data.pages_target);
             if (data.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
             setTimeout(() => {
               row.remove();

@@ -151,6 +151,23 @@ function _ensureSchema(PDO $db): void {
 }
 
 // ---------- Helpers ----------
+
+// Pages needed to unlock a story page — scales with today's energy.
+// Lower energy = smaller target = more achievable on hard days.
+function todayPagesTarget(): int {
+    global $database;
+    $e = 3;
+    if ($database) {
+        try {
+            $stmt = $database->prepare("SELECT energy_level FROM diary WHERE date = ?");
+            $stmt->execute([date('Y-m-d')]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && $row['energy_level']) $e = (int)$row['energy_level'];
+        } catch (Throwable $th) {}
+    }
+    return [1 => 10, 2 => 12, 3 => 15, 4 => 18, 5 => 20][$e] ?? 15;
+}
+
 function json_response($data, $code = 200): void {
     http_response_code($code);
     header('Content-Type: application/json');

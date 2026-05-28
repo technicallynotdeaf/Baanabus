@@ -16,7 +16,8 @@ $taskId = isset($_GET['task_id']) ? (int)$_GET['task_id'] : 0;
 if (!$taskId) respond_mc(['error' => 'Missing task_id'], 400);
 
 try {
-    $result = vaultMarkComplete($taskId);
+    $target = todayPagesTarget();
+    $result = vaultMarkComplete($taskId, $target);
 
     if ($result['newStoryPage']) {
         try { incrementStoryPages(1); } catch (Throwable $e) { /* non-fatal */ }
@@ -43,7 +44,7 @@ try {
         }
     }
 
-    respond_mc(['success' => true, 'pages' => $result['pages'], 'newStoryPage' => $result['newStoryPage']]);
+    respond_mc(['success' => true, 'pages' => $result['pages'], 'pages_target' => $result['pages_target'], 'newStoryPage' => $result['newStoryPage']]);
 } catch (Throwable $e) {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);
 }

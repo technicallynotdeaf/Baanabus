@@ -14,8 +14,14 @@ if (file_exists($doneFlag)) {
     json_response(['error' => 'Already done', 'done_at' => trim(file_get_contents($doneFlag))], 409);
 }
 
-if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
-if (!isUnlocked())      json_response(['error' => 'Vault locked'], 423);
+// Accept bearer token as alternative to session auth
+$auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+if (strncmp($auth, 'Bearer ', 7) === 0) {
+    $tok = trim(substr($auth, 7));
+    if (!authenticateAgentKey($tok)) json_response(['error' => 'Unauthorized'], 401);
+} elseif (!isAuthenticated() || !isUnlocked()) {
+    json_response(['error' => 'Not authenticated or vault locked'], 401);
+}
 
 $results = [];
 

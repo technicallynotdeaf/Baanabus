@@ -83,30 +83,38 @@ if (file_exists($tasksCsv)) {
 
 // ---- People (SQLite → vault) ------------------------------------------------
 
-if ($database) {
-    $rows = $database->query("SELECT * FROM people ORDER BY person_id")->fetchAll(PDO::FETCH_ASSOC);
-    if ($rows) {
-        $maxId = max(array_column($rows, 'person_id'));
-        savePeople(['next_id' => $maxId + 1, 'people' => $rows]);
-        $database->exec("DELETE FROM people");
-        $results['people'] = count($rows);
-    } else {
-        $results['people'] = 0;
+if (!$database) {
+    $results['people'] = $results['people_notes'] = 'db unavailable';
+} else {
+    try {
+        $rows = $database->query("SELECT * FROM people ORDER BY person_id")->fetchAll(PDO::FETCH_ASSOC);
+        if ($rows) {
+            $maxId = max(array_column($rows, 'person_id'));
+            savePeople(['next_id' => $maxId + 1, 'people' => $rows]);
+            $database->exec("DELETE FROM people");
+            $results['people'] = count($rows);
+        } else {
+            $results['people'] = 0;
+        }
+    } catch (Throwable $e) {
+        $results['people'] = 'ERROR: ' . $e->getMessage();
     }
 
 // ---- People notes (SQLite → vault) -----------------------------------------
 
-    $notes = $database->query("SELECT * FROM people_notes ORDER BY note_id")->fetchAll(PDO::FETCH_ASSOC);
-    if ($notes) {
-        $maxNoteId = max(array_column($notes, 'note_id'));
-        savePeopleNotes(['next_id' => $maxNoteId + 1, 'notes' => $notes]);
-        $database->exec("DELETE FROM people_notes");
-        $results['people_notes'] = count($notes);
-    } else {
-        $results['people_notes'] = 0;
+    try {
+        $notes = $database->query("SELECT * FROM people_notes ORDER BY note_id")->fetchAll(PDO::FETCH_ASSOC);
+        if ($notes) {
+            $maxNoteId = max(array_column($notes, 'note_id'));
+            savePeopleNotes(['next_id' => $maxNoteId + 1, 'notes' => $notes]);
+            $database->exec("DELETE FROM people_notes");
+            $results['people_notes'] = count($notes);
+        } else {
+            $results['people_notes'] = 0;
+        }
+    } catch (Throwable $e) {
+        $results['people_notes'] = 'ERROR: ' . $e->getMessage();
     }
-} else {
-    $results['people'] = $results['people_notes'] = 'db unavailable';
 }
 
 // ---- Clean up CSV files -----------------------------------------------------

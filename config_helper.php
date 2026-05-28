@@ -100,6 +100,33 @@ function getConfigPaths(): array {
 function isAuthenticated(): bool { sess(); return !empty($_SESSION['is_authenticated']); }
 function isUnlocked(): bool { sess(); return !empty($_SESSION['DEK']); }
 
+function authenticateAgentKey(string $token): bool {
+    if (strncmp($token, 'bsk_', 4) !== 0) return false;
+    if (!extension_loaded('sodium')) return false;
+    $indexPath = __DIR__ . '/data/apikeys.json';
+    if (!file_exists($indexPath)) return false;
+    $index = json_decode(file_get_contents($indexPath), true) ?? [];
+    $hash  = hash('sha256', $token);
+    if (!isset($index[$hash])) return false;
+    $entry  = $index[$hash];
+    $uid    = preg_replace('/[^A-Za-z0-9_\-]/', '_', $entry['user_id']);
+    $keyId  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $entry['key_id']);
+    $wrapPath = __DIR__ . "/config/$uid/apikeys/$keyId.json";
+    if (!file_exists($wrapPath)) return false;
+    $wrap  = json_decode(file_get_contents($wrapPath), true) ?? [];
+    $nonce = base64_decode($wrap['nonce'] ?? '');
+    $ct    = base64_decode($wrap['ct']    ?? '');
+    if (!$nonce || !$ct) return false;
+    $kek = substr(hash('sha256', $token, true), 0, 32);
+    $dek = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $kek);
+    if ($dek === false) return false;
+    sess();
+    $_SESSION['DEK']              = b64u_enc($dek);
+    $_SESSION['user_id']          = $entry['user_id'];
+    $_SESSION['is_authenticated'] = true;
+    return true;
+}
+
 function vaultExists(): bool {
   $p = getConfigPaths();
   return is_file($p['enc']);

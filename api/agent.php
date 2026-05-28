@@ -14,13 +14,8 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Authorization, Content-Type');
 
 // Auth
-$token = '';
 $auth  = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (strncmp($auth, 'Bearer ', 7) === 0) {
-    $token = trim(substr($auth, 7));
-} elseif (!empty($_GET['key'])) {
-    $token = trim($_GET['key']);
-}
+$token = strncmp($auth, 'Bearer ', 7) === 0 ? trim(substr($auth, 7)) : '';
 
 if (!$token || !authenticateAgentKey($token)) {
     json_response(['error' => 'Unauthorized — provide a valid bsk_ key'], 401);

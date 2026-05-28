@@ -43,11 +43,11 @@ Make the core task loop functional end-to-end.
 
 The two main data views.
 
-- [ ] `list_tasks.php` — tasks overlay: incomplete tasks grouped by urgency; tap to expand; Done/Snooze buttons inline; "Add task" button opens add form sub-panel
-- [ ] Add task form: title, context (dropdown), urgency selector; submits via AJAX, refreshes list
+- ✅ `list_tasks.php` — tasks overlay: incomplete tasks grouped by urgency; Done/Snooze inline; inbox banner; search
+- ✅ Add task form: title + urgency + context selectors; submits via AJAX, adds row to group live
 - [ ] `list_people.php` — people overlay: contacts list sorted by next_review; overdue contacts highlighted; tap person → person panel
 - [ ] Person panel: name, contact notes, task list for that person; "Mark reviewed" / "Snooze 1 day" / "Add note" actions
-- [ ] Inbox triage overlay or tab: list inbox items; for each: "Make task" / "Discard"; "Make task" opens add-task form pre-filled from inbox content
+- [ ] Inbox triage: full GTD flow lives in speech bubble (lets-go.php); may want a standalone triage overlay too
 
 ---
 
@@ -55,8 +55,8 @@ The two main data views.
 
 - [ ] Trivia: track answered questions per user in SQLite (`trivia_answers` table: question_hash, correct, answered_at); avoid repeating questions until pool is exhausted; surface previously wrong answers more often (simple spaced repetition)
 - [ ] Trivia: expand question pool by category (history, science, language, geography)
-- [ ] Minigames: add more variety — current pool gets repetitive (target: 8+ distinct games)
-- [ ] Minigames: weighted selection so recently played games appear less often
+- ✅ Minigames: 9 distinct games (tictactoe, numguess, rps, mathquiz, truefalse, sequence, reaction, wordscramble, highlow)
+- ✅ Minigames: no-repeat logic — same game and same activity type never appear twice in a row
 
 ---
 
@@ -66,9 +66,9 @@ The daily rhythm that makes the game loop feel intentional.
 
 - ✅ Check-in: energy level (1–5) + day type surfaced via `next_activity.php` when missing for the day
 - ✅ Stuck flow: task marked stuck → snoozes until tomorrow, flagged for review
-- [ ] `lets-go.php` respects energy: low energy surfaces low-effort tasks first; high energy surfaces high-urgency tasks
+- ✅ Energy-aware task selection: weighted pool in `next_activity.php` matches task energy to today's level
+- ✅ GTD inbox triage: full flow in speech bubble (rename, urgency, next_action+date, project+subtask, waiting, someday, delete)
 - [ ] Day type affects task filtering (e.g., "Home" day = home context tasks)
-- [ ] GTD inbox triage: one-question-at-a-time flow in speech bubble; `task_type` changes last; produces next-actions, reference, someday, or deleted
 - [ ] Context filter in tasks overlay: quick filter chips (Home / Work / etc.)
 
 ---
@@ -127,6 +127,7 @@ Connect to services Alison already uses.
 
 ## Ongoing / Infrastructure
 
+- [ ] Vault backup: authenticated download of decrypted JSON (all vault files: tasks, people, people_notes, config) — decision pending on format (encrypted vs plain)
 - [ ] CSP headers: move inline `<script>` blocks to external `.js` files first; then add `Content-Security-Policy` header in Apache
 - [ ] ModSecurity: switch from DetectionOnly → enforcement (after confirming no false positives in logs)
 - [ ] Automated deploy: git push → auto-pull on server (simple post-receive hook)
@@ -136,4 +137,4 @@ Connect to services Alison already uses.
 
 ## Next up
 
-M1 is complete. Focus shifts to M3 GTD triage (energy-aware task selection, inbox triage flow) and M2 task/people views.
+M1, M2 tasks, and M3 GTD/energy features are complete. Focus shifts to `list_people.php` (M2 people view) and M4 scene depth.

@@ -29,6 +29,41 @@ try {
 unset($_dataDir, $_dbPath);
 
 // ---------- Schema ----------
+
+function _ensureMigrations(PDO $db): void {
+    $alters = [
+        "ALTER TABLE contexts      ADD COLUMN description      TEXT",
+        "ALTER TABLE people        ADD COLUMN contact_hrs      TEXT",
+        "ALTER TABLE people        ADD COLUMN wake_time        TEXT",
+        "ALTER TABLE people        ADD COLUMN bedtime          TEXT",
+        "ALTER TABLE people        ADD COLUMN christian        INTEGER DEFAULT 0",
+        "ALTER TABLE people        ADD COLUMN habitica_id      TEXT",
+        "ALTER TABLE people_notes  ADD COLUMN note_type        INTEGER DEFAULT 0",
+        "ALTER TABLE diary         ADD COLUMN events           TEXT",
+        "ALTER TABLE diary         ADD COLUMN recurrent_events TEXT",
+        "ALTER TABLE diary         ADD COLUMN due_tasks        TEXT",
+        "ALTER TABLE diary         ADD COLUMN gratitude        TEXT",
+        "ALTER TABLE tasks         ADD COLUMN task_importance  INTEGER",
+        "ALTER TABLE tasks         ADD COLUMN conditions       TEXT",
+        "ALTER TABLE tasks         ADD COLUMN subtasks         TEXT",
+        "ALTER TABLE tasks         ADD COLUMN next_action      TEXT",
+        "ALTER TABLE tasks         ADD COLUMN neg_consequences TEXT",
+        "ALTER TABLE tasks         ADD COLUMN benefits         TEXT",
+        "ALTER TABLE tasks         ADD COLUMN completed_at     DATETIME",
+        "ALTER TABLE tasks         ADD COLUMN in_habitica      INTEGER DEFAULT 0",
+        "ALTER TABLE tasks         ADD COLUMN is_doable        INTEGER DEFAULT 1",
+        "ALTER TABLE tasks         ADD COLUMN is_scheduled     INTEGER DEFAULT 0",
+        "ALTER TABLE tasks         ADD COLUMN goal             TEXT",
+        "ALTER TABLE tasks         ADD COLUMN cumulative_priority INTEGER",
+    ];
+    foreach ($alters as $sql) {
+        try { $db->exec($sql); }
+        catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'duplicate column') === false) throw $e;
+        }
+    }
+}
+
 function _ensureSchema(PDO $db): void {
     $db->exec("
         CREATE TABLE IF NOT EXISTS tasks (
@@ -114,6 +149,35 @@ function _ensureSchema(PDO $db): void {
             label       TEXT NOT NULL,
             description TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS tags (
+            tag_id    TEXT PRIMARY KEY,
+            name      TEXT NOT NULL,
+            challenge TEXT,
+            tag_type  TEXT DEFAULT 'default'
+        );
+
+        CREATE TABLE IF NOT EXISTS love_languages (
+            language     TEXT PRIMARY KEY,
+            display_name TEXT NOT NULL,
+            help_text    TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS note_types (
+            note_type   INTEGER PRIMARY KEY,
+            label       TEXT NOT NULL,
+            description TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS task_types (
+            task_type   TEXT PRIMARY KEY,
+            description TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS priority (
+            priority_level INTEGER PRIMARY KEY,
+            display_name   TEXT NOT NULL
+        );
     ");
 
     // Seed reference data (INSERT OR IGNORE = safe to repeat)
@@ -148,6 +212,7 @@ function _ensureSchema(PDO $db): void {
             (7,'Start somewhere. Anywhere. Just start.');
 
     ");
+    _ensureMigrations($db);
 }
 
 // ---------- Helpers ----------

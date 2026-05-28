@@ -143,7 +143,19 @@ if (empty($cfg['onboarding_complete'])) {
 if (!$hasTasks) {
     json_response(['type' => 'empty', 'message' => "No tasks right now — check back later."]);
 }
-$t   = $tasks[array_rand($tasks)];
+// Weight tasks by energy match: prefer tasks whose energy level matches today's
+$energyWeights = [
+    'low'    => [1 => 10, 2 => 7, 3 => 3, 4 => 1, 5 => 1],
+    'medium' => [1 => 2,  2 => 4, 3 => 8, 4 => 6, 5 => 3],
+    'high'   => [1 => 0,  2 => 0, 3 => 3, 4 => 6, 5 => 10],
+];
+$weightedPool = [];
+foreach ($tasks as $task) {
+    $te = $task['energy'] ?? 'medium';
+    $w  = $energyWeights[$te][$energy] ?? 3;
+    for ($i = 0; $i < $w; $i++) $weightedPool[] = $task;
+}
+$t = $weightedPool[array_rand($weightedPool)];
 $now = time();
 try {
     $allTasks = getTasks()['tasks'];

@@ -19,6 +19,18 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function earnPip() {
+    fetch('api/earn_pip.php')
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          updateProgressBar(d.pages);
+          if (d.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
+        }
+      })
+      .catch(() => {});
+  }
+
   fetch('api/next_activity.php')
     .then(r => r.json())
     .then(render)
@@ -119,6 +131,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       if (idx === d.answer) {
         btns[idx].style.background = '#4caf50';
         fb.textContent = 'Correct!';
+        earnPip();
       } else {
         btns[idx].style.background = '#e53935';
         if (btns[d.answer]) btns[d.answer].style.background = '#4caf50';
@@ -193,7 +206,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       over = true;
       draw();
       const msg = document.getElementById('ttt-msg');
-      if (w === 'X')      msg.textContent = "You win! I wasn't ready.";
+      if (w === 'X')      { earnPip(); msg.textContent = "You win! I wasn't ready."; }
       else if (w === 'O') msg.textContent = "I win! Huh. Didn't expect that.";
       else                msg.textContent = 'A draw. Respectable.';
     }
@@ -237,6 +250,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       attempts++;
       inp.value = '';
       if (val === target) {
+        earnPip();
         c.innerHTML = `
           <p>Yes! It was ${target}. You got it in ${attempts} ${attempts === 1 ? 'try' : 'tries'}.</p>
           <button class="action-button" style="margin-top:0.75rem;" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
@@ -274,6 +288,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       document.querySelectorAll('#rps-btns .action-button').forEach(b => b.disabled = true);
       const sheep = sheepPick();
       const r = result(player, sheep);
+      if (r === 'win') earnPip();
       const msg = r === 'win'  ? `You played ${player}, I played ${sheep}. You win.`
                 : r === 'lose' ? `You played ${player}, I played ${sheep}. I win.`
                 :                `We both played ${player}. Draw.`;
@@ -324,6 +339,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       if (idx === correct) {
         document.querySelectorAll('#math-opts .action-button')[idx].style.background = '#4caf50';
         fb.textContent = 'Correct!';
+        earnPip();
       } else {
         document.querySelectorAll('#math-opts .action-button')[idx].style.background = '#e53935';
         document.querySelectorAll('#math-opts .action-button')[correct].style.background = '#4caf50';
@@ -371,6 +387,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       const fb = document.getElementById('tf-feedback');
       if (ans === correct) {
         fb.textContent = 'Correct!';
+        earnPip();
       } else {
         fb.textContent = `Not quite — that's ${correct ? 'true' : 'false'}.`;
       }
@@ -418,6 +435,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       if (idx === correct) {
         document.querySelectorAll('#seq-opts .action-button')[idx].style.background = '#4caf50';
         fb.textContent = 'Correct!';
+        earnPip();
       } else {
         document.querySelectorAll('#seq-opts .action-button')[idx].style.background = '#e53935';
         document.querySelectorAll('#seq-opts .action-button')[correct].style.background = '#4caf50';
@@ -470,7 +488,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       const ms = Math.round(performance.now() - startTime);
       waiting = false;
       btn.disabled = true;
-      btn.style.background = '#hsl(210,100%,30%)';
+      earnPip();
       const comment = ms < 200 ? 'Unnaturally fast.' : ms < 300 ? 'Excellent.' : ms < 400 ? 'Pretty quick.' : ms < 500 ? 'Not bad.' : 'A little slow today.';
       c.innerHTML = `
         <p style="font-size:1.3em;font-weight:600;margin-bottom:0.25rem;">${ms} ms</p>

@@ -94,8 +94,14 @@ $choice = $pool[array_rand($pool)];
 
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'minigame') {
-    $games = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction'];
-    json_response(['type' => 'minigame', 'game' => $games[array_rand($games)]]);
+    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction'];
+    $lastGame = $_SESSION['last_minigame'] ?? null;
+    if ($lastGame && count($games) > 1) {
+        $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));
+    }
+    $game = $games[array_rand($games)];
+    $_SESSION['last_minigame'] = $game;
+    json_response(['type' => 'minigame', 'game' => $game]);
 }
 if ($choice === 'triage') {
     $t = $inboxTasks[array_rand($inboxTasks)];

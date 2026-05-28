@@ -7,12 +7,16 @@ if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
 if (!isUnlocked())      json_response(['error' => 'Vault locked'], 423);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'POST only'], 405);
 
-$input  = json_decode(file_get_contents('php://input'), true);
-$taskId = (int)($input['task_id'] ?? 0);
-$action = $input['action'] ?? '';
+$input         = json_decode(file_get_contents('php://input'), true);
+$taskId        = (int)($input['task_id'] ?? 0);
+$action        = $input['action'] ?? '';
+$scheduledDate = $input['scheduled_date'] ?? null;
 
 if (!$taskId || !in_array($action, ['next_action', 'someday', 'delete'], true)) {
     json_response(['error' => 'Invalid input'], 400);
+}
+if ($scheduledDate !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $scheduledDate)) {
+    $scheduledDate = null;
 }
 
 try {
@@ -26,7 +30,9 @@ try {
     if ($action === 'delete') {
         vaultUpdateTask($taskId, ['status' => 'deleted', 'deleted_at' => date('c')]);
     } else {
-        vaultUpdateTask($taskId, ['task_type' => $action]);
+        $fields = ['task_type' => $action];
+        if ($scheduledDate !== null) $fields['scheduled_date'] = $scheduledDate;
+        vaultUpdateTask($taskId, $fields);
     }
 
     // Tag in Habitica when marked as next_action

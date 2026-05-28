@@ -317,11 +317,49 @@ input:focus, textarea:focus, select:focus {
 .delete-link:hover { background: #c0392b; }
 
 /* === Scene canvas === */
-#sceneCanvas {
+#sceneCanvas, #calCanvas {
     display: block;
     position: fixed;
     top: 0;
     left: 0;
+}
+
+/* === Calendar scene nav bar === */
+#cal-nav {
+    position: fixed;
+    top: 44px;
+    left: 0;
+    width: 100%;
+    height: 44px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+    z-index: 150;
+}
+#cal-nav h2 {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+#cal-nav button {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: hsl(210, 100%, 30%);
+    cursor: pointer;
+    padding: 0 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* === Progress pips (scene overlay) === */

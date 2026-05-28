@@ -3,7 +3,7 @@ $paperCount    = 0;
 $storyStarted  = false;  // book 1 clickable when user has vault open
 if (isUnlocked()) {
     try {
-        $paperCount   = count(array_filter(getDoableTasks(), fn($t) => ($t['task_type'] ?? '') === 'inbox'));
+        $paperCount   = count(getInboxTasks());
         $storyStarted = true;
     } catch (Throwable $e) {}
 }

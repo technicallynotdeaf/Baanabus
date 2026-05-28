@@ -335,25 +335,54 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
       <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <button class="action-button" onclick="window._triage(${d.id},'next_action')">Next action — I can do this</button>
-        <button class="action-button" onclick="window._triage(${d.id},'someday')">Blocked or waiting on something</button>
-        <button class="action-button" onclick="window._triage(${d.id},'delete')">Not relevant anymore</button>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="triage-actions">
+        <button class="action-button" onclick="window._triageWhen(${d.id}, '${esc(d.title).replace(/'/g,"\\'")}')">Next action — I can do this</button>
+        <button class="action-button" onclick="window._triageSave(${d.id},'someday',null)">Blocked or waiting on something</button>
+        <button class="action-button" onclick="window._triageSave(${d.id},'delete',null)">Not relevant anymore</button>
       </div>
       <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
 
-    window._triage = function(taskId, action) {
+    window._triageWhen = function(taskId, title) {
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const now      = new Date();
+      const today    = fmt(now);
+      const tom      = new Date(now); tom.setDate(now.getDate() + 1);
+      const tomorrow = fmt(tom);
+      const daysToFri = (5 - now.getDay() + 7) % 7 || 7;
+      const fri = new Date(now); fri.setDate(now.getDate() + daysToFri);
+      const friday = fmt(fri);
+
+      const dateOpts = [
+        { label: 'Today',    date: today },
+        { label: 'Tomorrow', date: tomorrow },
+      ];
+      if (daysToFri > 1) dateOpts.push({ label: 'This Friday', date: friday });
+      dateOpts.push({ label: 'No date yet', date: null });
+
+      const btns = dateOpts.map(o =>
+        `<button class="action-button" onclick="window._triageSave(${taskId},'next_action',${o.date ? `'${o.date}'` : 'null'})">${esc(o.label)}</button>`
+      ).join('');
+
+      document.getElementById('triage-actions').outerHTML = `
+        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">When?</p>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="triage-actions">${btns}</div>`;
+    };
+
+    window._triageSave = function(taskId, action, date) {
       document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
       const st = document.getElementById('triage-status');
       st.textContent = 'Saving…';
+      const body = {task_id: taskId, action};
+      if (date) body.scheduled_date = date;
       fetch('api/triage.php', {
         method:  'POST',
         headers: {'Content-Type': 'application/json'},
-        body:    JSON.stringify({task_id: taskId, action}),
+        body:    JSON.stringify(body),
       })
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
+          if (date && window.calendarInvalidate) window.calendarInvalidate(date.substring(0, 7));
           setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
         } else {
           st.textContent = data.error || 'Could not save.';

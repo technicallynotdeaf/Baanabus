@@ -226,6 +226,26 @@ const overlayBody = document.getElementById('overlay-body');   // inner scroll a
 function showOverlay(){ if(overlay) overlay.style.display='flex'; if(document.body) document.body.style.overflow='hidden'; }
 function hideOverlay(){ if(overlay) overlay.style.display='none'; if(document.body) document.body.style.overflow=''; if(overlayBody) overlayBody.innerHTML=''; }
 
+function spawnStarPip() {
+  const bar = document.getElementById('scene-progress');
+  if (!bar) return;
+  const barRect = bar.getBoundingClientRect();
+  const barCx   = barRect.left + barRect.width  / 2;
+  const barCy   = barRect.top  + barRect.height / 2;
+  const startX  = window.innerWidth  / 2 + (Math.random() - 0.5) * 50;
+  const startY  = window.innerHeight * 0.38;
+
+  const el = document.createElement('div');
+  el.className   = 'star-pip';
+  el.textContent = '★';
+  el.style.left  = startX + 'px';
+  el.style.top   = startY + 'px';
+  el.style.setProperty('--dx', (barCx - startX) + 'px');
+  el.style.setProperty('--dy', (barCy - startY) + 'px');
+  document.body.appendChild(el);
+  setTimeout(() => el.parentNode && el.parentNode.removeChild(el), 900);
+}
+
 function updateProgressBar(pages, target) {
   const fill = document.getElementById('scene-progress-fill');
   const bar  = document.getElementById('scene-progress');
@@ -234,6 +254,7 @@ function updateProgressBar(pages, target) {
   const pct = Math.min(100, Math.round((pages / t) * 100));
   fill.style.width = pct + '%';
   if (bar) bar.dataset.target = t;
+  spawnStarPip();
 }
 
 // ============================

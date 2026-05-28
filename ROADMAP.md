@@ -51,6 +51,15 @@ The two main data views.
 
 ---
 
+## M2.5 — Trivia & Minigame Quality
+
+- [ ] Trivia: track answered questions per user in SQLite (`trivia_answers` table: question_hash, correct, answered_at); avoid repeating questions until pool is exhausted; surface previously wrong answers more often (simple spaced repetition)
+- [ ] Trivia: expand question pool by category (history, science, language, geography)
+- [ ] Minigames: add more variety — current pool gets repetitive (target: 8+ distinct games)
+- [ ] Minigames: weighted selection so recently played games appear less often
+
+---
+
 ## M3 — Daily Flow
 
 The daily rhythm that makes the game loop feel intentional.

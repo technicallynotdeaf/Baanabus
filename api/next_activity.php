@@ -94,7 +94,7 @@ $choice = $pool[array_rand($pool)];
 
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'minigame') {
-    $games = ['tictactoe', 'numguess', 'rps', 'mathquiz'];
+    $games = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction'];
     json_response(['type' => 'minigame', 'game' => $games[array_rand($games)]]);
 }
 if ($choice === 'triage') {

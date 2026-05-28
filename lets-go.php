@@ -134,6 +134,9 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     if (d.game === 'numguess')   renderNumGuess();
     if (d.game === 'rps')        renderRPS();
     if (d.game === 'mathquiz')   renderMathQuiz();
+    if (d.game === 'truefalse')  renderTrueFalse();
+    if (d.game === 'sequence')   renderSequence();
+    if (d.game === 'reaction')   renderReaction();
   }
 
   function renderTicTacToe() {
@@ -328,6 +331,152 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       }
       document.getElementById('math-next').style.display = 'inline-flex';
     };
+  }
+
+  function renderTrueFalse() {
+    const questions = [
+      { s: 'The Great Wall of China is visible from space with the naked eye.', a: false },
+      { s: 'A group of flamingos is called a flamboyance.', a: true },
+      { s: 'Diamonds are the hardest natural substance on Earth.', a: true },
+      { s: 'Napoleon Bonaparte was unusually short for his era.', a: false },
+      { s: 'Humans share about 60% of their DNA with bananas.', a: true },
+      { s: 'The Eiffel Tower was originally intended to be permanent.', a: false },
+      { s: 'Honey never spoils — edible honey has been found in ancient Egyptian tombs.', a: true },
+      { s: 'Lightning never strikes the same place twice.', a: false },
+      { s: 'Goldfish have a memory span of only 3 seconds.', a: false },
+      { s: 'Sound travels faster through water than through air.', a: true },
+      { s: 'The human eye can distinguish about 10 million different colours.', a: true },
+      { s: 'Bats are blind.', a: false },
+      { s: 'A day on Venus is longer than a year on Venus.', a: true },
+      { s: 'Cleopatra lived closer in time to the Moon landing than to the construction of the Great Pyramid.', a: true },
+      { s: 'Humans use only 10% of their brain.', a: false },
+      { s: 'Sharks are older than trees as a species.', a: true },
+      { s: 'The tongue is the strongest muscle in the human body.', a: false },
+      { s: 'Hot water freezes faster than cold water under certain conditions.', a: true },
+      { s: 'Carrots were originally purple before selective breeding.', a: true },
+      { s: 'An octopus has three hearts.', a: true },
+    ];
+    const q = questions[Math.floor(Math.random() * questions.length)];
+    c.innerHTML = `
+      <p style="margin-bottom:0.75rem;line-height:1.45;">${esc(q.s)}</p>
+      <div id="tf-opts" style="display:flex;gap:8px;">
+        <button class="action-button" style="flex:1;" onclick="window._tf(true,${q.a})">True</button>
+        <button class="action-button" style="flex:1;" onclick="window._tf(false,${q.a})">False</button>
+      </div>
+      <p id="tf-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <button id="tf-next" class="action-button" style="display:none;margin-top:0.5rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    window._tf = function(ans, correct) {
+      document.querySelectorAll('#tf-opts .action-button').forEach(b => b.disabled = true);
+      const fb = document.getElementById('tf-feedback');
+      if (ans === correct) {
+        fb.textContent = 'Correct!';
+      } else {
+        fb.textContent = `Not quite — that's ${correct ? 'true' : 'false'}.`;
+      }
+      document.getElementById('tf-next').style.display = 'inline-flex';
+    };
+  }
+
+  function renderSequence() {
+    // Generate a simple arithmetic or geometric sequence
+    const type = Math.random() < 0.5 ? 'arith' : 'geo';
+    let seq, next;
+    if (type === 'arith') {
+      const start = Math.floor(Math.random() * 10) + 1;
+      const step  = Math.floor(Math.random() * 8) + 2;
+      seq  = [start, start+step, start+step*2, start+step*3];
+      next = start + step * 4;
+    } else {
+      const start = Math.floor(Math.random() * 3) + 1;
+      const ratio = Math.floor(Math.random() * 3) + 2;
+      seq  = [start, start*ratio, start*ratio**2, start*ratio**3];
+      next = start * ratio ** 4;
+    }
+    // Generate 3 plausible wrong answers
+    const wrongs = new Set();
+    while (wrongs.size < 3) {
+      const delta = Math.floor(Math.random() * (next * 0.4 + 5)) + 1;
+      const w = next + (Math.random() < 0.5 ? delta : -delta);
+      if (w !== next && w > 0 && Number.isFinite(w)) wrongs.add(w);
+    }
+    const opts = [...wrongs, next].sort(() => Math.random() - 0.5);
+    const ci   = opts.indexOf(next);
+    const btns = opts.map((o, i) =>
+      `<button class="action-button" onclick="window._seqAns(${i},${ci})">${Math.round(o)}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p class="muted" style="font-size:0.8em;margin-bottom:0.3rem;">What comes next?</p>
+      <p style="font-size:1.1em;font-weight:600;margin-bottom:0.75rem;letter-spacing:0.04em;">${seq.join(', ')}, ___</p>
+      <div id="seq-opts" style="display:flex;gap:8px;flex-wrap:wrap;">${btns}</div>
+      <p id="seq-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <button id="seq-next" class="action-button" style="display:none;margin-top:0.5rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    window._seqAns = function(idx, correct) {
+      document.querySelectorAll('#seq-opts .action-button').forEach(b => b.disabled = true);
+      const fb = document.getElementById('seq-feedback');
+      if (idx === correct) {
+        document.querySelectorAll('#seq-opts .action-button')[idx].style.background = '#4caf50';
+        fb.textContent = 'Correct!';
+      } else {
+        document.querySelectorAll('#seq-opts .action-button')[idx].style.background = '#e53935';
+        document.querySelectorAll('#seq-opts .action-button')[correct].style.background = '#4caf50';
+        fb.textContent = `Nope — it was ${Math.round(next)}.`;
+      }
+      document.getElementById('seq-next').style.display = 'inline-flex';
+    };
+  }
+
+  function renderReaction() {
+    let startTime, waiting = false;
+    let timeoutId;
+    c.innerHTML = `
+      <p class="muted" style="margin-bottom:0.75rem;">Tap the button the moment it turns green.</p>
+      <button id="react-btn" class="action-button"
+        style="width:100%;min-height:80px;font-size:1.1em;background:#ccc;cursor:not-allowed;"
+        disabled>Wait...</button>
+      <p id="react-msg" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+    const btn = document.getElementById('react-btn');
+    const msg = document.getElementById('react-msg');
+    const delay = 1500 + Math.random() * 2500;
+    timeoutId = setTimeout(() => {
+      btn.style.background = '#4caf50';
+      btn.style.cursor     = 'pointer';
+      btn.disabled         = false;
+      btn.textContent      = 'NOW!';
+      startTime            = performance.now();
+      waiting              = true;
+    }, delay);
+    btn.addEventListener('click', function() {
+      if (!waiting) {
+        clearTimeout(timeoutId);
+        msg.textContent = 'Too early! Starting over...';
+        msg.style.color = '#e53935';
+        btn.style.background = '#ccc';
+        btn.disabled = true;
+        btn.textContent = 'Wait...';
+        const newDelay = 1500 + Math.random() * 2500;
+        timeoutId = setTimeout(() => {
+          btn.style.background = '#4caf50';
+          btn.style.cursor     = 'pointer';
+          btn.disabled         = false;
+          btn.textContent      = 'NOW!';
+          startTime            = performance.now();
+          waiting              = true;
+          msg.textContent      = '';
+        }, newDelay);
+        return;
+      }
+      const ms = Math.round(performance.now() - startTime);
+      waiting = false;
+      btn.disabled = true;
+      btn.style.background = '#hsl(210,100%,30%)';
+      const comment = ms < 200 ? 'Unnaturally fast.' : ms < 300 ? 'Excellent.' : ms < 400 ? 'Pretty quick.' : ms < 500 ? 'Not bad.' : 'A little slow today.';
+      c.innerHTML = `
+        <p style="font-size:1.3em;font-weight:600;margin-bottom:0.25rem;">${ms} ms</p>
+        <p class="muted" style="margin-bottom:0.75rem;">${comment}</p>
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    });
   }
 
   // ---- Triage ----

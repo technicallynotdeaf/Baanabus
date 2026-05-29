@@ -27,20 +27,6 @@ require_once __DIR__ . '/header.php';
   </div>
 </div>
 
-<script>
-document.getElementById('btn-login').addEventListener('click', async function () {
-  this.disabled = true;
-  try {
-    const result = await BaanabusAuth.signInPasskey();
-    if (result && result.ok) {
-      location.href = 'index.php';
-    } else {
-      this.disabled = false;
-    }
-  } catch (_) {
-    this.disabled = false;
-  }
-});
-</script>
+<script src="js/unauthorised.js"></script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

@@ -18,7 +18,7 @@ $canChoose = $prog['pages_available'] > $prog['depth'];
 $choices   = $page['choices'] ?? [];
 $terminal  = !empty($page['terminal']);
 ?>
-<div id="story-content" style="max-width:520px;margin:0 auto;">
+<div id="story-content" data-init="initStoryRead" style="max-width:520px;margin:0 auto;">
   <p style="font-size:0.8em;color:#999;margin-bottom:0.25rem;letter-spacing:0.05em;">
     THE CHAI MERIDIAN
   </p>
@@ -59,16 +59,3 @@ $terminal  = !empty($page['terminal']);
   </div>
 </div>
 
-<script>
-window._storyChoose = function(choiceKey) {
-    document.querySelectorAll('#story-choices button').forEach(b => b.disabled = true);
-    fetch('api/story_choose.php', {
-        method:  'POST',
-        headers: {'Content-Type': 'application/json'},
-        body:    JSON.stringify({story_id: 1, choice_key: choiceKey}),
-    })
-    .then(r => r.json())
-    .then(d => { if (d.ok) loadOverlay('api/story_read.php'); })
-    .catch(e => console.error('Story choose error:', e));
-};
-</script>

@@ -21,7 +21,3 @@ $greetings = [
   <p style="margin-bottom:0.75rem;"><?= htmlspecialchars($greetings[array_rand($greetings)]) ?></p>
   <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Let's go</button>
 </div>
-<script>
-// Daily Habitica sync — fires silently in the background
-fetch('api/habitica_sync.php').catch(() => {});
-</script>

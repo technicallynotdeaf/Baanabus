@@ -10,6 +10,15 @@ require_once __DIR__ . '/init.php';
   <link rel="stylesheet" href="css/app.css?v=<?= filemtime(__DIR__ . '/css/app.css') ?>">
   <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>" defer></script>
   <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
+  <script src="js/brain_dump.js?v=<?= filemtime(__DIR__ . '/js/brain_dump.js') ?>" defer></script>
+  <script src="js/lets_go.js?v=<?= filemtime(__DIR__ . '/js/lets_go.js') ?>" defer></script>
+  <script src="js/list_tasks.js?v=<?= filemtime(__DIR__ . '/js/list_tasks.js') ?>" defer></script>
+  <script src="js/list_people.js?v=<?= filemtime(__DIR__ . '/js/list_people.js') ?>" defer></script>
+  <script src="js/welcome.js?v=<?= filemtime(__DIR__ . '/js/welcome.js') ?>" defer></script>
+  <script src="js/settings.js?v=<?= filemtime(__DIR__ . '/js/settings.js') ?>" defer></script>
+  <script src="js/story_read.js?v=<?= filemtime(__DIR__ . '/js/story_read.js') ?>" defer></script>
+  <script src="js/day_tasks.js?v=<?= filemtime(__DIR__ . '/js/day_tasks.js') ?>" defer></script>
+  <script src="js/upload_questions.js?v=<?= filemtime(__DIR__ . '/js/upload_questions.js') ?>" defer></script>
 </head>
 <body>
 

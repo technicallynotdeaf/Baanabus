@@ -23,17 +23,11 @@ function setupOverlayListeners() {
       .then(response => response.text())
       .then(data => {
           overlayContent.innerHTML = data;
-
-          // 🚀 === Execute Inline Scripts === 🚀
-          const scripts = overlayContent.querySelectorAll('script');
-          scripts.forEach((script) => {
-              const newScript = document.createElement('script');
-              newScript.textContent = script.textContent;
-              document.body.appendChild(newScript);
-              document.body.removeChild(newScript);
-              });
-
-          console.log("✅ Inline scripts executed successfully.");
+          const initEl = overlayContent.querySelector('[data-init]');
+          if (initEl) {
+            const fn = window[initEl.dataset.init];
+            if (typeof fn === 'function') fn();
+          }
           })
     .catch(error => {
         overlayContent.innerHTML = "<p>Error loading content.</p>";
@@ -54,15 +48,11 @@ function setupOverlayListeners() {
           if (!data) return;
           speechBubble.style.display = 'block';
           speechBubbleContent.innerHTML = data;
-
-          const scripts = speechBubbleContent.querySelectorAll('script');
-          scripts.forEach((script) => {
-              const newScript = document.createElement('script');
-              newScript.textContent = script.textContent;
-              document.body.appendChild(newScript);
-              document.body.removeChild(newScript);
-              });
-
+          const initEl = speechBubbleContent.querySelector('[data-init]');
+          if (initEl) {
+            const fn = window[initEl.dataset.init];
+            if (typeof fn === 'function') fn();
+          }
           const event = new Event('speechBubbleLoaded');
           speechBubble.dispatchEvent(event);
           })
@@ -293,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadSpeechBubble('greeting.php');
+    fetch('api/habitica_sync.php').catch(() => {});
     });
 
 // close buttons/backdrop

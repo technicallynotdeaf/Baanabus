@@ -8,6 +8,5 @@ if (!isAuthenticated() || !isUnlocked()) {
 }
 
 require_once __DIR__ . '/header.php';
-echo '<script>window.BUBBLE_SRC = "greeting.php";</script>';
 include __DIR__ . '/scene.php';
 require_once __DIR__ . '/footer.php';

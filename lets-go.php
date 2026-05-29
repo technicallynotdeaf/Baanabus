@@ -696,6 +696,17 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       const el = actionsEl(); el.innerHTML = '';
       el.append(
         mkBtn("Yes, it's real", s2),
+        mkBtn("Wait, I did that!", () => {
+          disableAll();
+          setStatus('Marking as done…');
+          fetch(`api/mark_complete.api.php?task_id=${d.id}`)
+            .then(r => r.json())
+            .then(res => {
+              if (res.success) updateProgressBar(res.pages, res.pages_target);
+              setTimeout(() => loadSpeechBubble('lets-go.php'), 300);
+            })
+            .catch(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
+        }, 'background:#4caf50;'),
         mkBtn("Maybe someday", () => save({action:'someday'}),
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
         mkBtn("Not relevant — bin it", () => save({action:'delete'}),

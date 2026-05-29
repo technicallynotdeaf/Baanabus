@@ -18,9 +18,11 @@ if (is_dir($credsDir)) {
             $credId = trim($rec['credentialId']);
             if (preg_match('/^[A-Za-z0-9_\-]+$/', $credId) && strlen($credId) >= 16) {
                 $allowCredentials[] = [
-                    'type'       => 'public-key',
-                    'id'         => $credId,
-                    'transports' => $rec['transports'] ?? ['usb', 'nfc'],
+                    'type' => 'public-key',
+                    'id'   => $credId,
+                    // No transports hint — stored transports reflect registration method
+                    // (e.g. 'usb' only) but the key supports NFC too. Sending a narrow
+                    // hint causes GrapheneOS Credential Manager to reject NFC assertions.
                 ];
             }
         }

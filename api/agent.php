@@ -175,6 +175,102 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'migrate_from_sqlite') {
+        // One-shot migration: pulls incomplete tasks (id > 5) from the legacy SQLite
+        // tasks table and inserts them into the vault. Idempotent — skips tasks whose
+        // title already exists in the vault (case-insensitive).
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+
+        $urgencyMap = fn(int $u): string => $u >= 4 ? 'high' : ($u >= 2 ? 'medium' : 'low');
+        $typeMap    = function(string $t): string {
+            return match($t) {
+                'project'     => 'project',
+                'wishlist'    => 'someday',
+                'someday'     => 'someday',
+                default       => 'next_action',
+            };
+        };
+
+        $dryRun = !empty($body['dry_run']);
+
+        try {
+            $stmt = $database->query(
+                "SELECT task_id, task_title, task_type, task_urgency, context,
+                        habitica_id, person_id, deadline, show_after
+                 FROM tasks
+                 WHERE completed = 0 AND task_id > 5
+                 ORDER BY task_id"
+            );
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            json_response(['error' => 'Could not read tasks: ' . $e->getMessage()], 500);
+        }
+
+        $vaultData     = getTasks();
+        $existingTitles = array_map(
+            fn($t) => mb_strtolower(trim($t['title'] ?? '')),
+            $vaultData['tasks']
+        );
+
+        $imported = []; $skipped = [];
+        $nextId   = (int)($vaultData['next_id'] ?? 1);
+        $now      = date('Y-m-d');
+
+        foreach ($rows as $row) {
+            $title = trim($row['task_title'] ?? '');
+            if (!$title) { $skipped[] = ['id' => $row['task_id'], 'reason' => 'empty title']; continue; }
+            if (in_array(mb_strtolower($title), $existingTitles, true)) {
+                $skipped[] = ['id' => $row['task_id'], 'title' => $title, 'reason' => 'already in vault'];
+                continue;
+            }
+
+            // Snooze if show_after is in the future
+            $snoozeUntil = null;
+            if (!empty($row['show_after']) && $row['show_after'] > $now . ' 00:00:00') {
+                $snoozeUntil = date('Y-m-d\TH:i:s', strtotime($row['show_after']));
+            }
+
+            $task = [
+                'id'            => $nextId,
+                'title'         => $title,
+                'task_type'     => $typeMap($row['task_type'] ?? 'next-action'),
+                'urgency'       => $urgencyMap((int)($row['task_urgency'] ?? 0)),
+                'energy'        => 'medium',
+                'status'        => 'active',
+                'context'       => $row['context'] ?: null,
+                'deadline'      => $row['deadline'] ?: null,
+                'snoozed_until' => $snoozeUntil,
+                'parent_id'     => null,
+                'person_id'     => ($row['person_id'] ?? 0) ? (int)$row['person_id'] : null,
+                'habitica_id'   => $row['habitica_id'] ?: null,
+                'description'   => null,
+                'tags'          => null,
+                'created_at'    => date('c'),
+            ];
+            $imported[] = ['id' => $row['task_id'], 'title' => $title, 'vault_id' => $nextId];
+            $existingTitles[] = mb_strtolower($title);
+            if (!$dryRun) {
+                $vaultData['tasks'][] = $task;
+                $vaultData['next_id'] = ++$nextId;
+            } else {
+                $nextId++;
+            }
+        }
+
+        if (!$dryRun && !empty($imported)) {
+            saveTasks($vaultData);
+        }
+
+        json_response([
+            'ok'       => true,
+            'dry_run'  => $dryRun,
+            'imported' => count($imported),
+            'skipped'  => count($skipped),
+            'tasks'    => $imported,
+            'skipped_detail' => $skipped,
+        ]);
+    }
+
     if ($action === 'delete_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);

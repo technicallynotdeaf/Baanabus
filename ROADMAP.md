@@ -45,8 +45,8 @@ The two main data views.
 
 - ✅ `list_tasks.php` — tasks overlay: incomplete tasks grouped by urgency; Done/Snooze inline; inbox banner; search
 - ✅ Add task form: title + urgency + context selectors; submits via AJAX, adds row to group live
-- [ ] `list_people.php` — people overlay: contacts list sorted by next_review; overdue contacts highlighted; tap person → person panel
-- [ ] Person panel: name, contact notes, task list for that person; "Mark reviewed" / "Snooze 1 day" / "Add note" actions
+- ✅ `list_people.php` — people overlay: contacts grouped by overdue/this week/upcoming/no date; search; archived contacts collapsed
+- ✅ Person panel: circles, birthday, traits, tasks, notes (add inline); Mark reviewed / Snooze 1 week / Archive actions
 - [ ] Inbox triage: full GTD flow lives in speech bubble (lets-go.php); may want a standalone triage overlay too
 
 ---
@@ -137,4 +137,4 @@ Connect to services Alison already uses.
 
 ## Next up
 
-M1, M2 tasks, and M3 GTD/energy features are complete. Focus shifts to `list_people.php` (M2 people view) and M4 scene depth.
+M0–M2 and most of M3 are complete. Likely candidates: M3 context filtering (day type → surfaces matching tasks), M4 scene depth (sheep click, time-of-day tint, daily greeting), or infra quick wins (auto-deploy hook).

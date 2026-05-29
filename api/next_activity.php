@@ -92,11 +92,18 @@ if ($database) {
     } catch (Throwable $e) {}
 }
 
+$hasQuotes = false;
+if ($database) {
+    try { $hasQuotes = (bool)$database->query("SELECT 1 FROM quotes LIMIT 1")->fetchColumn(); }
+    catch (Throwable $e) {}
+}
+
 $pool = array_merge(
     array_fill(0, $doableSlots,          'task'),
     array_fill(0, $triageSlots,          'triage'),
     array_fill(0, $hasStudy ? 3 : 0,     'study'),
     array_fill(0, 2,                     'trivia'),
+    array_fill(0, $hasQuotes ? 2 : 0,    'quote'),
     array_fill(0, $gameSlots,            'minigame'),
     $missing ? ['missing_info'] : []
 );
@@ -114,6 +121,12 @@ if ($lastActivity && count(array_unique($pool)) > 1) {
 $choice = $pool[array_rand($pool)];
 $_SESSION['last_activity'] = $choice;
 
+if ($choice === 'quote') {
+    $q = pick_quote();
+    if ($q) json_response($q);
+    // fallback if quotes somehow empty
+    json_response(pick_trivia());
+}
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'study') {
     $s = pick_study();
@@ -250,6 +263,17 @@ function pick_trivia(): array {
     // Emergency fallback
     return ['type' => 'trivia', 'id' => 0, 'question' => 'What is the capital of Australia?',
             'options' => ['Sydney', 'Melbourne', 'Canberra', 'Brisbane'], 'answer' => 2];
+}
+
+function pick_quote(): ?array {
+    global $database;
+    if (!$database) return null;
+    try {
+        $q = $database->query("SELECT quote_id, quote FROM quotes ORDER BY RANDOM() LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        return $q ? ['type' => 'quote', 'id' => (int)$q['quote_id'], 'text' => $q['quote']] : null;
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
 function pick_study(): ?array {

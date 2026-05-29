@@ -32,18 +32,22 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
     return $json['data'] ?? [];
 }
 
-function habiticaSyncTimeTag(string $habiticaTaskId, string $timeValue, string $userId, string $apiKey): void {
-    $tagNames = ['5min' => '5 min', '15min' => '15 min', '60min' => '30-60 min', 'hours' => '2+ hours'];
-    $targetName = $tagNames[$timeValue] ?? null;
-    if (!$targetName) return;
+function habiticaSyncTimeTag(string $habiticaTaskId, int $timeMinutes, string $userId, string $apiKey): void {
+    if ($timeMinutes <= 0) return;
+    if      ($timeMinutes <= 5)  $targetName = '5 min';
+    elseif  ($timeMinutes <= 15) $targetName = '15 min';
+    elseif  ($timeMinutes <= 60) $targetName = '30-60 min';
+    else                         $targetName = '2+ hours';
+
+    $allTimeTagNames = ['5 min', '15 min', '30-60 min', '2+ hours'];
 
     // Fetch all existing tags once
-    $allTags    = habiticaRequest('GET', '/tags', $userId, $apiKey);
-    $timeTags   = [];   // name => id for all known time tags
-    $targetId   = null;
+    $allTags  = habiticaRequest('GET', '/tags', $userId, $apiKey);
+    $timeTags = [];   // name => id for all known time tags
+    $targetId = null;
     foreach ((array)$allTags as $tag) {
         $n = $tag['name'] ?? '';
-        if (in_array($n, $tagNames, true)) $timeTags[$n] = (string)$tag['id'];
+        if (in_array($n, $allTimeTagNames, true)) $timeTags[$n] = (string)$tag['id'];
         if ($n === $targetName) $targetId = (string)$tag['id'];
     }
 

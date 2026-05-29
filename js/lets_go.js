@@ -34,6 +34,7 @@ window.initLetsGo = function() {
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
+      case 'quote':          renderQuote(d);         break;
       case 'missing_info':   renderMissingInfo(d);   break;
       case 'onboarding_step': renderOnboarding(d);   break;
       case 'empty':
@@ -716,10 +717,10 @@ window.initLetsGo = function() {
       setQ("How long would it take to do this?");
       const el = actionsEl(); el.innerHTML = '';
       el.append(
-        mkBtn("Less than 5 mins", () => { taskTime = '5min';  s3quick(); }),
-        mkBtn("10–15 mins",       () => { taskTime = '15min'; s3big();   }),
-        mkBtn("30–60 mins",       () => { taskTime = '60min'; s3big();   }),
-        mkBtn("A few hours",      () => { taskTime = 'hours'; s3big();   })
+        mkBtn("Less than 5 mins", () => { taskTime = 5;   s3quick(); }),
+        mkBtn("10–15 mins",       () => { taskTime = 15;  s3big();   }),
+        mkBtn("30–60 mins",       () => { taskTime = 60;  s3big();   }),
+        mkBtn("A few hours",      () => { taskTime = 120; s3big();   })
       );
     }
 
@@ -848,6 +849,14 @@ window.initLetsGo = function() {
     }
 
     s1();
+  }
+
+  function renderQuote(d) {
+    const acks = ['Got it', 'I hear this', 'Cool', 'OK', 'Next'];
+    const btn  = acks[Math.floor(Math.random() * acks.length)];
+    c.innerHTML = `
+      <p style="font-style:italic;line-height:1.6;margin-bottom:0.75rem;">"${esc(d.text)}"</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">${btn}</button>`;
   }
 
   function renderMissingInfo(d) {

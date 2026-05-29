@@ -32,7 +32,8 @@ if (!in_array($action, $allowed, true)) {
 
 $newTitle = trim($body['title'] ?? '');
 $urgency  = in_array($body['urgency'] ?? '', ['low', 'medium', 'high'], true) ? $body['urgency'] : null;
-$time     = in_array($body['time']    ?? '', ['5min', '15min', '60min', 'hours'], true) ? $body['time'] : null;
+$timeRaw  = $body['time'] ?? null;
+$time     = (is_int($timeRaw) || ctype_digit((string)$timeRaw)) && (int)$timeRaw > 0 ? (int)$timeRaw : null;
 
 try {
     if ($action === 'delete') {

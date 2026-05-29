@@ -659,6 +659,8 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     const setStatus = s  => { document.getElementById('triage-status').textContent = s; };
     const actionsEl = () => document.getElementById('triage-actions');
 
+    let taskContext = null;
+
     function disableAll() {
       actionsEl().querySelectorAll('button').forEach(b => b.disabled = true);
     }
@@ -679,6 +681,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       disableAll();
       setStatus('Saving…');
       body.task_id = d.id;
+      if (taskContext && !body.context) body.context = taskContext;
       const title = getTitle();
       if (title !== d.title) body.title = title;
       fetch('api/triage.php', {
@@ -695,7 +698,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       setQ("Is this something you can actually do?");
       const el = actionsEl(); el.innerHTML = '';
       el.append(
-        mkBtn("Yes, it's real", s2),
+        mkBtn("Yes, it's real", sPlace),
         mkBtn("Wait, I did that!", () => {
           disableAll();
           setStatus('Marking as done…');
@@ -711,6 +714,18 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
         mkBtn("Not relevant — bin it", () => save({action:'delete'}),
           'background:transparent;color:#c0392b;border:1.5px solid #c0392b;')
+      );
+    }
+
+    // Step 1b: Location?
+    function sPlace() {
+      setQ("Does this need to happen somewhere specific?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(
+        mkBtn("Home", () => { taskContext = 'home'; s2(); }),
+        mkBtn("Work", () => { taskContext = 'work'; s2(); }),
+        mkBtn("Skip", () => s2(),
+          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
       );
     }
 

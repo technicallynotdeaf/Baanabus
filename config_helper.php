@@ -481,6 +481,35 @@ function savePeopleNotes(array $data): void {
     @chmod($path, 0600);
 }
 
+function vaultUpdatePerson(int $personId, array $fields): void {
+    $data  = getPeople();
+    $found = false;
+    foreach ($data['people'] as &$p) {
+        if ((int)$p['person_id'] === $personId) {
+            foreach ($fields as $k => $v) $p[$k] = $v;
+            $found = true;
+            break;
+        }
+    }
+    unset($p);
+    if (!$found) throw new Exception('Person not found');
+    savePeople($data);
+}
+
+function vaultAddPeopleNote(int $personId, string $contents): int {
+    $data   = getPeopleNotes();
+    $noteId = (int)($data['next_id'] ?? 1);
+    $data['notes'][] = [
+        'note_id'    => $noteId,
+        'person_id'  => $personId,
+        'contents'   => $contents,
+        'date_added' => date('Y-m-d H:i:s'),
+    ];
+    $data['next_id'] = $noteId + 1;
+    savePeopleNotes($data);
+    return $noteId;
+}
+
 // ---------- Story progress (stored in config.enc under config['stories'][$id]) ----------
 
 function getStoryProgress(int $storyId): array {

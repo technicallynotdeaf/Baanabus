@@ -123,6 +123,7 @@ Connect to services Alison already uses.
 - [ ] Share target: receive text/URLs from other apps → lands in inbox
 - [ ] Push notifications: due tasks / overdue reviews
 - [ ] Contact call prompts: before a call, app surfaces person notes + last contact date
+- [ ] WiFi SSID → automatic context detection: known SSIDs mapped to home/work/out; native wrapper reads SSID and passes to web layer via JS bridge; sets day context without check-in prompt. Needs ACCESS_WIFI_STATE + ACCESS_FINE_LOCATION permissions. Worth checking GrapheneOS behaviour — it may require explicit grants each session.
 
 ---
 

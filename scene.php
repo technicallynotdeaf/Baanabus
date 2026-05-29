@@ -215,7 +215,7 @@ $fillPct = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0
         const avatar  = new Image();
         avatar.src    = 'avatars/baanabus_standing.png';
         avatar.onload = function () {
-            const scale = 0.25;
+            const scale = width <= 640 ? 0.15 : 0.25;
             const aw    = avatar.width  * scale;
             const ah    = avatar.height * scale;
             ctx.drawImage(avatar,

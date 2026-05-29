@@ -68,8 +68,8 @@ The daily rhythm that makes the game loop feel intentional.
 - ✅ Stuck flow: task marked stuck → snoozes until tomorrow, flagged for review
 - ✅ Energy-aware task selection: weighted pool in `next_activity.php` matches task energy to today's level
 - ✅ GTD inbox triage: full flow in speech bubble (rename, urgency, next_action+date, project+subtask, waiting, someday, delete)
-- [ ] Day type affects task filtering (e.g., "Home" day = home context tasks)
-- [ ] Context filter in tasks overlay: quick filter chips (Home / Work / etc.)
+- [ ] Day type → passive context filter: home day suppresses tasks tagged work/office; work day suppresses home tasks. Happens automatically in `getDoableTasks()` based on today's diary entry — no user action needed.
+- [ ] Context chips in task list overlay = **planning mode only**: pick a context to see all tasks in that bucket at once. Not a real-time filter for "what can I do now" — that's the passive filter above.
 
 ---
 

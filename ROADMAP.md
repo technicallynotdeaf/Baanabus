@@ -84,6 +84,7 @@ Make the world feel alive without adding complexity.
 - [ ] Time-of-day tint: warm morning / neutral afternoon / cooler evening
 - [ ] Daily NPC message: first load of each day shows a short greeting
 - [ ] "New book" animation / notification when a story page unlocks
+- [ ] **Badges notice board** — pinboard/corkboard on the wall beside the bookshelf, rendered on canvas; badges earned for milestones (tasks completed, streak, triage cleared, trivia correct, minigame wins, story progress, etc.); badges stored in vault config; clicking the board opens a badges overlay showing earned + locked badges with descriptions
 
 ---
 

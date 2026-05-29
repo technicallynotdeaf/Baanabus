@@ -231,6 +231,8 @@ input:focus, textarea:focus, select:focus {
         bottom: auto;
         left: 55%;
         transform: translate(-50%, -50%);
+        width: 90vw;
+        max-width: 90vw;
         max-height: 45vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;

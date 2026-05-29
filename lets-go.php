@@ -638,7 +638,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 
     // Step 1: Is this real?
     function s1() {
-      setQ("Is this something you'll actually do?");
+      setQ("Is this something you can actually do?");
       const el = actionsEl(); el.innerHTML = '';
       el.append(
         mkBtn("Yes, it's real", s2),

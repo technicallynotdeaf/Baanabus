@@ -731,9 +731,14 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 
     // Step 2: How long?
     function s2() {
-      setQ("How long will it take?");
+      setQ("How long would it take to do this?");
       const el = actionsEl(); el.innerHTML = '';
-      el.append(mkBtn("Under 2 minutes", s3quick), mkBtn("More than 2 minutes", s3big));
+      el.append(
+        mkBtn("Less than 5 mins", s3quick),
+        mkBtn("10–15 mins",       s3big),
+        mkBtn("30–60 mins",       s3big),
+        mkBtn("A few hours",      s3big)
+      );
     }
 
     // Step 3a: quick task — can you do it now?

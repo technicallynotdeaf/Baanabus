@@ -643,6 +643,7 @@ window.initLetsGo = function() {
     const actionsEl = () => document.getElementById('triage-actions');
 
     let taskContext = null;
+    let taskTime    = null;
 
     function disableAll() {
       actionsEl().querySelectorAll('button').forEach(b => b.disabled = true);
@@ -665,6 +666,7 @@ window.initLetsGo = function() {
       setStatus('Saving…');
       body.task_id = d.id;
       if (taskContext && !body.context) body.context = taskContext;
+      if (taskTime) body.time = taskTime;
       const title = getTitle();
       if (title !== d.title) body.title = title;
       fetch('api/triage.php', {
@@ -714,10 +716,10 @@ window.initLetsGo = function() {
       setQ("How long would it take to do this?");
       const el = actionsEl(); el.innerHTML = '';
       el.append(
-        mkBtn("Less than 5 mins", s3quick),
-        mkBtn("10–15 mins",       s3big),
-        mkBtn("30–60 mins",       s3big),
-        mkBtn("A few hours",      s3big)
+        mkBtn("Less than 5 mins", () => { taskTime = '5min';  s3quick(); }),
+        mkBtn("10–15 mins",       () => { taskTime = '15min'; s3big();   }),
+        mkBtn("30–60 mins",       () => { taskTime = '60min'; s3big();   }),
+        mkBtn("A few hours",      () => { taskTime = 'hours'; s3big();   })
       );
     }
 

@@ -1,5 +1,15 @@
 # Baanabus — Claude Code Briefing
 
+## Claude Code environment
+
+- **Platform**: Windows 10 (local machine). PowerShell is the default shell — use PowerShell syntax, not bash.
+- **No WSL**: `/mnt/c/...` paths do not work. Use `C:\...` paths.
+- **Git**: run from `C:\Baanabus\Baanabus` via PowerShell. Use PowerShell heredoc syntax (`@'...'@`) for multi-line commit messages — bash `cat <<'EOF'` does not work.
+- **PHP execution**: never run PHP locally. SCP scripts to `/tmp/` on pipe-server and run via SSH.
+- **File editing**: Write/Edit tools work directly on local Windows paths.
+
+---
+
 ## What this project is
 
 Baanabus is a personal productivity app disguised as a game, built for Alison (sole user). The core idea: embed real tasks inside a game loop so they get done without feeling like admin. Think GTD capture + NPC warmth + dopamine-friendly task presentation.

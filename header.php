@@ -7,9 +7,9 @@ require_once __DIR__ . '/init.php';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baanabus</title>
-  <link rel="stylesheet" href="css/app.css">
-  <script src="js/app.js" defer></script>
-  <script src="js/auth.js"></script>
+  <link rel="stylesheet" href="css/app.css?v=<?= filemtime(__DIR__ . '/css/app.css') ?>">
+  <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>" defer></script>
+  <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </head>
 <body>
 

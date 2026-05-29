@@ -595,132 +595,200 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
   function renderTriage(d) {
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
-      <textarea id="triage-title"
-        style="width:100%;min-height:56px;margin-bottom:0.75rem;font-size:1em;resize:vertical;"
-        >${esc(d.title)}</textarea>
-      <div style="display:flex;flex-direction:column;gap:8px;" id="triage-actions">
-        <button class="action-button" onclick="window._triageNextAction(${d.id})">This is my next action</button>
-        <button class="action-button" onclick="window._triageBreakDown(${d.id})">Too big — break it down</button>
-        <button class="action-button" onclick="window._triageQuick(${d.id},'waiting')" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);">Waiting on someone</button>
-        <button class="action-button" onclick="window._triageQuick(${d.id},'someday')" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);">Maybe someday</button>
-        <button class="action-button" onclick="window._triageQuick(${d.id},'delete')" style="background:transparent;color:#c0392b;border:1.5px solid #c0392b;">Not relevant</button>
-      </div>
-      <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+      <textarea id="triage-title" style="width:100%;min-height:52px;margin-bottom:0.75rem;font-size:1em;resize:vertical;">${esc(d.title)}</textarea>
+      <p id="triage-q" style="font-weight:500;margin-bottom:0.75rem;line-height:1.4;"></p>
+      <div id="triage-actions" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
 
-    // Next action: urgency + when
-    window._triageNextAction = function(taskId) {
-      const fmt  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const now  = new Date();
-      const tom  = new Date(now); tom.setDate(now.getDate() + 1);
-      const daysToFri = (5 - now.getDay() + 7) % 7 || 7;
-      const fri  = new Date(now); fri.setDate(now.getDate() + daysToFri);
+    const getTitle  = () => document.getElementById('triage-title').value.trim() || d.title;
+    const setQ      = q  => { document.getElementById('triage-q').textContent = q; };
+    const setStatus = s  => { document.getElementById('triage-status').textContent = s; };
+    const actionsEl = () => document.getElementById('triage-actions');
 
-      const whenOpts = [
-        { label: 'Today',      date: fmt(now) },
-        { label: 'Tomorrow',   date: fmt(tom) },
-      ];
-      if (daysToFri > 1) whenOpts.push({ label: 'This Friday', date: fmt(fri) });
-      whenOpts.push({ label: 'No date yet', date: null });
+    function disableAll() {
+      actionsEl().querySelectorAll('button').forEach(b => b.disabled = true);
+    }
+    function enableAll() {
+      actionsEl().querySelectorAll('button').forEach(b => b.disabled = false);
+    }
 
-      const urgencyBtns = ['High','Medium','Low'].map(u =>
-        `<button class="action-button triage-urgency" data-u="${u.toLowerCase()}"
-           style="flex:1;background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
-           onclick="window._selectUrgency(this)">${u}</button>`
-      ).join('');
+    function mkBtn(label, onClick, extraStyle) {
+      const b = document.createElement('button');
+      b.className = 'action-button';
+      b.style.cssText = 'width:100%;' + (extraStyle || '');
+      b.textContent = label;
+      b.addEventListener('click', onClick);
+      return b;
+    }
 
-      const whenBtns = whenOpts.map(o =>
-        `<button class="action-button" style="width:100%;"
-           onclick="window._triageSave(${taskId},'next_action',${o.date ? `'${o.date}'` : 'null'})">${esc(o.label)}</button>`
-      ).join('');
-
-      document.getElementById('triage-actions').outerHTML = `
-        <div id="triage-actions">
-          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Urgency</p>
-          <div style="display:flex;gap:6px;margin-bottom:0.75rem;">${urgencyBtns}</div>
-          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">When?</p>
-          <div style="display:flex;flex-direction:column;gap:6px;">${whenBtns}</div>
-        </div>`;
-    };
-
-    window._selectUrgency = function(btn) {
-      document.querySelectorAll('.triage-urgency').forEach(b => {
-        b.style.background = 'transparent';
-        b.style.color = 'hsl(210,100%,30%)';
-        b.style.fontWeight = '';
-      });
-      btn.style.background = 'hsl(210,100%,30%)';
-      btn.style.color = '#fff';
-      btn.style.fontWeight = '600';
-    };
-
-    // Break it down: prompt for first subtask, mark parent as project
-    window._triageBreakDown = function(taskId) {
-      document.getElementById('triage-actions').outerHTML = `
-        <div id="triage-actions">
-          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">What is the first concrete step?</p>
-          <input type="text" id="triage-first-step" placeholder="e.g. Email Jane to confirm date"
-            style="margin-bottom:0.5rem;" autofocus>
-          <button class="action-button" style="width:100%;" onclick="window._triageSaveProject(${taskId})">Save</button>
-        </div>`;
-      document.getElementById('triage-first-step').focus();
-      document.getElementById('triage-first-step').addEventListener('keydown', e => {
-        if (e.key === 'Enter') window._triageSaveProject(taskId);
-      });
-    };
-
-    window._triageSaveProject = function(taskId) {
-      const firstStep = document.getElementById('triage-first-step').value.trim();
-      if (!firstStep) {
-        document.getElementById('triage-status').textContent = 'Enter the first step first.';
-        return;
-      }
-      const title = document.getElementById('triage-title').value.trim();
-      window._triageSave(taskId, 'project', null, { first_step: firstStep, title: title || undefined });
-    };
-
-    // Quick save (waiting / someday / delete)
-    window._triageQuick = function(taskId, action) {
-      const title = document.getElementById('triage-title').value.trim();
-      window._triageSave(taskId, action, null, title ? { title } : {});
-    };
-
-    window._triageSave = function(taskId, action, date, extra = {}) {
-      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
-      const st = document.getElementById('triage-status');
-      st.textContent = 'Saving…';
-
-      const urgencyBtn = document.querySelector('.triage-urgency[style*="rgb"]') ||
-                         document.querySelector('.triage-urgency[style*="#fff"]');
-      const urgency = urgencyBtn ? urgencyBtn.dataset.u : null;
-
-      const titleEl = document.getElementById('triage-title');
-      const title   = (titleEl ? titleEl.value.trim() : '') || undefined;
-
-      const body = { task_id: taskId, action, ...extra };
-      if (date)    body.scheduled_date = date;
-      if (urgency) body.urgency        = urgency;
-      if (title)   body.title          = title;
-
+    function save(body, onOk) {
+      disableAll();
+      setStatus('Saving…');
+      body.task_id = d.id;
+      const title = getTitle();
+      if (title !== d.title) body.title = title;
       fetch('api/triage.php', {
-        method:  'POST',
-        headers: {'Content-Type': 'application/json'},
-        body:    JSON.stringify(body),
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) {
-          if (date && window.calendarInvalidate) window.calendarInvalidate(date.substring(0, 7));
-          setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
-        } else {
-          st.textContent = data.error || 'Could not save.';
-          document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
-        }
-      })
-      .catch(() => {
-        st.textContent = 'Could not save — check connection.';
-        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) { setStatus(''); if (onOk) onOk(); else setTimeout(() => loadSpeechBubble('lets-go.php'), 350); }
+        else { setStatus(data.error || 'Could not save.'); enableAll(); }
+      }).catch(() => { setStatus('Network error.'); enableAll(); });
+    }
+
+    // Step 1: Is this real?
+    function s1() {
+      setQ("Is this something you'll actually do?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(
+        mkBtn("Yes, it's real", s2),
+        mkBtn("Maybe someday", () => save({action:'someday'}),
+          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
+        mkBtn("Not relevant — bin it", () => save({action:'delete'}),
+          'background:transparent;color:#c0392b;border:1.5px solid #c0392b;')
+      );
+    }
+
+    // Step 2: How long?
+    function s2() {
+      setQ("How long will it take?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(mkBtn("Under 2 minutes", s3quick), mkBtn("More than 2 minutes", s3big));
+    }
+
+    // Step 3a: quick task — can you do it now?
+    function s3quick() {
+      setQ("Can you do it right now?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(
+        mkBtn("Yes — I'll do it now", doItNow),
+        mkBtn("Not right now", s4,
+          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
+      );
+    }
+
+    // Step 3b: big task — is there a 2-min first step?
+    function s3big() {
+      setQ("Is there a 2-minute step that moves this forward?");
+      const el = actionsEl(); el.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.placeholder = 'e.g. Look up the number'; inp.style.cssText = 'margin-bottom:0.4rem;';
+      const addBtn = mkBtn("Add as first step (save as project)", () => {
+        const firstStep = inp.value.trim();
+        if (!firstStep) { setStatus('What is the first step?'); return; }
+        save({ action: 'project', first_step: firstStep });
       });
-    };
+      el.append(inp, addBtn,
+        mkBtn("No — just add it to my list", () => save({action:'next_action'}),
+          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'));
+      inp.focus();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+    }
+
+    // Do it now: save as next_action, offer Done button
+    function doItNow() {
+      save({ action: 'next_action' }, () => {
+        setQ("Go do it!");
+        setStatus('');
+        const el = actionsEl(); el.innerHTML = '';
+        const doneBtn = mkBtn("Done — mark it complete", () => {
+          doneBtn.disabled = true;
+          fetch(`api/mark_complete.api.php?task_id=${d.id}`)
+            .then(r => r.json())
+            .then(res => { if (res.success) updateProgressBar(res.pages, res.pages_target); })
+            .finally(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
+        }, 'background:#4caf50;');
+        el.append(doneBtn,
+          mkBtn("I'll do it later", () => loadSpeechBubble('lets-go.php'),
+            'background:transparent;color:#888;border:1px solid #ddd;margin-top:2px;'));
+      });
+    }
+
+    // Step 4: blockers
+    function s4() {
+      setQ("What's stopping you?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(
+        mkBtn("Wrong place / context", sContext),
+        mkBtn("Wrong time of day", sTime),
+        mkBtn("Snooze until a specific date", sDate),
+        mkBtn("Need to buy or get something first", sPrereq)
+      );
+    }
+
+    // Blocker: context
+    function sContext() {
+      setQ("Where does this need to happen?");
+      const el = actionsEl(); el.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+      ['Home','Work','Shops','Online','Phone'].forEach(ctx =>
+        wrap.appendChild(mkBtn(ctx, () => save({action:'next_action', context:ctx.toLowerCase()}),
+          'width:auto;flex:1;min-width:70px;'))
+      );
+      el.appendChild(wrap);
+    }
+
+    // Blocker: time of day
+    function sTime() {
+      const fmtDate = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      const now = new Date();
+      const tom = new Date(now); tom.setDate(tom.getDate() + 1);
+      const tonight  = fmtDate(now) + 'T20:00:00';
+      const tomorrow = fmtDate(tom) + 'T08:00:00';
+      setQ("When would work better?");
+      const el = actionsEl(); el.innerHTML = '';
+      el.append(
+        mkBtn("Tonight", () => save({action:'next_action', scheduled_date: tonight})),
+        mkBtn("Tomorrow morning", () => save({action:'next_action', scheduled_date: tomorrow})),
+        mkBtn("No rush — just add it to my list", () => save({action:'next_action'}),
+          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
+      );
+    }
+
+    // Blocker: specific date
+    function sDate() {
+      setQ("Show it to me after...");
+      const el = actionsEl(); el.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'date'; inp.style.cssText = 'margin-bottom:0.4rem;';
+      const min = new Date(); min.setDate(min.getDate() + 1);
+      inp.min = min.toISOString().substring(0, 10);
+      const saveBtn = mkBtn("Snooze until this date", () => {
+        if (!inp.value) { setStatus('Pick a date.'); return; }
+        save({ action: 'next_action', scheduled_date: inp.value });
+      });
+      el.append(inp, saveBtn);
+    }
+
+    // Blocker: need to acquire something
+    function sPrereq() {
+      setQ("What do you need to buy or get first?");
+      const el = actionsEl(); el.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.placeholder = 'e.g. Iron-on number labels'; inp.style.cssText = 'margin-bottom:0.4rem;';
+      const saveBtn = mkBtn("Add as a task and keep this one", () => {
+        const prereq = inp.value.trim();
+        if (!prereq) { setStatus('What do you need?'); return; }
+        disableAll();
+        setStatus('Saving…');
+        fetch('api/add_task.php', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ title: prereq, urgency: 'medium', task_type: 'next_action' }),
+        }).then(() => fetch('api/triage.php', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ task_id: d.id, action: 'next_action', title: getTitle() }),
+        })).then(r => r.json()).then(data => {
+          if (data.ok) setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
+          else { setStatus(data.error || 'Could not save.'); enableAll(); }
+        }).catch(() => { setStatus('Network error.'); enableAll(); });
+      });
+      el.append(inp, saveBtn);
+      inp.focus();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
+    }
+
+    s1();
   }
 
   // ---- Missing info (daily check-in) ----

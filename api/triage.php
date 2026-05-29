@@ -55,10 +55,18 @@ try {
         $fields = ['task_type' => 'next_action'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency']  = $urgency;
+        $context = trim($body['context'] ?? '') ?: null;
+        if ($context !== null) $fields['context'] = $context;
         $date = trim($body['scheduled_date'] ?? '');
-        if ($date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            if ($date > date('Y-m-d')) {
-                $fields['snoozed_until'] = $date . 'T08:00:00+00:00';
+        if ($date) {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                // Date only — snooze to next morning
+                if ($date >= date('Y-m-d')) {
+                    $fields['snoozed_until'] = $date . 'T08:00:00';
+                }
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/', $date)) {
+                // Full datetime (e.g. tonight at 20:00) — use directly
+                $fields['snoozed_until'] = $date;
             }
         }
         vaultUpdateTask($taskId, $fields);

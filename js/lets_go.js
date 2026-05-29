@@ -35,6 +35,7 @@ window.initLetsGo = function() {
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
       case 'quote':          renderQuote(d);         break;
+      case 'tip':            renderTip(d);           break;
       case 'missing_info':   renderMissingInfo(d);   break;
       case 'onboarding_step': renderOnboarding(d);   break;
       case 'empty':
@@ -849,6 +850,13 @@ window.initLetsGo = function() {
     }
 
     s1();
+  }
+
+  function renderTip(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Tip</p>
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Got it</button>`;
   }
 
   function renderQuote(d) {

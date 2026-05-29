@@ -175,6 +175,52 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'migrate_diary') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $dryRun = !empty($body['dry_run']);
+        try {
+            $rows = $database->query(
+                "SELECT date, energy_level, day_type FROM diary
+                 WHERE energy_level IS NOT NULL OR day_type IS NOT NULL
+                 ORDER BY date"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            json_response(['error' => 'Could not read diary: ' . $e->getMessage()], 500);
+        }
+
+        $migrated = [];
+        if (!$dryRun) {
+            $existing = getDiary();
+            foreach ($rows as $row) {
+                $entry = [];
+                if ($row['energy_level'] !== null) $entry['energy_level'] = (int)$row['energy_level'];
+                if ($row['day_type']     !== null) $entry['day_type']     = (int)$row['day_type'];
+                if (!empty($entry)) {
+                    $existing[$row['date']] = array_merge($existing[$row['date']] ?? [], $entry);
+                    $migrated[] = $row['date'];
+                }
+            }
+            if (!empty($migrated)) saveDiary($existing);
+
+            // Drop the diary table now that data is in the vault
+            try { $database->exec("DROP TABLE IF EXISTS diary"); }
+            catch (Throwable $e) { /* non-fatal */ }
+        } else {
+            foreach ($rows as $row) {
+                if ($row['energy_level'] !== null || $row['day_type'] !== null) {
+                    $migrated[] = $row['date'];
+                }
+            }
+        }
+
+        json_response([
+            'ok'       => true,
+            'dry_run'  => $dryRun,
+            'migrated' => count($migrated),
+            'dates'    => $migrated,
+        ]);
+    }
+
     if ($action === 'migrate_from_sqlite') {
         // One-shot migration: pulls incomplete tasks (id > 5) from the legacy SQLite
         // tasks table and inserts them into the vault. Idempotent — skips tasks whose

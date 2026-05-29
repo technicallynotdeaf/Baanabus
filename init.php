@@ -110,14 +110,6 @@ function _ensureSchema(PDO $db): void {
             date_added DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS diary (
-            date         DATE PRIMARY KEY,
-            task_queue   TEXT DEFAULT '[]',
-            energy_level INTEGER,
-            day_type     INTEGER,
-            drop_count   INTEGER DEFAULT 0,
-            drop_cap     INTEGER DEFAULT 0
-        );
 
         CREATE TABLE IF NOT EXISTS contexts (
             context TEXT PRIMARY KEY
@@ -137,6 +129,11 @@ function _ensureSchema(PDO $db): void {
         CREATE TABLE IF NOT EXISTS quotes (
             quote_id INTEGER PRIMARY KEY AUTOINCREMENT,
             quote    TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tips (
+            tip_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            tip      TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS energy_levels (
@@ -224,6 +221,18 @@ function _ensureSchema(PDO $db): void {
 
         INSERT OR IGNORE INTO contexts (context) VALUES
             ('home'),('work'),('shops'),('online'),('phone'),('anywhere');
+
+        INSERT OR IGNORE INTO tips VALUES
+            (1,'Changed your mind about Habitica? You can connect or disconnect it any time in Settings.'),
+            (2,'Your vault is encrypted to your passkey. If you lose it, you lose vault access — enrol a backup key in Settings now.'),
+            (3,'Brain dump anything that''s taking up mental space — tap Note to Self in the nav bar.'),
+            (4,'Snoozed a task you now want back? Find it in the Tasks list and it will reappear when the snooze expires.'),
+            (5,'You can add time estimates to tasks during triage — this syncs as a tag to Habitica too.'),
+            (6,'The story unlocks a new page every time you complete a set of tasks. Keep going.'),
+            (7,'Agent API keys let Claude access your vault directly. Generate one in Settings if you haven''t already.'),
+            (8,'Stuck on something? Hit Stuck and it will come back tomorrow. No guilt.'),
+            (9,'Your energy level each morning shapes which tasks appear. Higher energy = harder tasks in the mix.'),
+            (10,'Tasks, trivia, and games are all mixed into the same rotation on purpose. It''s not random — it''s paced.');
 
         INSERT OR IGNORE INTO quotes VALUES
             (1,'Done is better than perfect.'),

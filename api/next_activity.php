@@ -22,46 +22,42 @@ try {
 $actCount = (int)($_SESSION['activity_count'] ?? 0);
 $_SESSION['activity_count'] = $actCount + 1;
 
-// Pull today's check-in; capture energy for pool weighting at the same time
+// Pull today's check-in from the diary vault
 $missing = null;
 $energy  = 3; // default: Okay
-if ($database) {
-    try {
-        $today = date('Y-m-d');
-        $stmt  = $database->prepare("SELECT energy_level, day_type FROM diary WHERE date = ?");
-        $stmt->execute([$today]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row || $row['energy_level'] === null) {
-            $missing = [
-                'type'    => 'missing_info',
-                'field'   => 'energy_level',
-                'prompt'  => "How's your energy today?",
-                'options' => [
-                    ['value' => 1, 'label' => 'Exhausted'],
-                    ['value' => 2, 'label' => 'Low'],
-                    ['value' => 3, 'label' => 'Okay'],
-                    ['value' => 4, 'label' => 'Good'],
-                    ['value' => 5, 'label' => 'On fire'],
-                ],
-            ];
-        } elseif ($row['day_type'] === null) {
-            $energy  = max(1, min(5, (int)$row['energy_level']));
-            $missing = [
-                'type'    => 'missing_info',
-                'field'   => 'day_type',
-                'prompt'  => 'What kind of day is it?',
-                'options' => [
-                    ['value' => 1, 'label' => 'Home'],
-                    ['value' => 2, 'label' => 'Work'],
-                    ['value' => 3, 'label' => 'Out'],
-                    ['value' => 4, 'label' => 'Rest'],
-                ],
-            ];
-        } else {
-            $energy = max(1, min(5, (int)$row['energy_level']));
-        }
-    } catch (Throwable $e) { /* non-fatal */ }
-}
+try {
+    $today = date('Y-m-d');
+    $row   = getDiaryEntry($today);
+    if (empty($row['energy_level'])) {
+        $missing = [
+            'type'    => 'missing_info',
+            'field'   => 'energy_level',
+            'prompt'  => "How's your energy today?",
+            'options' => [
+                ['value' => 1, 'label' => 'Exhausted'],
+                ['value' => 2, 'label' => 'Low'],
+                ['value' => 3, 'label' => 'Okay'],
+                ['value' => 4, 'label' => 'Good'],
+                ['value' => 5, 'label' => 'On fire'],
+            ],
+        ];
+    } elseif (empty($row['day_type'])) {
+        $energy  = max(1, min(5, (int)$row['energy_level']));
+        $missing = [
+            'type'    => 'missing_info',
+            'field'   => 'day_type',
+            'prompt'  => 'What kind of day is it?',
+            'options' => [
+                ['value' => 1, 'label' => 'Home'],
+                ['value' => 2, 'label' => 'Work'],
+                ['value' => 3, 'label' => 'Out'],
+                ['value' => 4, 'label' => 'Rest'],
+            ],
+        ];
+    } else {
+        $energy = max(1, min(5, (int)$row['energy_level']));
+    }
+} catch (Throwable $e) { /* non-fatal — use defaults */ }
 
 // Always surface the check-in on the very first activity of a session
 if ($missing && $actCount === 0) json_response($missing);
@@ -93,8 +89,11 @@ if ($database) {
 }
 
 $hasQuotes = false;
+$hasTips   = false;
 if ($database) {
     try { $hasQuotes = (bool)$database->query("SELECT 1 FROM quotes LIMIT 1")->fetchColumn(); }
+    catch (Throwable $e) {}
+    try { $hasTips = (bool)$database->query("SELECT 1 FROM tips LIMIT 1")->fetchColumn(); }
     catch (Throwable $e) {}
 }
 
@@ -104,6 +103,7 @@ $pool = array_merge(
     array_fill(0, $hasStudy ? 3 : 0,     'study'),
     array_fill(0, 2,                     'trivia'),
     array_fill(0, $hasQuotes ? 2 : 0,    'quote'),
+    array_fill(0, $hasTips  ? 1 : 0,     'tip'),
     array_fill(0, $gameSlots,            'minigame'),
     $missing ? ['missing_info'] : []
 );
@@ -124,7 +124,11 @@ $_SESSION['last_activity'] = $choice;
 if ($choice === 'quote') {
     $q = pick_quote();
     if ($q) json_response($q);
-    // fallback if quotes somehow empty
+    json_response(pick_trivia());
+}
+if ($choice === 'tip') {
+    $t = pick_tip();
+    if ($t) json_response($t);
     json_response(pick_trivia());
 }
 if ($choice === 'trivia') json_response(pick_trivia());
@@ -263,6 +267,17 @@ function pick_trivia(): array {
     // Emergency fallback
     return ['type' => 'trivia', 'id' => 0, 'question' => 'What is the capital of Australia?',
             'options' => ['Sydney', 'Melbourne', 'Canberra', 'Brisbane'], 'answer' => 2];
+}
+
+function pick_tip(): ?array {
+    global $database;
+    if (!$database) return null;
+    try {
+        $t = $database->query("SELECT tip_id, tip FROM tips ORDER BY RANDOM() LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        return $t ? ['type' => 'tip', 'id' => (int)$t['tip_id'], 'text' => $t['tip']] : null;
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
 function pick_quote(): ?array {

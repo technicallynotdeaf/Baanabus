@@ -39,7 +39,7 @@ if (!$token || !authenticateAgentKey($token)) {
 if (!$database) json_response(['error' => 'Database unavailable'], 503);
 
 const ALLOWED_TABLES = [
-    'diary', 'people', 'people_notes', 'quotes', 'study_questions',
+    'people', 'people_notes', 'quotes', 'tips', 'study_questions',
     'question_seen', 'contexts', 'day_types', 'energy_levels',
     'love_languages', 'note_types', 'priority', 'tags', 'task_types',
     'urgency', 'inbox',

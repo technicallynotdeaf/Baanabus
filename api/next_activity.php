@@ -78,11 +78,26 @@ $gameSlots = min(8, (6 - $energy) + $fatigue);
 $triageSlots = $hasInbox ? max(1, $taskSlots) : 0;
 $doableSlots = (!$hasInbox && $hasTasks) ? $taskSlots : 0;
 
+// Check for available study questions (unseen or not yet correctly answered twice)
+$hasStudy = false;
+if ($database) {
+    try {
+        $hasStudy = (bool)$database->query("
+            SELECT 1 FROM study_questions sq
+            LEFT JOIN question_seen qs ON sq.id = qs.question_id
+            WHERE sq.q_type = 'study'
+              AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+            LIMIT 1
+        ")->fetchColumn();
+    } catch (Throwable $e) {}
+}
+
 $pool = array_merge(
-    array_fill(0, $doableSlots, 'task'),
-    array_fill(0, $triageSlots, 'triage'),
-    array_fill(0, 2, 'trivia'),
-    array_fill(0, $gameSlots, 'minigame'),
+    array_fill(0, $doableSlots,          'task'),
+    array_fill(0, $triageSlots,          'triage'),
+    array_fill(0, $hasStudy ? 3 : 0,     'study'),
+    array_fill(0, 2,                     'trivia'),
+    array_fill(0, $gameSlots,            'minigame'),
     $missing ? ['missing_info'] : []
 );
 
@@ -100,6 +115,11 @@ $choice = $pool[array_rand($pool)];
 $_SESSION['last_activity'] = $choice;
 
 if ($choice === 'trivia') json_response(pick_trivia());
+if ($choice === 'study') {
+    $s = pick_study();
+    if ($s) json_response($s);
+    json_response(pick_trivia()); // fallback if pool somehow empty
+}
 if ($choice === 'minigame') {
     $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction', 'wordscramble', 'highlow'];
     $lastGame = $_SESSION['last_minigame'] ?? null;
@@ -139,7 +159,6 @@ if (empty($cfg['onboarding_complete'])) {
             'prompt' => 'Do you use Habitica? I can sync your tasks with it.',
         ]);
     }
-    // Both answered — mark onboarding complete and fall through to task
     try {
         $cfg['onboarding_complete'] = true;
         $cfg['onboarding_at']       = date('c');
@@ -150,7 +169,6 @@ if (empty($cfg['onboarding_complete'])) {
 if (!$hasTasks) {
     json_response(['type' => 'empty', 'message' => "No tasks right now — check back later."]);
 }
-// Weight tasks by energy match: prefer tasks whose energy level matches today's
 $energyWeights = [
     'low'    => [1 => 10, 2 => 7, 3 => 3, 4 => 1, 5 => 1],
     'medium' => [1 => 2,  2 => 4, 3 => 8, 4 => 6, 5 => 3],
@@ -179,60 +197,77 @@ try {
 }
 json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks]);
 
-// ---------- trivia pool ----------
-function pick_trivia(): array {
-    $questions = [
-        ['q' => 'What is the only mammal capable of sustained flight?',
-         'opts' => ['Flying squirrel','Bat','Sugar glider','Flying lemur'], 'ans' => 1],
-        ['q' => 'What is the capital of Australia?',
-         'opts' => ['Sydney','Melbourne','Canberra','Brisbane'], 'ans' => 2],
-        ['q' => 'How many hearts does an octopus have?',
-         'opts' => ['One','Two','Three','Four'], 'ans' => 2],
-        ['q' => 'Which planet currently has the most known moons?',
-         'opts' => ['Jupiter','Saturn','Uranus','Neptune'], 'ans' => 1],
-        ['q' => 'What language has the most native speakers worldwide?',
-         'opts' => ['English','Hindi','Mandarin','Spanish'], 'ans' => 2],
-        ['q' => 'How many sides does a dodecagon have?',
-         'opts' => ['10','11','12','14'], 'ans' => 2],
-        ['q' => 'What is the hardest natural substance on Earth?',
-         'opts' => ['Ruby','Diamond','Quartz','Topaz'], 'ans' => 1],
-        ['q' => 'What does DNA stand for?',
-         'opts' => ['Deoxyribonucleic Acid','Deoxyribose Nucleic Acid','Double Nucleic Arrangement','Distinct Nucleotide Assembly'], 'ans' => 0],
-        ['q' => 'What is the smallest country in the world?',
-         'opts' => ['Monaco','Liechtenstein','San Marino','Vatican City'], 'ans' => 3],
-        ['q' => 'How many bones are in the adult human body?',
-         'opts' => ['196','206','216','226'], 'ans' => 1],
-        ['q' => 'What is the chemical symbol for gold?',
-         'opts' => ['Gd','Go','Au','Ag'], 'ans' => 2],
-        ['q' => 'Which ocean is the largest?',
-         'opts' => ['Atlantic','Indian','Arctic','Pacific'], 'ans' => 3],
-        ['q' => 'What year did the Berlin Wall fall?',
-         'opts' => ['1987','1988','1989','1991'], 'ans' => 2],
-        ['q' => 'What is the fastest land animal?',
-         'opts' => ['Lion','Greyhound','Cheetah','Pronghorn'], 'ans' => 2],
-        ['q' => 'What element does "Fe" represent on the periodic table?',
-         'opts' => ['Fluorine','Fermium','Iron','Francium'], 'ans' => 2],
-        ['q' => 'In which country were the first modern Olympic Games held?',
-         'opts' => ['Italy','Greece','Turkey','Egypt'], 'ans' => 1],
-        ['q' => 'What is the longest river in the world?',
-         'opts' => ['Amazon','Congo','Yangtze','Nile'], 'ans' => 3],
-        ['q' => 'How many colours are in a rainbow?',
-         'opts' => ['5','6','7','8'], 'ans' => 2],
-        ['q' => 'How many strings does a standard guitar have?',
-         'opts' => ['4','5','6','7'], 'ans' => 2],
-        ['q' => 'Which gas do plants absorb during photosynthesis?',
-         'opts' => ['Oxygen','Nitrogen','Carbon dioxide','Hydrogen'], 'ans' => 2],
-        ['q' => 'What is the currency of Japan?',
-         'opts' => ['Won','Yuan','Rupee','Yen'], 'ans' => 3],
-        ['q' => 'How many hours are in a week?',
-         'opts' => ['148','168','172','184'], 'ans' => 1],
-        ['q' => 'Which planet is known as the Red Planet?',
-         'opts' => ['Venus','Mercury','Mars','Jupiter'], 'ans' => 2],
-        ['q' => 'What is the largest organ in the human body?',
-         'opts' => ['Liver','Lungs','Brain','Skin'], 'ans' => 3],
-        ['q' => 'How many players are on a standard football (soccer) team?',
-         'opts' => ['9','10','11','12'], 'ans' => 2],
+// ---------- question helpers ----------
+
+function question_row_to_response(array $q, string $type): array {
+    $opts = [$q['option_a'], $q['option_b'], $q['option_c'], $q['option_d']];
+    $ans  = array_search($q['correct'], ['a', 'b', 'c', 'd'], true);
+    $out  = [
+        'type'     => $type,
+        'id'       => (int)$q['id'],
+        'question' => $q['question'],
+        'options'  => $opts,
+        'answer'   => $ans === false ? 0 : (int)$ans,
     ];
-    $q = $questions[array_rand($questions)];
-    return ['type' => 'trivia', 'question' => $q['q'], 'options' => $q['opts'], 'answer' => $q['ans']];
+    if ($type === 'study') {
+        $out['explanation'] = $q['explanation'] ?? null;
+        $out['set_name']    = $q['set_name']    ?? null;
+    }
+    return $out;
+}
+
+function pick_trivia(): array {
+    global $database;
+    if ($database) {
+        try {
+            // Prefer questions not yet seen twice
+            $stmt = $database->prepare("
+                SELECT sq.* FROM study_questions sq
+                LEFT JOIN question_seen qs ON sq.id = qs.question_id
+                WHERE sq.q_type = 'trivia'
+                  AND (qs.seen_count IS NULL OR qs.seen_count < 2)
+                ORDER BY RANDOM() LIMIT 1
+            ");
+            $stmt->execute();
+            $q = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$q) {
+                // All trivia exhausted — reset and start the cycle again
+                $database->exec("
+                    DELETE FROM question_seen
+                    WHERE question_id IN (SELECT id FROM study_questions WHERE q_type = 'trivia')
+                ");
+                $q = $database->query("
+                    SELECT * FROM study_questions WHERE q_type = 'trivia' ORDER BY RANDOM() LIMIT 1
+                ")->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if ($q) return question_row_to_response($q, 'trivia');
+        } catch (Throwable $e) {
+            error_log('pick_trivia: ' . $e->getMessage());
+        }
+    }
+    // Emergency fallback
+    return ['type' => 'trivia', 'id' => 0, 'question' => 'What is the capital of Australia?',
+            'options' => ['Sydney', 'Melbourne', 'Canberra', 'Brisbane'], 'answer' => 2];
+}
+
+function pick_study(): ?array {
+    global $database;
+    if (!$database) return null;
+    try {
+        $stmt = $database->prepare("
+            SELECT sq.* FROM study_questions sq
+            LEFT JOIN question_seen qs ON sq.id = qs.question_id
+            WHERE sq.q_type = 'study'
+              AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+            ORDER BY RANDOM() LIMIT 1
+        ");
+        $stmt->execute();
+        $q = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $q ? question_row_to_response($q, 'study') : null;
+    } catch (Throwable $e) {
+        error_log('pick_study: ' . $e->getMessage());
+        return null;
+    }
 }

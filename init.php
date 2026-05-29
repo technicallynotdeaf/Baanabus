@@ -179,6 +179,28 @@ function _ensureSchema(PDO $db): void {
             priority_level INTEGER PRIMARY KEY,
             display_name   TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS study_questions (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            q_type      TEXT    NOT NULL DEFAULT 'trivia',
+            question    TEXT    NOT NULL,
+            option_a    TEXT    NOT NULL,
+            option_b    TEXT    NOT NULL,
+            option_c    TEXT    NOT NULL,
+            option_d    TEXT    NOT NULL,
+            correct     TEXT    NOT NULL,
+            explanation TEXT,
+            set_name    TEXT,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS question_seen (
+            question_id   INTEGER PRIMARY KEY,
+            seen_count    INTEGER DEFAULT 0,
+            correct_count INTEGER DEFAULT 0,
+            last_seen     DATETIME,
+            FOREIGN KEY (question_id) REFERENCES study_questions(id)
+        );
     ");
 
     // Seed reference data (INSERT OR IGNORE = safe to repeat)
@@ -212,6 +234,32 @@ function _ensureSchema(PDO $db): void {
             (6,'You are doing better than you think.'),
             (7,'Start somewhere. Anywhere. Just start.');
 
+        INSERT OR IGNORE INTO study_questions (id,q_type,question,option_a,option_b,option_c,option_d,correct,set_name) VALUES
+        (1,'trivia','What is the only mammal capable of sustained flight?','Flying squirrel','Bat','Sugar glider','Flying lemur','b','General'),
+        (2,'trivia','What is the capital of Australia?','Sydney','Melbourne','Canberra','Brisbane','c','General'),
+        (3,'trivia','How many hearts does an octopus have?','One','Two','Three','Four','c','General'),
+        (4,'trivia','Which planet currently has the most known moons?','Jupiter','Saturn','Uranus','Neptune','b','General'),
+        (5,'trivia','What language has the most native speakers worldwide?','English','Hindi','Mandarin','Spanish','c','General'),
+        (6,'trivia','How many sides does a dodecagon have?','10','11','12','14','c','General'),
+        (7,'trivia','What is the hardest natural substance on Earth?','Ruby','Diamond','Quartz','Topaz','b','General'),
+        (8,'trivia','What does DNA stand for?','Deoxyribonucleic Acid','Deoxyribose Nucleic Acid','Double Nucleic Arrangement','Distinct Nucleotide Assembly','a','General'),
+        (9,'trivia','What is the smallest country in the world?','Monaco','Liechtenstein','San Marino','Vatican City','d','General'),
+        (10,'trivia','How many bones are in the adult human body?','196','206','216','226','b','General'),
+        (11,'trivia','What is the chemical symbol for gold?','Gd','Go','Au','Ag','c','General'),
+        (12,'trivia','Which ocean is the largest?','Atlantic','Indian','Arctic','Pacific','d','General'),
+        (13,'trivia','What year did the Berlin Wall fall?','1987','1988','1989','1991','c','General'),
+        (14,'trivia','What is the fastest land animal?','Lion','Greyhound','Cheetah','Pronghorn','c','General'),
+        (15,'trivia','What element does Fe represent on the periodic table?','Fluorine','Fermium','Iron','Francium','c','General'),
+        (16,'trivia','In which country were the first modern Olympic Games held?','Italy','Greece','Turkey','Egypt','b','General'),
+        (17,'trivia','What is the longest river in the world?','Amazon','Congo','Yangtze','Nile','d','General'),
+        (18,'trivia','How many colours are in a rainbow?','5','6','7','8','c','General'),
+        (19,'trivia','How many strings does a standard guitar have?','4','5','6','7','c','General'),
+        (20,'trivia','Which gas do plants absorb during photosynthesis?','Oxygen','Nitrogen','Carbon dioxide','Hydrogen','c','General'),
+        (21,'trivia','What is the currency of Japan?','Won','Yuan','Rupee','Yen','d','General'),
+        (22,'trivia','How many hours are in a week?','148','168','172','184','b','General'),
+        (23,'trivia','Which planet is known as the Red Planet?','Venus','Mercury','Mars','Jupiter','c','General'),
+        (24,'trivia','What is the largest organ in the human body?','Liver','Lungs','Brain','Skin','d','General'),
+        (25,'trivia','How many players are on a standard football (soccer) team?','9','10','11','12','c','General');
     ");
     _ensureMigrations($db);
 }

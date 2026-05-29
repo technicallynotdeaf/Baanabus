@@ -40,6 +40,7 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     switch (d.type) {
       case 'task':           renderTask(d);          break;
       case 'trivia':         renderTrivia(d);        break;
+      case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
       case 'missing_info':   renderMissingInfo(d);   break;
@@ -111,6 +112,15 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
     };
   }
 
+  // ---- Shared helpers ----
+  function recordQuestionSeen(id, correct) {
+    if (!id) return;
+    const fd = new FormData();
+    fd.append('id', id);
+    fd.append('correct', correct ? '1' : '0');
+    fetch('api/record_question_seen.php', { method: 'POST', body: fd }).catch(() => {});
+  }
+
   // ---- Trivia ----
   function renderTrivia(d) {
     const opts = d.options.map((o, i) =>
@@ -128,7 +138,9 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
       const btns = document.querySelectorAll('#trivia-opts .action-button');
       btns.forEach(b => b.disabled = true);
       const fb = document.getElementById('trivia-feedback');
-      if (idx === d.answer) {
+      const correct = idx === d.answer;
+      recordQuestionSeen(d.id, correct);
+      if (correct) {
         btns[idx].style.background = '#4caf50';
         fb.textContent = 'Correct!';
         earnPip();
@@ -138,6 +150,48 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
         fb.textContent = 'Not quite — the answer was: ' + esc(d.options[d.answer]);
       }
       document.getElementById('trivia-next').style.display = 'inline-flex';
+    };
+  }
+
+  // ---- Study (exam revision) ----
+  function renderStudy(d) {
+    const setLabel = d.set_name
+      ? `<p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">${esc(d.set_name)}</p>`
+      : '';
+    const opts = d.options.map((o, i) =>
+      `<button class="action-button" style="width:100%;text-align:left;"
+         onclick="window._answerStudy(${i})">${esc(o)}</button>`
+    ).join('');
+    c.innerHTML = `
+      ${setLabel}
+      <p style="font-weight:600;line-height:1.4;margin-bottom:0.75rem;">${esc(d.question)}</p>
+      <div id="study-opts" style="display:flex;flex-direction:column;gap:6px;">${opts}</div>
+      <p id="study-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <p id="study-expl" style="display:none;margin-top:0.4rem;font-size:0.88em;line-height:1.45;
+         border-left:3px solid #ddd;padding-left:0.6rem;color:#555;"></p>
+      <button id="study-next" class="action-button" style="display:none;margin-top:0.6rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+
+    window._answerStudy = function (idx) {
+      const btns = document.querySelectorAll('#study-opts .action-button');
+      btns.forEach(b => b.disabled = true);
+      const correct = idx === d.answer;
+      recordQuestionSeen(d.id, correct);
+      if (correct) {
+        btns[idx].style.background = '#4caf50';
+        document.getElementById('study-feedback').textContent = 'Correct!';
+        earnPip();
+      } else {
+        btns[idx].style.background = '#e53935';
+        if (btns[d.answer]) btns[d.answer].style.background = '#4caf50';
+        document.getElementById('study-feedback').textContent = 'Not quite.';
+      }
+      if (d.explanation) {
+        const expl = document.getElementById('study-expl');
+        expl.textContent = d.explanation;
+        expl.style.display = 'block';
+      }
+      document.getElementById('study-next').style.display = 'inline-flex';
     };
   }
 

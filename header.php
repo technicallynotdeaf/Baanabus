@@ -22,6 +22,7 @@ require_once __DIR__ . '/init.php';
     <li><a href="#" id="note-to-self">📝<span class="nav-text"> Note to Self</span></a></li>
     <li><a href="#" id="people-book">👥<span class="nav-text"> People</span></a></li>
     <li><a href="#" id="task-list">📋<span class="nav-text"> Tasks</span></a></li>
+    <li><a href="#" id="study-import-link">📚<span class="nav-text"> Study</span></a></li>
     <li><a href="#" id="settings-page-link">⚙️<span class="nav-text"> Settings</span></a></li>
     <li><a href="logout.php">🚪<span class="nav-text"> Logout</span></a></li>
   </ul>

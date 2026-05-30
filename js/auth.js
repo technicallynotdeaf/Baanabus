@@ -165,7 +165,7 @@ async function enrollPasskey() {
     const extResults = assertion.getClientExtensionResults();
     console.log('[Enroll] extension results:', JSON.stringify(extResults, (k,v) => v instanceof ArrayBuffer ? '(ArrayBuffer)' : v));
     const prfFirst = extResults?.prf?.results?.first;
-    if (!prfFirst) throw new Error('This key did not return a PRF result — it may need to be re-registered to support vault access.');
+    if (!prfFirst) throw new Error('This passkey doesn\'t support vault encryption (PRF extension missing). Use your device\'s built-in passkey — fingerprint, face, or screen lock — rather than a password manager like 1Password or Bitwarden. Those apps usually strip this feature.');
 
     const payload = {
       id:      assertion.id,

@@ -45,8 +45,13 @@ if ($vaultOpen) {
   <div class="card" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.5rem;">ðŸ”‘ Vault access</h3>
     <?php if ($vaultOpen): ?>
-      <p class="muted" style="margin-bottom:0.75rem;">
+      <p class="muted" style="margin-bottom:0.5rem;">
         Your vault is open. Tap another key below to grant it vault access from any browser.
+      </p>
+      <p class="hint" style="margin-bottom:0.75rem;">
+        Use your device's built-in screen lock (fingerprint, face, or PIN) — not a password manager app.
+        Most password managers (1Password, Bitwarden, etc.) don't support the encryption feature Baanabus needs.
+        On Android: choose "Use your screen lock" or "This device" when prompted.
       </p>
       <button id="btn-enroll" class="btn">Tap a key to enroll it</button>
       <p id="enrollStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>

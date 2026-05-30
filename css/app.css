@@ -17,6 +17,16 @@ body {
 /* Canvas scene pages lock scroll via JS adding this class */
 body.scene-view { overflow: hidden; }
 
+/* === Time-of-day tint overlay === */
+#scene-tint {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    /* 60s transition gives continuous-looking colour shift as the minute timer fires */
+    transition: background-color 60s linear;
+}
+
 /* === Typography === */
 h1, h2, h3 { color: hsl(210, 100%, 20%); font-weight: 400; margin-top: 0; }
 h1 { font-size: 1.6rem; }

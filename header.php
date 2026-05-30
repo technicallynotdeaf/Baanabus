@@ -37,6 +37,9 @@ require_once __DIR__ . '/init.php';
   </ul>
 <?php endif; ?>
 
+<div id="scene-tint"></div>
+<script src="js/scene_tint.js?v=<?= filemtime(__DIR__ . '/js/scene_tint.js') ?>"></script>
+
 <!-- Overlays are fine to keep globally -->
 <div id="overlay" class="overlay">
   <div id="overlay-body" class="overlay-content"></div>

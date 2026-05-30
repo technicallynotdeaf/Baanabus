@@ -39,10 +39,6 @@ function _ensureMigrations(PDO $db): void {
         "ALTER TABLE people        ADD COLUMN christian        INTEGER DEFAULT 0",
         "ALTER TABLE people        ADD COLUMN habitica_id      TEXT",
         "ALTER TABLE people_notes  ADD COLUMN note_type        INTEGER DEFAULT 0",
-        "ALTER TABLE diary         ADD COLUMN events           TEXT",
-        "ALTER TABLE diary         ADD COLUMN recurrent_events TEXT",
-        "ALTER TABLE diary         ADD COLUMN due_tasks        TEXT",
-        "ALTER TABLE diary         ADD COLUMN gratitude        TEXT",
         "ALTER TABLE tasks         ADD COLUMN created_at       DATETIME",
         "ALTER TABLE tasks         ADD COLUMN task_importance  INTEGER",
         "ALTER TABLE tasks         ADD COLUMN conditions       TEXT",
@@ -266,16 +262,11 @@ function _ensureSchema(PDO $db): void {
 // Pages needed to unlock a story page — scales with today's energy.
 // Lower energy = smaller target = more achievable on hard days.
 function todayPagesTarget(): int {
-    global $database;
     $e = 3;
-    if ($database) {
-        try {
-            $stmt = $database->prepare("SELECT energy_level FROM diary WHERE date = ?");
-            $stmt->execute([date('Y-m-d')]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row && $row['energy_level']) $e = (int)$row['energy_level'];
-        } catch (Throwable $th) {}
-    }
+    try {
+        $row = getDiaryEntry(date('Y-m-d'));
+        if (!empty($row['energy_level'])) $e = (int)$row['energy_level'];
+    } catch (Throwable $th) {}
     return [1 => 10, 2 => 12, 3 => 15, 4 => 18, 5 => 20][$e] ?? 15;
 }
 

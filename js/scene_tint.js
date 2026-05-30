@@ -95,6 +95,7 @@
         const [sr, ss] = SUN[month];
         const [r, g, b, a] = tintColor(h, sr, ss);
         el.style.backgroundColor = `rgba(${r},${g},${b},${a.toFixed(3)})`;
+        document.body.classList.toggle('night-mode', h >= ss);
     }
 
     apply();

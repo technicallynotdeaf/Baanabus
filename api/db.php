@@ -39,10 +39,10 @@ if (!$token || !authenticateAgentKey($token)) {
 if (!$database) json_response(['error' => 'Database unavailable'], 503);
 
 const ALLOWED_TABLES = [
-    'people', 'people_notes', 'tips', 'study_questions',
+    'tips', 'study_questions',
     'question_seen', 'contexts', 'day_types', 'energy_levels',
     'love_languages', 'note_types', 'priority', 'tags', 'task_types',
-    'urgency', 'inbox',
+    'urgency',
 ];
 
 function resolveTable(string $name): string {

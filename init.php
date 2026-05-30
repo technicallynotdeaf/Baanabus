@@ -33,25 +33,6 @@ unset($_dataDir, $_dbPath);
 function _ensureMigrations(PDO $db): void {
     $alters = [
         "ALTER TABLE contexts      ADD COLUMN description      TEXT",
-        "ALTER TABLE people        ADD COLUMN contact_hrs      TEXT",
-        "ALTER TABLE people        ADD COLUMN wake_time        TEXT",
-        "ALTER TABLE people        ADD COLUMN bedtime          TEXT",
-        "ALTER TABLE people        ADD COLUMN christian        INTEGER DEFAULT 0",
-        "ALTER TABLE people        ADD COLUMN habitica_id      TEXT",
-        "ALTER TABLE people_notes  ADD COLUMN note_type        INTEGER DEFAULT 0",
-        "ALTER TABLE tasks         ADD COLUMN created_at       DATETIME",
-        "ALTER TABLE tasks         ADD COLUMN task_importance  INTEGER",
-        "ALTER TABLE tasks         ADD COLUMN conditions       TEXT",
-        "ALTER TABLE tasks         ADD COLUMN subtasks         TEXT",
-        "ALTER TABLE tasks         ADD COLUMN next_action      TEXT",
-        "ALTER TABLE tasks         ADD COLUMN neg_consequences TEXT",
-        "ALTER TABLE tasks         ADD COLUMN benefits         TEXT",
-        "ALTER TABLE tasks         ADD COLUMN completed_at     DATETIME",
-        "ALTER TABLE tasks         ADD COLUMN in_habitica      INTEGER DEFAULT 0",
-        "ALTER TABLE tasks         ADD COLUMN is_doable        INTEGER DEFAULT 1",
-        "ALTER TABLE tasks         ADD COLUMN is_scheduled     INTEGER DEFAULT 0",
-        "ALTER TABLE tasks         ADD COLUMN goal             TEXT",
-        "ALTER TABLE tasks         ADD COLUMN cumulative_priority INTEGER",
     ];
     foreach ($alters as $sql) {
         try { $db->exec($sql); }
@@ -63,58 +44,9 @@ function _ensureMigrations(PDO $db): void {
 
 function _ensureSchema(PDO $db): void {
     $db->exec("
-        CREATE TABLE IF NOT EXISTS tasks (
-            task_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            task_title    TEXT NOT NULL,
-            task_description TEXT,
-            task_type     TEXT DEFAULT 'task',
-            context       TEXT,
-            task_urgency  INTEGER DEFAULT 3,
-            completed     INTEGER DEFAULT 0,
-            show_after    DATETIME DEFAULT CURRENT_TIMESTAMP,
-            deadline      DATETIME,
-            prereq_tasks  TEXT,
-            parent_task   INTEGER,
-            person_id     INTEGER,
-            habitica_id   TEXT,
-            buy_from      TEXT,
-            tags          TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS people (
-            person_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            name            TEXT NOT NULL,
-            avatar_img      TEXT,
-            is_org          INTEGER DEFAULT 0,
-            context         TEXT,
-            circles         TEXT,
-            next_review     DATE,
-            review_interval INTEGER DEFAULT 30,
-            is_active       INTEGER DEFAULT 1,
-            DOB INTEGER, MOB INTEGER, YOB INTEGER,
-            char1 TEXT, char2 TEXT, char3 TEXT,
-            char_extended   TEXT,
-            interests       TEXT,
-            love_language   TEXT,
-            brain           TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS people_notes (
-            note_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-            person_id  INTEGER,
-            contents   TEXT NOT NULL,
-            date_added DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
 
         CREATE TABLE IF NOT EXISTS contexts (
             context TEXT PRIMARY KEY
-        );
-
-        CREATE TABLE IF NOT EXISTS inbox (
-            item_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-            content    TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS urgency (
@@ -213,6 +145,38 @@ function _ensureSchema(PDO $db): void {
 
         INSERT OR IGNORE INTO contexts (context) VALUES
             ('home'),('work'),('shops'),('online'),('phone'),('anywhere');
+
+        INSERT OR IGNORE INTO love_languages VALUES
+            ('service', 'Acts of Service',  'This person feels loved when I do things for them'),
+            ('words',   'Words',            'This person feels loved when I use words to encourage them and tell them I care'),
+            ('touch',   'Touch',            'This person feels loved when they get hugs, or being touched in appropriate ways'),
+            ('gifts',   'Gifts',            'This person feels loved when others give them gifts / they show love by giving gifts'),
+            ('time',    'Quality Time',     'This person feels loved when others spend time with them');
+
+        INSERT OR IGNORE INTO note_types VALUES
+            (0, 'note',     'A note about a person'),
+            (1, 'question', 'Something you were going to ask them'),
+            (2, 'reminder', 'Something you need to remember when you see them');
+
+        INSERT OR IGNORE INTO task_types VALUES
+            ('next-action', 'A clear and simple instruction that you can do without having to think about it'),
+            ('to-do',       'A task that can be broken down into steps or that needs thinking about'),
+            ('project',     'A more complicated task that might have a number of subtasks involved'),
+            ('goal',        'Something generic like Clean the House — an overarching goal'),
+            ('buy',         'Something you need to buy from somewhere'),
+            ('wait',        'You need to wait for something to happen or for someone else to do something'),
+            ('contact',     'You need to get in touch with someone to ask them or tell them something'),
+            ('recurring_tasks', 'This task repeats every so often'),
+            ('routine',     'Task is part of a list e.g. birthday party list, morning list'),
+            ('question',    'You need to ask someone something'),
+            ('wishlist',    'A birthday idea or something you want but don''t have finance approval for'),
+            ('delegated',   'Someone else can do this job');
+
+        INSERT OR IGNORE INTO priority VALUES
+            (0,   'Doesn''t matter'),
+            (1,   'Minimal importance'),
+            (10,  'Actually needs doing'),
+            (100, 'Mission critical');
 
         INSERT OR IGNORE INTO tips VALUES
             (1,'Changed your mind about Habitica? You can connect or disconnect it any time in Settings.'),

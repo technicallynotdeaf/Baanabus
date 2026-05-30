@@ -194,6 +194,7 @@ window.initLetsGo = function() {
     if (d.game === 'reaction')     renderReaction();
     if (d.game === 'wordscramble') renderWordScramble();
     if (d.game === 'highlow')      renderHighLow();
+    if (d.game === 'gemMatch')     renderGemMatch();
   }
 
   function renderTicTacToe() {
@@ -891,6 +892,272 @@ window.initLetsGo = function() {
         document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
       });
     };
+  }
+
+  function renderGemMatch() {
+    const overlayEl   = document.getElementById('overlay');
+    const overlayBody = document.getElementById('overlay-body');
+    const sb = document.getElementById('speechBubble');
+    if (sb) sb.style.display = 'none';
+    if (!overlayEl || !overlayBody) return;
+
+    const COLS = 7, ROWS = 7, N_COLORS = 6, GAP = 4, START_MOVES = 25;
+    const GEM_FILL  = ['#e63946','#4895ef','#52b788','#f9c74f','#9b5de5','#ff6b35'];
+    const GEM_GLOSS = ['rgba(255,175,175,0.5)','rgba(155,210,255,0.5)',
+                       'rgba(155,255,210,0.5)','rgba(255,252,175,0.5)',
+                       'rgba(205,175,255,0.5)','rgba(255,200,155,0.5)'];
+
+    overlayBody.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <strong>Gem Match</strong>
+          <span id="gm-stats" style="font-size:0.9em;color:#666;"></span>
+        </div>
+        <canvas id="gm-canvas" style="display:block;width:100%;border-radius:8px;touch-action:none;"></canvas>
+        <div id="gm-msg" style="text-align:center;min-height:1.5em;padding-top:8px;"></div>
+        <div id="gm-btns" style="display:flex;gap:8px;justify-content:center;padding-top:4px;"></div>`;
+    overlayEl.style.display = 'block';
+
+    const canvas = document.getElementById('gm-canvas');
+    const avail  = Math.min(overlayBody.clientWidth - 8, 440);
+    const gemW   = Math.floor((avail      - (COLS-1)*GAP) / COLS);
+    const gemH   = Math.floor((window.innerHeight*0.52 - (ROWS-1)*GAP) / ROWS);
+    const GEM    = Math.max(32, Math.min(gemW, gemH));
+    canvas.width  = COLS*GEM + (COLS-1)*GAP;
+    canvas.height = ROWS*GEM + (ROWS-1)*GAP;
+    canvas.style.maxWidth = canvas.width + 'px';
+    const ctx = canvas.getContext('2d');
+
+    let grid = [], score = 0, moves = START_MOVES, sel = null;
+    let state = 'IDLE', rafId = null;
+    let animT = 0, animDur = 0, swapA = null, matchSet = new Set(), fallData = [];
+
+    const gxy    = (r,c) => [c*(GEM+GAP), r*(GEM+GAP)];
+    const rnd    = ()    => Math.floor(Math.random() * N_COLORS);
+    const eIO    = t     => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    const eOut   = t     => 1 - Math.pow(1-t, 3);
+
+    function initGrid() {
+      grid = [];
+      for (let r=0; r<ROWS; r++) {
+        grid[r] = [];
+        for (let c=0; c<COLS; c++) {
+          let g; do { g=rnd(); } while (
+            (c>=2 && grid[r][c-1]===g && grid[r][c-2]===g) ||
+            (r>=2 && grid[r-1][c]===g && grid[r-2][c]===g)
+          );
+          grid[r][c] = g;
+        }
+      }
+    }
+
+    function findMatches() {
+      const m = new Set();
+      for (let r=0; r<ROWS; r++)
+        for (let c=0; c<=COLS-3; c++) {
+          const g=grid[r][c];
+          if (g===grid[r][c+1] && g===grid[r][c+2]) {
+            let e=c+2; while(e+1<COLS && grid[r][e+1]===g) e++;
+            for (let i=c;i<=e;i++) m.add(`${r},${i}`);
+          }
+        }
+      for (let c=0; c<COLS; c++)
+        for (let r=0; r<=ROWS-3; r++) {
+          const g=grid[r][c];
+          if (g===grid[r+1][c] && g===grid[r+2][c]) {
+            let e=r+2; while(e+1<ROWS && grid[e+1][c]===g) e++;
+            for (let i=r;i<=e;i++) m.add(`${i},${c}`);
+          }
+        }
+      return m;
+    }
+
+    function buildFall(ms) {
+      const data = [];
+      for (let c=0; c<COLS; c++) {
+        const sv = [];
+        for (let r=0; r<ROWS; r++) if (!ms.has(`${r},${c}`)) sv.push({color:grid[r][c],fr:r});
+        const n = ROWS - sv.length;
+        for (let i=0; i<n; i++) sv.unshift({color:rnd(), fr:-(n-i)});
+        for (let r=0; r<ROWS; r++)
+          data.push({r, c, color:sv[r].color, fromY:sv[r].fr*(GEM+GAP), toY:r*(GEM+GAP)});
+      }
+      return data;
+    }
+
+    function applyFall() {
+      const g2 = Array.from({length:ROWS}, ()=>Array(COLS).fill(0));
+      for (const d of fallData) g2[d.r][d.c] = d.color;
+      grid = g2;
+    }
+
+    function updateUI() {
+      const s = document.getElementById('gm-stats');
+      if (s) s.innerHTML = `Score: <b>${score}</b>&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
+    }
+
+    function rrect(x,y,w,h,r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+      ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+      ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+      ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+      ctx.closePath();
+    }
+
+    function drawGem(x,y,ci,alpha,scale) {
+      if (ci==null || ci<0) return;
+      const hw=GEM/2;
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      ctx.translate(x+hw,y+hw); ctx.scale(scale,scale);
+      rrect(-hw,-hw,GEM,GEM,7); ctx.fillStyle=GEM_FILL[ci]; ctx.fill();
+      rrect(-hw+2,-hw+2,GEM-4,GEM-4,5);
+      ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle=GEM_GLOSS[ci];
+      ctx.beginPath();
+      ctx.ellipse(-hw*0.32,-hw*0.44,hw*0.33,hw*0.17,-0.35,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawSlot(r,c) {
+      const [x,y]=gxy(r,c);
+      rrect(x,y,GEM,GEM,7); ctx.fillStyle='rgba(0,0,0,0.13)'; ctx.fill();
+    }
+
+    function drawBoard(ms, mAlpha, mScale) {
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+        drawSlot(r,c);
+        const [x,y]=gxy(r,c);
+        if (ms && ms.has(`${r},${c}`)) drawGem(x,y,grid[r][c],mAlpha,mScale);
+        else drawGem(x,y,grid[r][c],1,1);
+      }
+    }
+
+    function loop() {
+      if (state==='GAMEOVER' || !document.getElementById('gm-canvas')) { rafId=null; return; }
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      if (state==='IDLE') {
+        drawBoard(null,1,1);
+        if (sel) {
+          const [x,y]=gxy(sel.r,sel.c);
+          ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+          rrect(x-2,y-2,GEM+4,GEM+4,9); ctx.stroke();
+          ctx.strokeStyle='rgba(255,255,255,0.28)'; ctx.lineWidth=5;
+          rrect(x-5,y-5,GEM+10,GEM+10,11); ctx.stroke();
+        }
+
+      } else if (state==='SWAP'||state==='BACK') {
+        animT=Math.min(animT+16,animDur);
+        const p = state==='SWAP' ? eIO(animT/animDur) : 1-eIO(animT/animDur);
+        const {r1,c1,r2,c2}=swapA;
+        const [x1,y1]=gxy(r1,c1), [x2,y2]=gxy(r2,c2);
+        for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+          drawSlot(r,c);
+          if((r===r1&&c===c1)||(r===r2&&c===c2)) continue;
+          const [x,y]=gxy(r,c); drawGem(x,y,grid[r][c],1,1);
+        }
+        drawGem(x1+(x2-x1)*p, y1+(y2-y1)*p, grid[r1][c1],1,1);
+        drawGem(x2+(x1-x2)*p, y2+(y1-y2)*p, grid[r2][c2],1,1);
+        if (animT>=animDur) {
+          if (state==='SWAP') {
+            [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]];
+            const ms=findMatches();
+            if (ms.size>0) { matchSet=ms; score+=ms.size*10; updateUI(); animT=0; animDur=350; state='MATCH'; }
+            else { [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]]; animT=0; animDur=160; state='BACK'; }
+          } else {
+            state='IDLE';
+            if (moves<=0) endGame();
+          }
+        }
+
+      } else if (state==='MATCH') {
+        animT=Math.min(animT+16,animDur);
+        const t=animT/animDur, f=eOut(t);
+        drawBoard(matchSet, 1-f, 1-f);
+        for (const key of matchSet) {
+          const [r,c]=key.split(',').map(Number), [x,y]=gxy(r,c);
+          ctx.save(); ctx.globalAlpha=(1-t)*0.75; ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+          rrect(x-3,y-3,GEM+6,GEM+6,10); ctx.stroke(); ctx.restore();
+        }
+        if (animT>=animDur) { fallData=buildFall(matchSet); animT=0; animDur=300; state='FALL'; }
+
+      } else if (state==='FALL') {
+        animT=Math.min(animT+16,animDur);
+        const t=eOut(animT/animDur);
+        for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) drawSlot(r,c);
+        for (const d of fallData) {
+          const [x]=gxy(d.r,d.c);
+          drawGem(x, d.fromY+(d.toY-d.fromY)*t, d.color, d.fromY<0 ? Math.min(1,t*2) : 1, 1);
+        }
+        if (animT>=animDur) {
+          applyFall();
+          const cascade=findMatches();
+          if (cascade.size>0) { matchSet=cascade; score+=cascade.size*15; updateUI(); animT=0; animDur=350; state='MATCH'; }
+          else if (moves<=0) endGame();
+          else state='IDLE';
+        }
+      }
+
+      rafId=requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      state='GAMEOVER';
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+        drawSlot(r,c); const[x,y]=gxy(r,c); drawGem(x,y,grid[r][c],0.35,1);
+      }
+      const msg=document.getElementById('gm-msg'), btns=document.getElementById('gm-btns');
+      if (score>=200) { earnPip(); if(msg) msg.textContent=`Score: ${score} — nice work!`; }
+      else            { if(msg) msg.textContent=`Score: ${score} — better luck next time`; }
+      if (btns) btns.innerHTML=`
+          <button class="action-button" onclick="window._gmRestart()">Play again</button>
+          <button class="action-button btn-secondary"
+            onclick="document.getElementById('overlay').style.display='none';document.getElementById('overlay-body').innerHTML='';loadSpeechBubble('lets-go.php');">
+            Next task</button>`;
+      window._gmRestart = function() {
+        initGrid(); score=0; moves=START_MOVES; sel=null; updateUI();
+        document.getElementById('gm-msg').textContent='';
+        document.getElementById('gm-btns').innerHTML='';
+        state='IDLE'; rafId=requestAnimationFrame(loop);
+      };
+    }
+
+    let ptStart=null;
+    canvas.addEventListener('pointerdown', e=>{
+      if (state!=='IDLE') return;
+      const rect=canvas.getBoundingClientRect();
+      ptStart={
+        r: Math.floor((e.clientY-rect.top) *(canvas.height/rect.height)/(GEM+GAP)),
+        c: Math.floor((e.clientX-rect.left)*(canvas.width /rect.width) /(GEM+GAP)),
+      };
+    });
+    canvas.addEventListener('pointerup', e=>{
+      if (!ptStart||state!=='IDLE') { ptStart=null; return; }
+      const rect=canvas.getBoundingClientRect();
+      const er=Math.floor((e.clientY-rect.top) *(canvas.height/rect.height)/(GEM+GAP));
+      const ec=Math.floor((e.clientX-rect.left)*(canvas.width /rect.width) /(GEM+GAP));
+      const {r:sr,c:sc}=ptStart; ptStart=null;
+      if (er<0||er>=ROWS||ec<0||ec>=COLS) return;
+      const dr=er-sr, dc=ec-sc;
+      if (Math.abs(dr)+Math.abs(dc)===1) {
+        doSwap(sr,sc,er,ec);
+      } else if (!dr&&!dc) {
+        if (sel && Math.abs(sr-sel.r)+Math.abs(sc-sel.c)===1) { doSwap(sel.r,sel.c,sr,sc); sel=null; }
+        else sel=(sel?.r===sr&&sel?.c===sc) ? null : {r:sr,c:sc};
+      }
+    });
+
+    function doSwap(r1,c1,r2,c2) {
+      if (moves<=0||state!=='IDLE') return;
+      moves--; updateUI(); sel=null;
+      swapA={r1,c1,r2,c2}; animT=0; animDur=180; state='SWAP';
+    }
+
+    initGrid(); updateUI();
+    rafId=requestAnimationFrame(loop);
   }
 
   function renderOnboarding(d) {

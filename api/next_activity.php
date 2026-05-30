@@ -137,7 +137,7 @@ if ($choice === 'study') {
     json_response(pick_trivia()); // fallback if pool somehow empty
 }
 if ($choice === 'minigame') {
-    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction', 'wordscramble', 'highlow'];
+    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction', 'wordscramble', 'highlow', 'gemMatch'];
     $lastGame = $_SESSION['last_minigame'] ?? null;
     if ($lastGame && count($games) > 1) {
         $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));

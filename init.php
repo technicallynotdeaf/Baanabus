@@ -126,10 +126,6 @@ function _ensureSchema(PDO $db): void {
             display_name  TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS quotes (
-            quote_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            quote    TEXT NOT NULL
-        );
 
         CREATE TABLE IF NOT EXISTS tips (
             tip_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,14 +230,6 @@ function _ensureSchema(PDO $db): void {
             (9,'Your energy level each morning shapes which tasks appear. Higher energy = harder tasks in the mix.'),
             (10,'Tasks, trivia, and games are all mixed into the same rotation on purpose. It''s not random — it''s paced.');
 
-        INSERT OR IGNORE INTO quotes VALUES
-            (1,'Done is better than perfect.'),
-            (2,'You don''t have to be great to start, but you have to start to be great.'),
-            (3,'One thing at a time.'),
-            (4,'Progress, not perfection.'),
-            (5,'Small steps still move you forward.'),
-            (6,'You are doing better than you think.'),
-            (7,'Start somewhere. Anywhere. Just start.');
 
         INSERT OR IGNORE INTO study_questions (id,q_type,question,option_a,option_b,option_c,option_d,correct,set_name) VALUES
         (1,'trivia','What is the only mammal capable of sustained flight?','Flying squirrel','Bat','Sugar glider','Flying lemur','b','General'),

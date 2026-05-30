@@ -90,9 +90,8 @@ if ($database) {
 
 $hasQuotes = false;
 $hasTips   = false;
+try { $hasQuotes = !empty(getQuotes()['items']); } catch (Throwable $e) {}
 if ($database) {
-    try { $hasQuotes = (bool)$database->query("SELECT 1 FROM quotes LIMIT 1")->fetchColumn(); }
-    catch (Throwable $e) {}
     try { $hasTips = (bool)$database->query("SELECT 1 FROM tips LIMIT 1")->fetchColumn(); }
     catch (Throwable $e) {}
 }
@@ -281,11 +280,9 @@ function pick_tip(): ?array {
 }
 
 function pick_quote(): ?array {
-    global $database;
-    if (!$database) return null;
     try {
-        $q = $database->query("SELECT quote_id, quote FROM quotes ORDER BY RANDOM() LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-        return $q ? ['type' => 'quote', 'id' => (int)$q['quote_id'], 'text' => $q['quote']] : null;
+        $q = pickRandomQuote();
+        return $q ? ['type' => 'quote', 'id' => $q['id'], 'text' => $q['text']] : null;
     } catch (Throwable $e) {
         return null;
     }

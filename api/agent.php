@@ -175,6 +175,41 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'migrate_quotes') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $dryRun = !empty($body['dry_run']);
+        try {
+            $rows = $database->query("SELECT quote_id, quote FROM quotes ORDER BY quote_id")
+                             ->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            json_response(['error' => 'Could not read quotes: ' . $e->getMessage()], 500);
+        }
+
+        if ($dryRun) {
+            json_response(['ok' => true, 'dry_run' => true, 'count' => count($rows),
+                           'sample' => array_slice($rows, 0, 3)]);
+        }
+
+        $existing    = getQuotes();
+        $existingSet = array_map(fn($i) => $i['text'], $existing['items']);
+        $added       = 0;
+        foreach ($rows as $row) {
+            $text = trim($row['quote'] ?? '');
+            if (!$text || in_array($text, $existingSet, true)) continue;
+            $existing['items'][] = ['id' => $existing['next_id'], 'text' => $text];
+            $existing['next_id']++;
+            $existingSet[] = $text;
+            $added++;
+        }
+        if ($added > 0) saveQuotes($existing);
+
+        try { $database->exec("DROP TABLE IF EXISTS quotes"); }
+        catch (Throwable $e) { /* non-fatal */ }
+
+        json_response(['ok' => true, 'dry_run' => false, 'imported' => $added,
+                       'total' => count($existing['items'])]);
+    }
+
     if ($action === 'migrate_diary') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
         $dryRun = !empty($body['dry_run']);

@@ -37,6 +37,11 @@ $isTired = $energyLevel <= 2;
 </div>
 <div id="scene-total-pips">★ <?= $totalPages ?></div>
 <div id="scene-clock"></div>
+<?php
+$energyLabels = [1 => 'Exhausted', 2 => 'Low energy', 3 => 'Okay', 4 => 'Good', 5 => 'On fire'];
+$energyLabel  = $energyLabels[$energyLevel] ?? '';
+?>
+<div id="scene-energy"><?= htmlspecialchars($energyLabel) ?></div>
 <button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
 
 <script src="js/scene.js"></script>

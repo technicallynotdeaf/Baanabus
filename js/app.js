@@ -212,6 +212,27 @@ function setupOverlayListeners() {
     });
   }
 
+  const tiredBtn = document.getElementById('tired-btn');
+  if (tiredBtn) {
+    const isTired = () => tiredBtn.dataset.tired === '1';
+    if (isTired()) tiredBtn.style.opacity = '1';
+    tiredBtn.addEventListener('click', () => {
+        const goingTired = !isTired();
+        const energy = goingTired ? 2 : 3;
+        fetch('api/checkin.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({field: 'energy_level', value: energy}),
+        }).then(r => r.json()).then(d => {
+            if (d.ok) {
+                tiredBtn.dataset.tired = goingTired ? '1' : '0';
+                tiredBtn.style.opacity = goingTired ? '1' : '';
+                if (goingTired) loadSpeechBubble('lets-go.php');
+            }
+        }).catch(() => {});
+    });
+  }
+
   const logoutLink = document.getElementById('logout-link');
   if (logoutLink) {
     logoutLink.addEventListener('click', (e) => {

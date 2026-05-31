@@ -919,7 +919,7 @@ window.initLetsGo = function() {
 
     const canvas = document.getElementById('gm-canvas');
     const avail  = Math.min(overlayBody.clientWidth - 8, 440);
-    const gemW   = Math.floor((avail      - (COLS-1)*GAP) / COLS);
+    const gemW   = Math.floor((avail - (COLS-1)*GAP) / COLS);
     const gemH   = Math.floor((window.innerHeight*0.52 - (ROWS-1)*GAP) / ROWS);
     const GEM    = Math.max(32, Math.min(gemW, gemH));
     canvas.width  = COLS*GEM + (COLS-1)*GAP;
@@ -927,14 +927,20 @@ window.initLetsGo = function() {
     canvas.style.maxWidth = canvas.width + 'px';
     const ctx = canvas.getContext('2d');
 
+    // Gem encoding: low nibble = colour (0-5), high nibble = type
+    // type 0=normal  1=hline (blasts row)  2=vline (blasts col)  3=star (blasts colour)
+    const gemColor = v => (v == null || v < 0) ? -1 : v & 0xF;
+    const gemType  = v => (v == null || v < 0) ? 0  : v >> 4;
+    const makeGem  = (color, type) => (type << 4) | color;
+
     let grid = [], score = 0, moves = START_MOVES, sel = null;
     let state = 'IDLE', rafId = null;
     let animT = 0, animDur = 0, swapA = null, matchSet = new Set(), fallData = [];
 
-    const gxy    = (r,c) => [c*(GEM+GAP), r*(GEM+GAP)];
-    const rnd    = ()    => Math.floor(Math.random() * N_COLORS);
-    const eIO    = t     => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
-    const eOut   = t     => 1 - Math.pow(1-t, 3);
+    const gxy  = (r,c) => [c*(GEM+GAP), r*(GEM+GAP)];
+    const rnd  = ()    => Math.floor(Math.random() * N_COLORS); // always normal (type 0)
+    const eIO  = t     => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    const eOut = t     => 1 - Math.pow(1-t, 3);
 
     function initGrid() {
       grid = [];
@@ -942,57 +948,113 @@ window.initLetsGo = function() {
         grid[r] = [];
         for (let c=0; c<COLS; c++) {
           let g; do { g=rnd(); } while (
-            (c>=2 && grid[r][c-1]===g && grid[r][c-2]===g) ||
-            (r>=2 && grid[r-1][c]===g && grid[r-2][c]===g)
+            (c>=2 && gemColor(grid[r][c-1])===g && gemColor(grid[r][c-2])===g) ||
+            (r>=2 && gemColor(grid[r-1][c])===g && gemColor(grid[r-2][c])===g)
           );
           grid[r][c] = g;
         }
       }
     }
 
+    // Returns {toRemove: Set, toCreate: [{r,c,type}]}
+    // Uses run-detection so special gems (same colour, different type) still match
     function findMatches() {
-      const m = new Set();
-      for (let r=0; r<ROWS; r++)
-        for (let c=0; c<=COLS-3; c++) {
-          const g=grid[r][c];
-          if (g===grid[r][c+1] && g===grid[r][c+2]) {
-            let e=c+2; while(e+1<COLS && grid[r][e+1]===g) e++;
-            for (let i=c;i<=e;i++) m.add(`${r},${i}`);
+      const toRemove = new Set();
+      const toCreate = [];
+      // Horizontal runs
+      for (let r=0; r<ROWS; r++) {
+        let c=0;
+        while (c<COLS) {
+          const g=gemColor(grid[r][c]);
+          let e=c; while(e+1<COLS && gemColor(grid[r][e+1])===g) e++;
+          const len=e-c+1;
+          if (len>=3) {
+            for (let i=c;i<=e;i++) toRemove.add(`${r},${i}`);
+            const mid=Math.floor((c+e)/2);
+            if      (len>=5) toCreate.push({r, c:mid, type:3}); // star
+            else if (len===4) toCreate.push({r, c:mid, type:1}); // hline
+          }
+          c=e+1;
+        }
+      }
+      // Vertical runs
+      for (let c=0; c<COLS; c++) {
+        let r=0;
+        while (r<ROWS) {
+          const g=gemColor(grid[r][c]);
+          let e=r; while(e+1<ROWS && gemColor(grid[e+1][c])===g) e++;
+          const len=e-r+1;
+          if (len>=3) {
+            for (let i=r;i<=e;i++) toRemove.add(`${i},${c}`);
+            const mid=Math.floor((r+e)/2);
+            if      (len>=5) toCreate.push({r:mid, c, type:3}); // star
+            else if (len===4) toCreate.push({r:mid, c, type:2}); // vline
+          }
+          r=e+1;
+        }
+      }
+      return {toRemove, toCreate};
+    }
+
+    // Expand the removal set by activating any specials it contains (chain-reactive)
+    function expandSpecials(ms) {
+      let changed=true;
+      while (changed) {
+        changed=false;
+        for (const key of [...ms]) {
+          const [r,c]=key.split(',').map(Number);
+          const type=gemType(grid[r][c]);
+          if (type===1) { // hline: blast row
+            for (let cc=0;cc<COLS;cc++) if (!ms.has(`${r},${cc}`)) { ms.add(`${r},${cc}`); changed=true; }
+          } else if (type===2) { // vline: blast column
+            for (let rr=0;rr<ROWS;rr++) if (!ms.has(`${rr},${c}`)) { ms.add(`${rr},${c}`); changed=true; }
+          } else if (type===3) { // star: blast all gems of same colour
+            const col=gemColor(grid[r][c]);
+            for (let rr=0;rr<ROWS;rr++) for (let cc=0;cc<COLS;cc++)
+              if (gemColor(grid[rr][cc])===col && !ms.has(`${rr},${cc}`)) { ms.add(`${rr},${cc}`); changed=true; }
           }
         }
-      for (let c=0; c<COLS; c++)
-        for (let r=0; r<=ROWS-3; r++) {
-          const g=grid[r][c];
-          if (g===grid[r+1][c] && g===grid[r+2][c]) {
-            let e=r+2; while(e+1<ROWS && grid[e+1][c]===g) e++;
-            for (let i=r;i<=e;i++) m.add(`${i},${c}`);
-          }
+      }
+    }
+
+    // Find matches, spawn specials into grid, expand specials, return removal set (or null)
+    function computeMatchSet() {
+      const {toRemove, toCreate}=findMatches();
+      if (toRemove.size===0) return null;
+      // Spawn new specials: keep spawn cell in grid, remove it from the removal set
+      for (const spawn of toCreate) {
+        const key=`${spawn.r},${spawn.c}`;
+        if (toRemove.has(key)) {
+          toRemove.delete(key);
+          grid[spawn.r][spawn.c]=makeGem(gemColor(grid[spawn.r][spawn.c]), spawn.type);
         }
-      return m;
+      }
+      expandSpecials(toRemove);
+      return toRemove;
     }
 
     function buildFall(ms) {
-      const data = [];
-      for (let c=0; c<COLS; c++) {
-        const sv = [];
-        for (let r=0; r<ROWS; r++) if (!ms.has(`${r},${c}`)) sv.push({color:grid[r][c],fr:r});
-        const n = ROWS - sv.length;
-        for (let i=0; i<n; i++) sv.unshift({color:rnd(), fr:-(n-i)});
-        for (let r=0; r<ROWS; r++)
+      const data=[];
+      for (let c=0;c<COLS;c++) {
+        const sv=[];
+        for (let r=0;r<ROWS;r++) if (!ms.has(`${r},${c}`)) sv.push({color:grid[r][c],fr:r});
+        const n=ROWS-sv.length;
+        for (let i=0;i<n;i++) sv.unshift({color:rnd(), fr:-(n-i)});
+        for (let r=0;r<ROWS;r++)
           data.push({r, c, color:sv[r].color, fromY:sv[r].fr*(GEM+GAP), toY:r*(GEM+GAP)});
       }
       return data;
     }
 
     function applyFall() {
-      const g2 = Array.from({length:ROWS}, ()=>Array(COLS).fill(0));
-      for (const d of fallData) g2[d.r][d.c] = d.color;
-      grid = g2;
+      const g2=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+      for (const d of fallData) g2[d.r][d.c]=d.color;
+      grid=g2;
     }
 
     function updateUI() {
-      const s = document.getElementById('gm-stats');
-      if (s) s.innerHTML = `Score: <b>${score}</b>&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
+      const s=document.getElementById('gm-stats');
+      if (s) s.innerHTML=`Score: <b>${score}</b>&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
     }
 
     function rrect(x,y,w,h,r) {
@@ -1004,12 +1066,15 @@ window.initLetsGo = function() {
       ctx.closePath();
     }
 
-    function drawGem(x,y,ci,alpha,scale) {
-      if (ci==null || ci<0) return;
+    function drawGem(x,y,v,alpha,scale) {
+      if (v==null || v<0) return;
+      const ci=gemColor(v), type=gemType(v);
+      if (ci<0||ci>=N_COLORS) return;
       const hw=GEM/2;
       ctx.save();
       ctx.globalAlpha=alpha;
       ctx.translate(x+hw,y+hw); ctx.scale(scale,scale);
+      // Base gem
       rrect(-hw,-hw,GEM,GEM,7); ctx.fillStyle=GEM_FILL[ci]; ctx.fill();
       rrect(-hw+2,-hw+2,GEM-4,GEM-4,5);
       ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5; ctx.stroke();
@@ -1017,6 +1082,21 @@ window.initLetsGo = function() {
       ctx.beginPath();
       ctx.ellipse(-hw*0.32,-hw*0.44,hw*0.33,hw*0.17,-0.35,0,Math.PI*2);
       ctx.fill();
+      // Special indicators
+      ctx.fillStyle='rgba(255,255,255,0.88)';
+      if (type===1) { // hline: horizontal bar + outward arrowheads
+        ctx.fillRect(-hw+5,-2,GEM-10,4);
+        ctx.beginPath(); ctx.moveTo(hw-4,0); ctx.lineTo(hw-10,-5); ctx.lineTo(hw-10,5); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-hw+4,0); ctx.lineTo(-hw+10,-5); ctx.lineTo(-hw+10,5); ctx.closePath(); ctx.fill();
+      } else if (type===2) { // vline: vertical bar + outward arrowheads
+        ctx.fillRect(-2,-hw+5,4,GEM-10);
+        ctx.beginPath(); ctx.moveTo(0,hw-4); ctx.lineTo(-5,hw-10); ctx.lineTo(5,hw-10); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0,-hw+4); ctx.lineTo(-5,-hw+10); ctx.lineTo(5,-hw+10); ctx.closePath(); ctx.fill();
+      } else if (type===3) { // star
+        ctx.font=`bold ${Math.round(GEM*0.44)}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('★',0,1);
+      }
       ctx.restore();
     }
 
@@ -1025,17 +1105,17 @@ window.initLetsGo = function() {
       rrect(x,y,GEM,GEM,7); ctx.fillStyle='rgba(0,0,0,0.13)'; ctx.fill();
     }
 
-    function drawBoard(ms, mAlpha, mScale) {
+    function drawBoard(ms,mAlpha,mScale) {
       for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
         drawSlot(r,c);
         const [x,y]=gxy(r,c);
-        if (ms && ms.has(`${r},${c}`)) drawGem(x,y,grid[r][c],mAlpha,mScale);
+        if (ms&&ms.has(`${r},${c}`)) drawGem(x,y,grid[r][c],mAlpha,mScale);
         else drawGem(x,y,grid[r][c],1,1);
       }
     }
 
     function loop() {
-      if (state==='GAMEOVER' || !document.getElementById('gm-canvas')) { rafId=null; return; }
+      if (state==='GAMEOVER'||!document.getElementById('gm-canvas')) { rafId=null; return; }
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
       if (state==='IDLE') {
@@ -1050,21 +1130,21 @@ window.initLetsGo = function() {
 
       } else if (state==='SWAP'||state==='BACK') {
         animT=Math.min(animT+16,animDur);
-        const p = state==='SWAP' ? eIO(animT/animDur) : 1-eIO(animT/animDur);
+        const p=state==='SWAP' ? eIO(animT/animDur) : 1-eIO(animT/animDur);
         const {r1,c1,r2,c2}=swapA;
-        const [x1,y1]=gxy(r1,c1), [x2,y2]=gxy(r2,c2);
+        const [x1,y1]=gxy(r1,c1),[x2,y2]=gxy(r2,c2);
         for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
           drawSlot(r,c);
           if((r===r1&&c===c1)||(r===r2&&c===c2)) continue;
           const [x,y]=gxy(r,c); drawGem(x,y,grid[r][c],1,1);
         }
-        drawGem(x1+(x2-x1)*p, y1+(y2-y1)*p, grid[r1][c1],1,1);
-        drawGem(x2+(x1-x2)*p, y2+(y1-y2)*p, grid[r2][c2],1,1);
+        drawGem(x1+(x2-x1)*p,y1+(y2-y1)*p,grid[r1][c1],1,1);
+        drawGem(x2+(x1-x2)*p,y2+(y1-y2)*p,grid[r2][c2],1,1);
         if (animT>=animDur) {
           if (state==='SWAP') {
             [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]];
-            const ms=findMatches();
-            if (ms.size>0) { matchSet=ms; score+=ms.size*10; updateUI(); animT=0; animDur=350; state='MATCH'; }
+            const ms=computeMatchSet();
+            if (ms) { matchSet=ms; score+=ms.size*10; updateUI(); animT=0; animDur=350; state='MATCH'; }
             else { [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]]; animT=0; animDur=160; state='BACK'; }
           } else {
             state='IDLE';
@@ -1075,9 +1155,9 @@ window.initLetsGo = function() {
       } else if (state==='MATCH') {
         animT=Math.min(animT+16,animDur);
         const t=animT/animDur, f=eOut(t);
-        drawBoard(matchSet, 1-f, 1-f);
+        drawBoard(matchSet,1-f,1-f);
         for (const key of matchSet) {
-          const [r,c]=key.split(',').map(Number), [x,y]=gxy(r,c);
+          const [r,c]=key.split(',').map(Number),[x,y]=gxy(r,c);
           ctx.save(); ctx.globalAlpha=(1-t)*0.75; ctx.strokeStyle='#fff'; ctx.lineWidth=3;
           rrect(x-3,y-3,GEM+6,GEM+6,10); ctx.stroke(); ctx.restore();
         }
@@ -1089,12 +1169,12 @@ window.initLetsGo = function() {
         for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) drawSlot(r,c);
         for (const d of fallData) {
           const [x]=gxy(d.r,d.c);
-          drawGem(x, d.fromY+(d.toY-d.fromY)*t, d.color, d.fromY<0 ? Math.min(1,t*2) : 1, 1);
+          drawGem(x,d.fromY+(d.toY-d.fromY)*t,d.color,d.fromY<0?Math.min(1,t*2):1,1);
         }
         if (animT>=animDur) {
           applyFall();
-          const cascade=findMatches();
-          if (cascade.size>0) { matchSet=cascade; score+=cascade.size*15; updateUI(); animT=0; animDur=350; state='MATCH'; }
+          const cascade=computeMatchSet();
+          if (cascade) { matchSet=cascade; score+=cascade.size*15; updateUI(); animT=0; animDur=350; state='MATCH'; }
           else if (moves<=0) endGame();
           else state='IDLE';
         }
@@ -1109,7 +1189,7 @@ window.initLetsGo = function() {
       for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
         drawSlot(r,c); const[x,y]=gxy(r,c); drawGem(x,y,grid[r][c],0.35,1);
       }
-      const msg=document.getElementById('gm-msg'), btns=document.getElementById('gm-btns');
+      const msg=document.getElementById('gm-msg'),btns=document.getElementById('gm-btns');
       if (score>=200) { earnPip(); if(msg) msg.textContent=`Score: ${score} — nice work!`; }
       else            { if(msg) msg.textContent=`Score: ${score} — better luck next time`; }
       if (btns) btns.innerHTML=`
@@ -1117,7 +1197,7 @@ window.initLetsGo = function() {
           <button class="action-button btn-secondary"
             onclick="document.getElementById('overlay').style.display='none';document.getElementById('overlay-body').innerHTML='';loadSpeechBubble('lets-go.php');">
             Next task</button>`;
-      window._gmRestart = function() {
+      window._gmRestart=function() {
         initGrid(); score=0; moves=START_MOVES; sel=null; updateUI();
         document.getElementById('gm-msg').textContent='';
         document.getElementById('gm-btns').innerHTML='';
@@ -1125,28 +1205,39 @@ window.initLetsGo = function() {
       };
     }
 
+    function activateSpecial(r,c) {
+      if (moves<=0||state!=='IDLE') return;
+      moves--; updateUI(); sel=null;
+      const ms=new Set([`${r},${c}`]);
+      expandSpecials(ms);
+      matchSet=ms; score+=ms.size*10; updateUI();
+      animT=0; animDur=350; state='MATCH';
+    }
+
     let ptStart=null;
-    canvas.addEventListener('pointerdown', e=>{
+    canvas.addEventListener('pointerdown',e=>{
       if (state!=='IDLE') return;
       const rect=canvas.getBoundingClientRect();
       ptStart={
-        r: Math.floor((e.clientY-rect.top) *(canvas.height/rect.height)/(GEM+GAP)),
-        c: Math.floor((e.clientX-rect.left)*(canvas.width /rect.width) /(GEM+GAP)),
+        r:Math.floor((e.clientY-rect.top) *(canvas.height/rect.height)/(GEM+GAP)),
+        c:Math.floor((e.clientX-rect.left)*(canvas.width /rect.width) /(GEM+GAP)),
       };
     });
-    canvas.addEventListener('pointerup', e=>{
+    canvas.addEventListener('pointerup',e=>{
       if (!ptStart||state!=='IDLE') { ptStart=null; return; }
       const rect=canvas.getBoundingClientRect();
       const er=Math.floor((e.clientY-rect.top) *(canvas.height/rect.height)/(GEM+GAP));
       const ec=Math.floor((e.clientX-rect.left)*(canvas.width /rect.width) /(GEM+GAP));
       const {r:sr,c:sc}=ptStart; ptStart=null;
       if (er<0||er>=ROWS||ec<0||ec>=COLS) return;
-      const dr=er-sr, dc=ec-sc;
+      const dr=er-sr,dc=ec-sc;
       if (Math.abs(dr)+Math.abs(dc)===1) {
         doSwap(sr,sc,er,ec);
       } else if (!dr&&!dc) {
-        if (sel && Math.abs(sr-sel.r)+Math.abs(sc-sel.c)===1) { doSwap(sel.r,sel.c,sr,sc); sel=null; }
-        else sel=(sel?.r===sr&&sel?.c===sc) ? null : {r:sr,c:sc};
+        // Tapping a special gem activates it directly
+        if (gemType(grid[sr][sc])>0) { activateSpecial(sr,sc); return; }
+        if (sel&&Math.abs(sr-sel.r)+Math.abs(sc-sel.c)===1) { doSwap(sel.r,sel.c,sr,sc); sel=null; }
+        else sel=(sel?.r===sr&&sel?.c===sc)?null:{r:sr,c:sc};
       }
     });
 

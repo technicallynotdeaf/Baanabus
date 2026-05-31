@@ -267,36 +267,39 @@ function pick_trivia(): array {
     global $database;
     if ($database) {
         try {
-            // Prefer questions not yet seen twice
             $stmt = $database->prepare("
                 SELECT sq.* FROM study_questions sq
                 LEFT JOIN question_seen qs ON sq.id = qs.question_id
                 WHERE sq.q_type = 'trivia'
-                  AND (qs.seen_count IS NULL OR qs.seen_count < 2)
+                  AND (qs.correct_count IS NULL OR qs.correct_count < 2)
                 ORDER BY RANDOM() LIMIT 1
             ");
             $stmt->execute();
             $q = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$q) {
-                // All trivia exhausted — reset and start the cycle again
-                $database->exec("
-                    DELETE FROM question_seen
-                    WHERE question_id IN (SELECT id FROM study_questions WHERE q_type = 'trivia')
-                ");
-                $q = $database->query("
-                    SELECT * FROM study_questions WHERE q_type = 'trivia' ORDER BY RANDOM() LIMIT 1
-                ")->fetch(PDO::FETCH_ASSOC);
-            }
-
             if ($q) return question_row_to_response($q, 'trivia');
+            return pick_topic_picker();
         } catch (Throwable $e) {
             error_log('pick_trivia: ' . $e->getMessage());
         }
     }
-    // Emergency fallback
     return ['type' => 'trivia', 'id' => 0, 'question' => 'What is the capital of Australia?',
             'options' => ['Sydney', 'Melbourne', 'Canberra', 'Brisbane'], 'answer' => 2];
+}
+
+function pick_topic_picker(): array {
+    global $database;
+    $allTopics = ['Plants', 'Pop Music', 'Food'];
+    $available = [];
+    if ($database) {
+        foreach ($allTopics as $topic) {
+            try {
+                $s = $database->prepare("SELECT COUNT(*) FROM study_questions WHERE set_name = ? AND q_type = 'trivia'");
+                $s->execute([$topic]);
+                if ((int)$s->fetchColumn() === 0) $available[] = $topic;
+            } catch (Throwable $e) {}
+        }
+    }
+    return ['type' => 'topic_picker', 'topics' => $available];
 }
 
 function pick_tip(): ?array {

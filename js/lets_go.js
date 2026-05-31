@@ -34,6 +34,7 @@ window.initLetsGo = function() {
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
+      case 'topic_picker':   renderTopicPicker(d);   break;
       case 'quote':          renderQuote(d);         break;
       case 'tip':            renderTip(d);           break;
       case 'missing_info':   renderMissingInfo(d);   break;
@@ -140,6 +141,46 @@ window.initLetsGo = function() {
         fb.textContent = 'Not quite — the answer was: ' + esc(d.options[d.answer]);
       }
       document.getElementById('trivia-next').style.display = 'inline-flex';
+    };
+  }
+
+  function renderTopicPicker(d) {
+    if (!d.topics || d.topics.length === 0) {
+      c.innerHTML = `<p style="font-weight:600;">You've mastered all the trivia topics!</p>
+        <p class="muted">More topics coming soon. In the meantime, keep completing tasks.</p>
+        <button class="action-button" style="margin-top:0.5rem;" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+      return;
+    }
+    const btns = d.topics.map(topic =>
+      `<button class="action-button" style="width:100%;" onclick="window._pickTopic(${JSON.stringify(topic)})">${esc(topic)}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p style="font-weight:600;margin-bottom:0.5rem;">You've mastered all the current trivia questions!</p>
+      <p class="muted" style="margin-bottom:0.75rem;">Pick your next topic:</p>
+      <div style="display:flex;flex-direction:column;gap:6px;">${btns}</div>
+      <p id="topic-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;"></p>`;
+
+    window._pickTopic = async function(topic) {
+      document.querySelectorAll('#lets-go-content .action-button').forEach(b => b.disabled = true);
+      document.getElementById('topic-status').textContent = 'Unlocking ' + topic + '...';
+      try {
+        const r = await fetch('api/unlock_trivia_topic.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({topic}),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          document.getElementById('topic-status').textContent = topic + ' unlocked!';
+          setTimeout(() => loadSpeechBubble('lets-go.php'), 800);
+        } else {
+          document.getElementById('topic-status').textContent = data.error || 'Something went wrong.';
+          document.querySelectorAll('#lets-go-content .action-button').forEach(b => b.disabled = false);
+        }
+      } catch(e) {
+        document.getElementById('topic-status').textContent = 'Network error.';
+        document.querySelectorAll('#lets-go-content .action-button').forEach(b => b.disabled = false);
+      }
     };
   }
 

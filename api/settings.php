@@ -45,16 +45,23 @@ if ($vaultOpen) {
   <div class="card" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.5rem;">ðŸ”‘ Vault access</h3>
     <?php if ($vaultOpen): ?>
-      <p class="muted" style="margin-bottom:0.5rem;">
-        Your vault is open. Tap another key below to grant it vault access from any browser.
+      <p class="muted" style="margin-bottom:1rem;">
+        Your vault is open. Add another way to unlock it.
       </p>
-      <p class="hint" style="margin-bottom:0.75rem;">
-        Use your device's built-in screen lock (fingerprint, face, or PIN) — not a password manager app.
-        Most password managers (1Password, Bitwarden, etc.) don't support the encryption feature Baanabus needs.
-        On Android: choose "Use your screen lock" or "This device" when prompted.
+      <button id="btn-enroll-device" class="btn" style="width:100%;margin-bottom:0.35rem;">
+        Create a passkey on this device
+      </button>
+      <p class="hint" style="margin-bottom:0.9rem;">
+        Fingerprint, face, or screen lock on your phone or laptop. Use the device's own passkey —
+        not 1Password or Bitwarden, as those don't support the encryption feature Baanabus needs.
       </p>
-      <button id="btn-enroll" class="btn">Tap a key to enroll it</button>
-      <p id="enrollStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <button id="btn-enroll-key" class="btn btn-secondary" style="width:100%;margin-bottom:0.35rem;">
+        Register a new USB or NFC key
+      </button>
+      <p class="hint" style="margin-bottom:0.9rem;">
+        A new YubiKey or other hardware authenticator you haven't used with Baanabus before.
+      </p>
+      <p id="enrollStatus" class="muted" style="margin-top:0.25rem;min-height:1.4em;"></p>
     <?php else: ?>
       <p class="muted">Vault is locked â€” sign in from a device that can unlock it to manage key access.</p>
     <?php endif; ?>

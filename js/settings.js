@@ -25,19 +25,27 @@ window.initSettings = function() {
     }
   });
 
-  document.getElementById('btn-enroll').addEventListener('click', async function() {
+  async function runEnroll(fn, btn) {
     const statusEl = document.getElementById('enrollStatus');
-    this.disabled = true;
+    const allBtns  = [document.getElementById('btn-enroll-device'), document.getElementById('btn-enroll-key')].filter(Boolean);
+    allBtns.forEach(b => b.disabled = true);
     statusEl.style.color = '';
+    statusEl.textContent = '';
     try {
-      await BaanabusAuth.enrollPasskey();
-      statusEl.textContent = 'Key enrolled — it can now unlock your vault.';
+      await fn();
+      statusEl.textContent = 'Enrolled — this key can now unlock your vault.';
     } catch(e) {
       statusEl.textContent = e.message;
       statusEl.style.color = 'crimson';
-      this.disabled = false;
+      allBtns.forEach(b => b.disabled = false);
     }
-  });
+  }
+
+  const btnDevice = document.getElementById('btn-enroll-device');
+  if (btnDevice) btnDevice.addEventListener('click', () => runEnroll(() => BaanabusAuth.enrollNewPasskey('platform'), btnDevice));
+
+  const btnKey = document.getElementById('btn-enroll-key');
+  if (btnKey) btnKey.addEventListener('click', () => runEnroll(() => BaanabusAuth.enrollNewPasskey('cross-platform'), btnKey));
 
   document.getElementById('habitica-form').addEventListener('submit', async function(e) {
     e.preventDefault();

@@ -133,5 +133,10 @@ if ($prfEnabled) {
     respond_ecr(['ok' => true, 'needsPrfAuth' => true, 'credentialId' => $credIdB64u]);
 }
 
-// No PRF support at all
-respond_ecr(['error' => 'This passkey doesn\'t support vault encryption (PRF extension missing). Use your device\'s built-in screen lock rather than a password manager app.'], 422);
+// No PRF support at all — roll back the credential we just saved so it doesn't
+// block future attempts via excludeCredentials. The passkey on the device is harmless
+// (it just can't unlock the vault) but the server record would cause "credential
+// manager" errors on retry if left in place.
+if (is_file($credPath)) @unlink($credPath);
+error_log('EnrollCreate: rolled back credential (no PRF) for user=' . $userId);
+respond_ecr(['error' => 'This passkey does not support vault encryption (PRF extension not available). On Android this usually means Google Play Services is too old or sandboxed. Your YubiKey via NFC is the reliable unlock path for now.'], 422);

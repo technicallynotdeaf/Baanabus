@@ -32,6 +32,17 @@ if ($prog['pages_available'] <= $prog['depth']) {
     json_response(['error' => 'Not unlocked yet'], 403);
 }
 
+// Record choice in history before advancing
+$chosenText = '';
+foreach (($currentPage['choices'] ?? []) as $choice) {
+    if ($choice['next'] === $choiceKey) { $chosenText = base64_decode($choice['text']); break; }
+}
+$prog['history'][] = [
+    'key'  => $prog['current_key'],
+    'next' => $choiceKey,
+    'text' => $chosenText,
+];
+
 // Advance
 $prog['current_key'] = $choiceKey;
 $prog['depth']++;

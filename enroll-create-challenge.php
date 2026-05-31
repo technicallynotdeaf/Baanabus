@@ -55,7 +55,7 @@ $options = [
     'attestation'            => 'none',
     'authenticatorSelection' => [
         'authenticatorAttachment' => $type,
-        'residentKey'             => $type === 'platform' ? 'preferred' : 'discouraged',
+        'residentKey'             => 'discouraged',  // 'preferred' forces synced/Google creds on Android
         'requireResidentKey'      => false,
         'userVerification'        => 'preferred',
     ],

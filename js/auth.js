@@ -210,9 +210,21 @@ async function enrollNewPasskey(type = 'platform') {
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
 
-    const credential = await navigator.credentials.create({
-      publicKey: prepCreateOptions(data.publicKey)
-    });
+    let credential;
+    try {
+      credential = await navigator.credentials.create({
+        publicKey: prepCreateOptions(data.publicKey)
+      });
+    } catch (createErr) {
+      if (createErr.name === 'NotSupportedError' || createErr.name === 'InvalidStateError') {
+        throw new Error(
+          type === 'platform'
+            ? 'No device passkey available. On Android use Vanadium (not Brave/Chrome). On Windows, set up Windows Hello first.'
+            : 'Hardware key creation failed. Make sure the key is inserted and try again.'
+        );
+      }
+      throw createErr;
+    }
 
     const extResults = credential.getClientExtensionResults();
     const prfFirst   = extResults?.prf?.results?.first;

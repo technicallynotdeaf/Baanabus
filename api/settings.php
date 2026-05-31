@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
 
@@ -37,13 +37,13 @@ if ($vaultOpen) {
         <p id="nicknameStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
       </form>
     <?php else: ?>
-      <p class="muted">Vault locked â€” unlock to change your name.</p>
+      <p class="muted">Vault locked. Unlock to change your name.</p>
     <?php endif; ?>
   </div>
 
   <!-- Passkey section -->
   <div class="card" style="margin-bottom:1rem;">
-    <h3 style="margin-bottom:0.5rem;">ðŸ”‘ Vault access</h3>
+    <h3 style="margin-bottom:0.5rem;">Vault access</h3>
     <?php if ($vaultOpen): ?>
       <p class="muted" style="margin-bottom:1rem;">
         Your vault is open. Add another way to unlock it.
@@ -52,8 +52,8 @@ if ($vaultOpen) {
         Create a passkey on this device
       </button>
       <p class="hint" style="margin-bottom:0.9rem;">
-        Fingerprint, face, or screen lock on your phone or laptop. Use the device's own passkey —
-        not 1Password or Bitwarden, as those don't support the encryption feature Baanabus needs.
+        Fingerprint, face, or screen lock on your phone or laptop. Use the device's own passkey,
+        not 1Password or Bitwarden (those don't support the encryption feature Baanabus needs).
       </p>
       <button id="btn-enroll-key" class="btn btn-secondary" style="width:100%;margin-bottom:0.35rem;">
         Register a new USB or NFC key
@@ -63,13 +63,13 @@ if ($vaultOpen) {
       </p>
       <p id="enrollStatus" class="muted" style="margin-top:0.25rem;min-height:1.4em;"></p>
     <?php else: ?>
-      <p class="muted">Vault is locked â€” sign in from a device that can unlock it to manage key access.</p>
+      <p class="muted">Vault is locked. Sign in from a device that can unlock it to manage key access.</p>
     <?php endif; ?>
   </div>
 
   <!-- Habitica section -->
   <div class="card" style="margin-bottom:1rem;">
-    <h3 style="margin-bottom:0.5rem;">ðŸŽ® Habitica</h3>
+    <h3 style="margin-bottom:0.5rem;">Habitica</h3>
     <?php if ($vaultOpen): ?>
       <form id="habitica-form">
         <label style="display:block;margin-bottom:0.4rem;font-size:0.9em;color:#555;">User ID</label>
@@ -80,7 +80,7 @@ if ($vaultOpen) {
         <p id="habStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
       </form>
     <?php else: ?>
-      <p class="muted">Vault locked â€” unlock to manage Habitica credentials.</p>
+      <p class="muted">Vault locked. Unlock to manage Habitica credentials.</p>
     <?php endif; ?>
   </div>
 
@@ -88,7 +88,7 @@ if ($vaultOpen) {
   <div class="card" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.5rem;">Agent API keys</h3>
     <?php if ($vaultOpen): ?>
-      <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">Generate a key to give an AI agent access to your tasks and context. Each key can decrypt your vault â€” treat it like a password. Revoke it here when you're done.</p>
+      <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">Generate a key to give an AI agent access to your tasks and context. Each key can decrypt your vault, so treat it like a password. Revoke it here when you're done.</p>
       <?php
       $existingKeys = $cassowary['api_keys'] ?? [];
       ?>
@@ -106,7 +106,7 @@ if ($vaultOpen) {
       </div>
       <?php endif; ?>
       <div id="new-key-result" style="display:none;margin-bottom:0.75rem;">
-        <p style="font-size:0.88em;margin-bottom:0.4rem;color:#555;">Copy this key now â€” it will not be shown again.</p>
+        <p style="font-size:0.88em;margin-bottom:0.4rem;color:#555;">Copy this key now. It will not be shown again.</p>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="text" id="new-key-value" readonly style="font-family:monospace;font-size:0.8em;flex:1;min-width:0;">
           <button id="btn-copy-key" class="btn" style="white-space:nowrap;flex-shrink:0;">Copy</button>
@@ -122,7 +122,7 @@ if ($vaultOpen) {
       </form>
       <p id="gen-key-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
     <?php else: ?>
-      <p class="muted">Vault locked â€” unlock to manage agent keys.</p>
+      <p class="muted">Vault locked. Unlock to manage agent keys.</p>
     <?php endif; ?>
   </div>
 
@@ -139,4 +139,3 @@ if ($vaultOpen) {
   </div>
 
 </div>
-

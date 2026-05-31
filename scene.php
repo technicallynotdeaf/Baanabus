@@ -37,7 +37,6 @@ $isTired = $energyLevel <= 2;
 </div>
 <div id="scene-total-pips">★ <?= $totalPages ?></div>
 <div id="scene-clock"></div>
-<button id="reset-btn" class="scene-mode-btn" title="Reset — find something small">Reset</button>
-<button id="tired-btn" class="scene-mode-btn" title="Tired — easy tasks only"<?= $isTired ? ' data-tired="1"' : '' ?>>Tired</button>
+<button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
 
 <script src="js/scene.js"></script>

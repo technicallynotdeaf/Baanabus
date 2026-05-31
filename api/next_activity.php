@@ -6,6 +6,13 @@ header('Content-Type: application/json; charset=utf-8');
 if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
 if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
 
+// Load config early for game preferences and check-in setting
+try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
+$gamePref     = $cfg['game_prefs']      ?? [];
+$gamesEnabled = $gamePref['enabled']    ?? true;
+$gameToggles  = $gamePref['minigames']  ?? [];
+$checkinOn    = $cfg['checkin_enabled'] ?? true;
+
 try {
     $tasks      = getDoableTasks();
     $hasTasks   = !empty($tasks);
@@ -80,38 +87,7 @@ try {
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
 
 // Always surface the check-in on the very first activity of a session
-if ($missing && $actCount === 0) json_response($missing);
-
-// Regulation mode: no tasks, no triage — just games, trivia, and quotes
-if (!empty($_SESSION['regulation_mode'])) {
-    $regPool = array_merge(
-        array_fill(0, 6, 'minigame'),   // weighted heavily
-        array_fill(0, 3, 'trivia'),
-        $hasStudy  ? array_fill(0, 2, 'study')  : [],
-        $hasQuotes ? array_fill(0, 2, 'quote')  : [],
-        $hasTips   ? ['tip']                    : []
-    );
-    $lastActivity = $_SESSION['last_activity'] ?? null;
-    if ($lastActivity && count(array_unique($regPool)) > 1) {
-        $regPool = array_values(array_filter($regPool, fn($t) => $t !== $lastActivity));
-    }
-    $choice = $regPool[array_rand($regPool)];
-    $_SESSION['last_activity'] = $choice;
-    if ($choice === 'minigame') {
-        // Weight gem match 3x vs other games
-        $games    = ['gemMatch','gemMatch','gemMatch','tictactoe','numguess','rps','mathquiz',
-                     'truefalse','sequence','reaction','wordscramble','highlow'];
-        $lastGame = $_SESSION['last_minigame'] ?? null;
-        if ($lastGame) $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));
-        $game = $games[array_rand($games)];
-        $_SESSION['last_minigame'] = $game;
-        json_response(['type' => 'minigame', 'game' => $game]);
-    }
-    if ($choice === 'quote')  { $q = pick_quote();  if ($q) json_response($q); }
-    if ($choice === 'tip')    { $t = pick_tip();    if ($t) json_response($t); }
-    if ($choice === 'study')  { $s = pick_study();  if ($s) json_response($s); }
-    json_response(pick_trivia());
-}
+if ($missing && $actCount === 0 && $checkinOn) json_response($missing);
 
 // Energy-aware + fatigue pool:
 //   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
@@ -148,14 +124,14 @@ if ($database) {
 }
 
 $pool = array_merge(
-    array_fill(0, $doableSlots,          'task'),
-    array_fill(0, $triageSlots,          'triage'),
-    array_fill(0, $hasStudy ? 3 : 0,     'study'),
-    array_fill(0, 2,                     'trivia'),
-    array_fill(0, $hasQuotes ? 2 : 0,    'quote'),
-    array_fill(0, $hasTips  ? 1 : 0,     'tip'),
-    array_fill(0, $gameSlots,            'minigame'),
-    $missing ? ['missing_info'] : []
+    array_fill(0, $doableSlots,                        'task'),
+    array_fill(0, $triageSlots,                        'triage'),
+    array_fill(0, $hasStudy ? 3 : 0,                   'study'),
+    array_fill(0, 2,                                   'trivia'),
+    array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
+    array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
+    array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
+    ($missing && $checkinOn) ? ['missing_info'] : []
 );
 
 if (empty($pool)) {
@@ -188,9 +164,12 @@ if ($choice === 'study') {
     json_response(pick_trivia()); // fallback if pool somehow empty
 }
 if ($choice === 'minigame') {
-    $games    = ['tictactoe', 'numguess', 'rps', 'mathquiz', 'truefalse', 'sequence', 'reaction', 'wordscramble', 'highlow', 'gemMatch'];
+    $allGames = ['gemMatch','gemMatch','gemMatch','tictactoe','numguess','rps','mathquiz','truefalse','sequence','reaction','wordscramble','highlow'];
+    // Filter to only enabled games (default: all on)
+    $games = array_values(array_filter($allGames, fn($g) => $gameToggles[$g] ?? true));
+    if (empty($games)) $games = $allGames; // fallback if all turned off somehow
     $lastGame = $_SESSION['last_minigame'] ?? null;
-    if ($lastGame && count($games) > 1) {
+    if ($lastGame && count(array_unique($games)) > 1) {
         $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));
     }
     $game = $games[array_rand($games)];
@@ -212,7 +191,6 @@ if ($choice === 'triage') {
 if ($choice === 'missing_info') json_response($missing);
 
 // 'task' branch — serve next onboarding step if incomplete, otherwise a real task
-try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
 $prefs = $cfg['preferences'] ?? [];
 
 if (empty($cfg['onboarding_complete'])) {

@@ -199,27 +199,20 @@ function setupOverlayListeners() {
 
   const resetBtn = document.getElementById('reset-btn');
   if (resetBtn) {
+    if (resetBtn.dataset.tired === '1') resetBtn.classList.add('active');
     resetBtn.addEventListener('click', () => {
-        loadSpeechBubble('lets-go.php?reset=1');
-    });
-  }
-
-  const tiredBtn = document.getElementById('tired-btn');
-  if (tiredBtn) {
-    if (tiredBtn.dataset.tired === '1') tiredBtn.classList.add('active');
-    tiredBtn.addEventListener('click', () => {
-        if (tiredBtn.dataset.tired === '1') return; // already set, no toggle
+        // Set energy to Low for today, then find the smallest task
         fetch('api/checkin.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({field: 'energy_level', value: 2}),
         }).then(r => r.json()).then(d => {
             if (d.ok) {
-                tiredBtn.dataset.tired = '1';
-                tiredBtn.classList.add('active');
-                loadSpeechBubble('lets-go.php');
+                resetBtn.dataset.tired = '1';
+                resetBtn.classList.add('active');
             }
         }).catch(() => {});
+        loadSpeechBubble('lets-go.php?reset=1');
     });
   }
 

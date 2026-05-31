@@ -29,5 +29,6 @@ $fillPct = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0
 </div>
 <div id="scene-total-pips">★ <?= $totalPages ?></div>
 <div id="scene-clock"></div>
+<button id="just-games-btn" class="just-games-btn" title="Just games — no tasks">🎮</button>
 
 <script src="js/scene.js"></script>

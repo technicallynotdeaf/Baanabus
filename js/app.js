@@ -199,8 +199,7 @@ function setupOverlayListeners() {
 
   const justGamesBtn = document.getElementById('just-games-btn');
   if (justGamesBtn) {
-    justGamesBtn.addEventListener('click', (e) => {
-        e.preventDefault();
+    justGamesBtn.addEventListener('click', () => {
         const turningOn = !document.body.classList.contains('regulation-mode');
         fetch('api/regulation_mode.php', {
             method: 'POST',
@@ -210,6 +209,13 @@ function setupOverlayListeners() {
             document.body.classList.toggle('regulation-mode', d.active);
             if (d.active) loadSpeechBubble('lets-go.php');
         }).catch(() => {});
+    });
+  }
+
+  const logoutLink = document.getElementById('logout-link');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', (e) => {
+        if (!confirm('Log out?')) e.preventDefault();
     });
   }
 

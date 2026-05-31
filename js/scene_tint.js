@@ -112,6 +112,12 @@
         el.textContent = `${p.hour}:${p.minute}`;
     }
 
+    window.getMelbourneInfo = function() {
+        const { h, month } = melbourneTime();
+        const [sr, ss] = SUN[month];
+        return { h, sr, ss, isNight: h >= ss + 0.5, isLampOn: h >= ss - 0.25 || h < sr };
+    };
+
     apply();
     updateClock();
     setInterval(apply, 60000);

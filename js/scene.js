@@ -111,6 +111,130 @@
         return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
     }
 
+    function drawWindow(ctx, wallLeft, wallWidth, innerTop, floorY, isNight) {
+        const cx = Math.floor(wallLeft + wallWidth * 0.5);
+        const ww = Math.min(Math.floor(wallWidth * 0.68), 110);
+        const wh = Math.floor(ww * 0.75);
+        const wy = Math.floor(innerTop + (floorY - innerTop) * 0.28);
+
+        // outer frame (shadow)
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(cx - ww / 2 + 3, wy + 3, ww, wh);
+
+        // frame
+        ctx.fillStyle = '#6b4c2a';
+        ctx.fillRect(cx - ww / 2 - 7, wy - 7, ww + 14, wh + 14);
+
+        // glass panes
+        const skyTop    = isNight ? '#080c1a' : '#a8c8e8';
+        const skyBottom = isNight ? '#0e1528' : '#c8dff5';
+        const halfW = ww / 2 - 4;
+        const halfH = wh / 2 - 4;
+
+        [[cx - ww/2 + 1, wy + 1, halfW, halfH],
+         [cx + 3,        wy + 1, halfW, halfH],
+         [cx - ww/2 + 1, wy + halfH + 7, halfW, halfH],
+         [cx + 3,        wy + halfH + 7, halfW, halfH]
+        ].forEach(([px, py, pw, ph]) => {
+            const g = ctx.createLinearGradient(px, py, px, py + ph);
+            g.addColorStop(0, skyTop);
+            g.addColorStop(1, skyBottom);
+            ctx.fillStyle = g;
+            ctx.fillRect(px, py, pw, ph);
+        });
+
+        // glazing bars
+        ctx.fillStyle = '#6b4c2a';
+        ctx.fillRect(cx - 3, wy, 6, wh);          // vertical centre
+        ctx.fillRect(cx - ww/2, wy + wh/2 - 3, ww, 6); // horizontal centre
+
+        // night: faint moon
+        if (isNight) {
+            ctx.fillStyle = 'rgba(200,210,255,0.55)';
+            ctx.beginPath();
+            ctx.arc(cx - ww / 5, wy + wh * 0.3, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.arc(cx - ww / 5 + 6, wy + wh * 0.3, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // window sill
+        ctx.fillStyle = '#8a6540';
+        ctx.fillRect(cx - ww / 2 - 10, wy + wh + 7, ww + 20, 7);
+    }
+
+    function drawTableAndLamp(ctx, wallLeft, wallWidth, floorY, lampOn) {
+        const tableW = Math.min(Math.floor(wallWidth * 0.72), 120);
+        const cx     = Math.floor(wallLeft + wallWidth * 0.5);
+        const legH   = Math.floor(tableW * 0.55);
+        const tableH = 11;
+        const tableY = floorY - legH - tableH;
+
+        // table shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(cx - tableW / 2 + 4, tableY + 4, tableW, tableH + legH);
+
+        // legs
+        ctx.fillStyle = '#5a3c1e';
+        const lw = 7;
+        ctx.fillRect(cx - tableW / 2 + 6,     tableY + tableH, lw, legH);
+        ctx.fillRect(cx + tableW / 2 - 6 - lw, tableY + tableH, lw, legH);
+
+        // tabletop
+        const tg = ctx.createLinearGradient(0, tableY, 0, tableY + tableH);
+        tg.addColorStop(0, '#9a7040');
+        tg.addColorStop(1, '#7a5828');
+        ctx.fillStyle = tg;
+        ctx.fillRect(cx - tableW / 2, tableY, tableW, tableH);
+
+        // lamp pole
+        const px   = cx + Math.floor(tableW * 0.15);
+        const poleH = Math.floor(tableW * 0.55);
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(px - 3, tableY - poleH, 6, poleH);
+
+        // lamp base disc
+        ctx.fillStyle = '#444';
+        ctx.fillRect(px - 10, tableY - 5, 20, 5);
+
+        // shade
+        const sw = Math.floor(tableW * 0.52);
+        const sh = Math.floor(poleH  * 0.40);
+        const sy = tableY - poleH;
+        ctx.fillStyle = lampOn ? '#d9a84e' : '#7a7060';
+        ctx.beginPath();
+        ctx.moveTo(px - sw * 0.35, sy);
+        ctx.lineTo(px + sw * 0.35, sy);
+        ctx.lineTo(px + sw / 2,    sy + sh);
+        ctx.lineTo(px - sw / 2,    sy + sh);
+        ctx.closePath();
+        ctx.fill();
+
+        // shade highlight stripe
+        ctx.fillStyle = lampOn ? 'rgba(255,220,120,0.35)' : 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.moveTo(px - sw * 0.35,        sy);
+        ctx.lineTo(px - sw * 0.35 + 10,   sy);
+        ctx.lineTo(px - sw / 2 + 12,      sy + sh);
+        ctx.lineTo(px - sw / 2,           sy + sh);
+        ctx.closePath();
+        ctx.fill();
+
+        // glow
+        if (lampOn) {
+            const gr = ctx.createRadialGradient(px, sy + sh, 0, px, sy + sh, sw * 1.8);
+            gr.addColorStop(0, 'rgba(255,196,80,0.30)');
+            gr.addColorStop(0.5, 'rgba(255,196,80,0.10)');
+            gr.addColorStop(1, 'rgba(255,196,80,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath();
+            ctx.arc(px, sy + sh, sw * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
     function updateBackground() {
         const canvas = document.getElementById('sceneCanvas');
         const ctx    = canvas.getContext('2d');
@@ -165,6 +289,15 @@
         });
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+
+        // Desktop-only decorations: window on left wall, table + lamp on right
+        if (width > 640) {
+            const info   = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
+            const leftW  = innerLeft;
+            const rightW = width - (innerLeft + innerWidth);
+            if (leftW > 60)  drawWindow     (ctx, 0,                   leftW,  innerTop, floorY, info.isNight);
+            if (rightW > 60) drawTableAndLamp(ctx, innerLeft + innerWidth, rightW, floorY, info.isLampOn);
+        }
 
         drawPapers(ctx, PAPERS, width, height, floorY);
 

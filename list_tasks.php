@@ -84,7 +84,7 @@ $typeLabels = [
   <?php endif; ?>
 
   <!-- Search -->
-  <input type="search" id="task-search" placeholder="Search tasksâ€¦" style="margin-bottom:1rem;">
+  <input type="search" id="task-search" placeholder="Search tasks..." style="margin-bottom:1rem;">
 
   <!-- Task groups -->
   <?php foreach ($groups as $urgency => $tasks): ?>
@@ -124,6 +124,6 @@ $typeLabels = [
   <?php endforeach; ?>
 
   <?php if (empty($active)): ?>
-    <p class="muted" style="text-align:center;padding:2rem 0;">No active tasks â€” nice work.</p>
+    <p class=”muted” style=”text-align:center;padding:2rem 0;”>No active tasks. Nice work.</p>
   <?php endif; ?>
 </div>

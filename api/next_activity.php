@@ -62,6 +62,37 @@ try {
 // Always surface the check-in on the very first activity of a session
 if ($missing && $actCount === 0) json_response($missing);
 
+// Regulation mode: no tasks, no triage — just games, trivia, and quotes
+if (!empty($_SESSION['regulation_mode'])) {
+    $regPool = array_merge(
+        array_fill(0, 6, 'minigame'),   // weighted heavily
+        array_fill(0, 3, 'trivia'),
+        $hasStudy  ? array_fill(0, 2, 'study')  : [],
+        $hasQuotes ? array_fill(0, 2, 'quote')  : [],
+        $hasTips   ? ['tip']                    : []
+    );
+    $lastActivity = $_SESSION['last_activity'] ?? null;
+    if ($lastActivity && count(array_unique($regPool)) > 1) {
+        $regPool = array_values(array_filter($regPool, fn($t) => $t !== $lastActivity));
+    }
+    $choice = $regPool[array_rand($regPool)];
+    $_SESSION['last_activity'] = $choice;
+    if ($choice === 'minigame') {
+        // Weight gem match 3x vs other games
+        $games    = ['gemMatch','gemMatch','gemMatch','tictactoe','numguess','rps','mathquiz',
+                     'truefalse','sequence','reaction','wordscramble','highlow'];
+        $lastGame = $_SESSION['last_minigame'] ?? null;
+        if ($lastGame) $games = array_values(array_filter($games, fn($g) => $g !== $lastGame));
+        $game = $games[array_rand($games)];
+        $_SESSION['last_minigame'] = $game;
+        json_response(['type' => 'minigame', 'game' => $game]);
+    }
+    if ($choice === 'quote')  { $q = pick_quote();  if ($q) json_response($q); }
+    if ($choice === 'tip')    { $t = pick_tip();    if ($t) json_response($t); }
+    if ($choice === 'study')  { $s = pick_study();  if ($s) json_response($s); }
+    json_response(pick_trivia());
+}
+
 // Energy-aware + fatigue pool:
 //   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
 //   fatigue shift: every 4 activities, move 1 slot from task → minigame

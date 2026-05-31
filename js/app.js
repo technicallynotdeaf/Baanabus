@@ -197,6 +197,22 @@ function setupOverlayListeners() {
         });
   }
 
+  const justGamesBtn = document.getElementById('just-games-btn');
+  if (justGamesBtn) {
+    justGamesBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const turningOn = !document.body.classList.contains('regulation-mode');
+        fetch('api/regulation_mode.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ on: turningOn }),
+        }).then(r => r.json()).then(d => {
+            document.body.classList.toggle('regulation-mode', d.active);
+            if (d.active) loadSpeechBubble('lets-go.php');
+        }).catch(() => {});
+    });
+  }
+
   // ============================
   // Close Listeners 
   // ============================

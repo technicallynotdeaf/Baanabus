@@ -20,7 +20,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/day_tasks.js?v=<?= filemtime(__DIR__ . '/js/day_tasks.js') ?>" defer></script>
   <script src="js/upload_questions.js?v=<?= filemtime(__DIR__ . '/js/upload_questions.js') ?>" defer></script>
 </head>
-<body>
+<body<?php if (!empty($_SESSION['regulation_mode'])) echo ' class="regulation-mode"'; ?>>
 
 <?php if (!empty($_SESSION['credential_id'])): ?>
   <!-- Navigation Bar (only when logged in) -->
@@ -34,6 +34,7 @@ require_once __DIR__ . '/init.php';
     <li><a href="#" id="task-list">📋<span class="nav-text"> Tasks</span></a></li>
     <li><a href="#" id="study-import-link">📚<span class="nav-text"> Study</span></a></li>
     <li><a href="#" id="settings-page-link">⚙️<span class="nav-text"> Settings</span></a></li>
+    <li><a href="#" id="just-games-btn">🎮<span class="nav-text"> Just games</span></a></li>
     <li><a href="logout.php">🚪<span class="nav-text"> Logout</span></a></li>
   </ul>
 <?php endif; ?>

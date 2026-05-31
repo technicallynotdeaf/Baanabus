@@ -429,6 +429,14 @@ body.scene-view .scene-progress { display: block; }
     letter-spacing: 0.03em;
 }
 body.scene-view #scene-total-pips { display: block; }
+
+/* Just games / regulation mode */
+body.regulation-mode #just-games-btn {
+    color: #fff;
+    background: rgba(220, 60, 40, 0.85);
+    border-radius: 4px;
+}
+body.regulation-mode #just-games-btn:hover { background: rgba(220, 60, 40, 1); }
 .scene-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #f5a623, #f7c96a);

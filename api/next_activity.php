@@ -178,8 +178,16 @@ if ($choice === 'minigame') {
     json_response(['type' => 'minigame', 'game' => $game]);
 }
 if ($choice === 'triage') {
-    $t = $inboxTasks[array_rand($inboxTasks)];
-    json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title']]);
+    shuffle($inboxTasks);
+    foreach ($inboxTasks as $t) {
+        $q = triage_next_question($t);
+        if ($q === 'auto_classify') {
+            try { vaultUpdateTask((int)$t['id'], ['task_type' => 'next_action']); } catch (Throwable $e) {}
+            continue;
+        }
+        json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title'], 'question' => $q]);
+    }
+    json_response(pick_trivia()); // inbox empty or all auto-classified
 }
 if ($choice === 'missing_info') json_response($missing);
 
@@ -243,6 +251,16 @@ try {
     $subtasks = [];
 }
 json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks]);
+
+// ---------- triage helpers ----------
+
+function triage_next_question(array $t): string {
+    if (empty($t['triage_actionable'])) return 'actionable';
+    $time = isset($t['time']) ? (int)$t['time'] : null;
+    if ($time === null) return 'duration';
+    if ($time > 120) return 'first_step';
+    return 'auto_classify'; // actionable + short = auto next_action
+}
 
 // ---------- question helpers ----------
 

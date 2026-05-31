@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete'];
+$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -36,7 +36,21 @@ $timeRaw  = $body['time'] ?? null;
 $time     = (is_int($timeRaw) || ctype_digit((string)$timeRaw)) && (int)$timeRaw > 0 ? (int)$timeRaw : null;
 
 try {
-    if ($action === 'delete') {
+    if ($action === 'mark_actionable') {
+        vaultUpdateTask($taskId, ['triage_actionable' => true]);
+
+    } elseif ($action === 'save_time') {
+        $fields = [];
+        if ($time !== null) $fields['time'] = $time;
+        if ($newTitle !== '') $fields['title'] = $newTitle;
+        if ($time !== null && $time <= 120) {
+            // Short enough to classify directly — no first-step question needed
+            $fields['task_type'] = 'next_action';
+            if ($urgency !== null) $fields['urgency'] = $urgency;
+        }
+        if (!empty($fields)) vaultUpdateTask($taskId, $fields);
+
+    } elseif ($action === 'delete') {
         $fields = ['status' => 'deleted'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;

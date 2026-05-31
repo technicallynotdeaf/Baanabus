@@ -674,224 +674,85 @@ window.initLetsGo = function() {
   }
 
   function renderTriage(d) {
+    const question  = d.question || 'actionable';
+    const questions = {
+      actionable: 'Is this still something you need to do?',
+      duration:   'Roughly how long does this take?',
+      first_step: 'Is there a quick 2-minute step that moves this forward?',
+    };
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
-      <textarea id="triage-title" style="width:100%;min-height:52px;margin-bottom:0.75rem;font-size:1em;resize:vertical;">${esc(d.title)}</textarea>
-      <p id="triage-q" style="font-weight:500;margin-bottom:0.75rem;line-height:1.4;"></p>
+      <p style="font-weight:600;line-height:1.4;margin-bottom:0.25rem;">${esc(d.title)}</p>
+      <p style="font-weight:500;color:#555;margin-bottom:0.75rem;font-size:0.95em;">${esc(questions[question] || '')}</p>
       <div id="triage-actions" style="display:flex;flex-direction:column;gap:8px;"></div>
       <p id="triage-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
 
-    const getTitle  = () => document.getElementById('triage-title').value.trim() || d.title;
-    const setQ      = q  => { document.getElementById('triage-q').textContent = q; };
-    const setStatus = s  => { document.getElementById('triage-status').textContent = s; };
-    const actionsEl = () => document.getElementById('triage-actions');
+    const el        = document.getElementById('triage-actions');
+    const setStatus = s => { document.getElementById('triage-status').textContent = s; };
 
-    let taskContext = null;
-    let taskTime    = null;
-
-    function disableAll() {
-      actionsEl().querySelectorAll('button').forEach(b => b.disabled = true);
-    }
-    function enableAll() {
-      actionsEl().querySelectorAll('button').forEach(b => b.disabled = false);
-    }
-
-    function mkBtn(label, onClick, extraStyle) {
+    function mkBtn(label, onClick, style) {
       const b = document.createElement('button');
       b.className = 'action-button';
-      b.style.cssText = 'width:100%;' + (extraStyle || '');
+      b.style.cssText = 'width:100%;' + (style || '');
       b.textContent = label;
       b.addEventListener('click', onClick);
       return b;
     }
 
-    function save(body, onOk) {
-      disableAll();
+    function save(body) {
+      el.querySelectorAll('button').forEach(b => b.disabled = true);
       setStatus('Saving…');
       body.task_id = d.id;
-      if (taskContext && !body.context) body.context = taskContext;
-      if (taskTime) body.time = taskTime;
-      const title = getTitle();
-      if (title !== d.title) body.title = title;
       fetch('api/triage.php', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify(body),
       }).then(r => r.json()).then(data => {
-        if (data.ok) { setStatus(''); if (onOk) onOk(); else setTimeout(() => loadSpeechBubble('lets-go.php'), 350); }
-        else { setStatus(data.error || 'Could not save.'); enableAll(); }
-      }).catch(() => { setStatus('Network error.'); enableAll(); });
+        if (data.ok) setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
+        else { setStatus(data.error || 'Could not save.'); el.querySelectorAll('button').forEach(b => b.disabled = false); }
+      }).catch(() => { setStatus('Network error.'); el.querySelectorAll('button').forEach(b => b.disabled = false); });
     }
 
-    function s1() {
-      setQ("Is this something you can actually do?");
-      const el = actionsEl(); el.innerHTML = '';
+    if (question === 'actionable') {
       el.append(
-        mkBtn("Yes, it's real", sPlace),
-        mkBtn("Wait, I did that!", () => {
-          disableAll();
-          setStatus('Marking as done…');
+        mkBtn("Yes, it's real", () => save({action:'mark_actionable'})),
+        mkBtn("Wait, I already did that!", () => {
+          el.querySelectorAll('button').forEach(b => b.disabled = true);
+          setStatus('Marking done…');
           fetch(`api/mark_complete.api.php?task_id=${d.id}`)
             .then(r => r.json())
-            .then(res => {
-              if (res.success) updateProgressBar(res.pages, res.pages_target, res.total_pages);
-              setTimeout(() => loadSpeechBubble('lets-go.php'), 300);
-            })
-            .catch(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
+            .then(res => { if (res.success) updateProgressBar(res.pages, res.pages_target, res.total_pages); })
+            .finally(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
         }, 'background:#4caf50;'),
         mkBtn("Maybe someday", () => save({action:'someday'}),
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
         mkBtn("Not relevant — bin it", () => save({action:'delete'}),
           'background:transparent;color:#c0392b;border:1.5px solid #c0392b;')
       );
-    }
 
-    function sPlace() {
-      setQ("Does this need to happen somewhere specific?");
-      const el = actionsEl(); el.innerHTML = '';
+    } else if (question === 'duration') {
       el.append(
-        mkBtn("Home", () => { taskContext = 'home'; s2(); }),
-        mkBtn("Work", () => { taskContext = 'work'; s2(); }),
-        mkBtn("Skip", () => s2(),
-          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
+        mkBtn("Less than 5 mins",  () => save({action:'save_time', time:5})),
+        mkBtn("10–15 mins",        () => save({action:'save_time', time:15})),
+        mkBtn("30–60 mins",        () => save({action:'save_time', time:60})),
+        mkBtn("A few hours",       () => save({action:'save_time', time:120}))
       );
-    }
 
-    function s2() {
-      setQ("How long would it take to do this?");
-      const el = actionsEl(); el.innerHTML = '';
-      el.append(
-        mkBtn("Less than 5 mins", () => { taskTime = 5;   s3quick(); }),
-        mkBtn("10–15 mins",       () => { taskTime = 15;  s3big();   }),
-        mkBtn("30–60 mins",       () => { taskTime = 60;  s3big();   }),
-        mkBtn("A few hours",      () => { taskTime = 120; s3big();   })
-      );
-    }
-
-    function s3quick() {
-      setQ("Can you do it right now?");
-      const el = actionsEl(); el.innerHTML = '';
-      el.append(
-        mkBtn("Yes — I'll do it now", doItNow),
-        mkBtn("Not right now", s4,
-          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
-      );
-    }
-
-    function s3big() {
-      setQ("Is there a 2-minute step that moves this forward?");
-      const el = actionsEl(); el.innerHTML = '';
+    } else if (question === 'first_step') {
       const inp = document.createElement('input');
-      inp.type = 'text'; inp.placeholder = 'e.g. Look up the number'; inp.style.cssText = 'margin-bottom:0.4rem;';
+      inp.type = 'text';
+      inp.placeholder = 'e.g. Look up the number';
+      inp.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:0.4rem;';
       const addBtn = mkBtn("Add as first step (save as project)", () => {
         const firstStep = inp.value.trim();
-        if (!firstStep) { setStatus('What is the first step?'); return; }
-        save({ action: 'project', first_step: firstStep });
+        if (!firstStep) { setStatus('Type a first step first.'); return; }
+        save({action:'project', first_step: firstStep});
       });
       el.append(inp, addBtn,
-        mkBtn("No — just add it to my list", () => save({action:'next_action'}),
+        mkBtn("No first step — just add it to my list", () => save({action:'next_action'}),
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'));
       inp.focus();
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
     }
-
-    function doItNow() {
-      save({ action: 'next_action' }, () => {
-        setQ("Go do it!");
-        setStatus('');
-        const el = actionsEl(); el.innerHTML = '';
-        const doneBtn = mkBtn("Done — mark it complete", () => {
-          doneBtn.disabled = true;
-          fetch(`api/mark_complete.api.php?task_id=${d.id}`)
-            .then(r => r.json())
-            .then(res => { if (res.success) updateProgressBar(res.pages, res.pages_target); })
-            .finally(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
-        }, 'background:#4caf50;');
-        el.append(doneBtn,
-          mkBtn("I'll do it later", () => loadSpeechBubble('lets-go.php'),
-            'background:transparent;color:#888;border:1px solid #ddd;margin-top:2px;'));
-      });
-    }
-
-    function s4() {
-      setQ("What's stopping you?");
-      const el = actionsEl(); el.innerHTML = '';
-      el.append(
-        mkBtn("Wrong place / context", sContext),
-        mkBtn("Wrong time of day", sTime),
-        mkBtn("Snooze until a specific date", sDate),
-        mkBtn("Need to buy or get something first", sPrereq)
-      );
-    }
-
-    function sContext() {
-      setQ("Where does this need to happen?");
-      const el = actionsEl(); el.innerHTML = '';
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
-      ['Home','Work','Shops','Online','Phone'].forEach(ctx =>
-        wrap.appendChild(mkBtn(ctx, () => save({action:'next_action', context:ctx.toLowerCase()}),
-          'width:auto;flex:1;min-width:70px;'))
-      );
-      el.appendChild(wrap);
-    }
-
-    function sTime() {
-      const fmtDate = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-      const now = new Date();
-      const tom = new Date(now); tom.setDate(tom.getDate() + 1);
-      const tonight  = fmtDate(now) + 'T20:00:00';
-      const tomorrow = fmtDate(tom) + 'T08:00:00';
-      setQ("When would work better?");
-      const el = actionsEl(); el.innerHTML = '';
-      el.append(
-        mkBtn("Tonight", () => save({action:'next_action', scheduled_date: tonight})),
-        mkBtn("Tomorrow morning", () => save({action:'next_action', scheduled_date: tomorrow})),
-        mkBtn("No rush — just add it to my list", () => save({action:'next_action'}),
-          'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);')
-      );
-    }
-
-    function sDate() {
-      setQ("Show it to me after...");
-      const el = actionsEl(); el.innerHTML = '';
-      const inp = document.createElement('input');
-      inp.type = 'date'; inp.style.cssText = 'margin-bottom:0.4rem;';
-      const min = new Date(); min.setDate(min.getDate() + 1);
-      inp.min = min.toISOString().substring(0, 10);
-      const saveBtn = mkBtn("Snooze until this date", () => {
-        if (!inp.value) { setStatus('Pick a date.'); return; }
-        save({ action: 'next_action', scheduled_date: inp.value });
-      });
-      el.append(inp, saveBtn);
-    }
-
-    function sPrereq() {
-      setQ("What do you need to buy or get first?");
-      const el = actionsEl(); el.innerHTML = '';
-      const inp = document.createElement('input');
-      inp.type = 'text'; inp.placeholder = 'e.g. Iron-on number labels'; inp.style.cssText = 'margin-bottom:0.4rem;';
-      const saveBtn = mkBtn("Add as a task and keep this one", () => {
-        const prereq = inp.value.trim();
-        if (!prereq) { setStatus('What do you need?'); return; }
-        disableAll();
-        setStatus('Saving…');
-        fetch('api/add_task.php', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ title: prereq, urgency: 'medium', task_type: 'next_action' }),
-        }).then(() => fetch('api/triage.php', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ task_id: d.id, action: 'next_action', title: getTitle() }),
-        })).then(r => r.json()).then(data => {
-          if (data.ok) setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
-          else { setStatus(data.error || 'Could not save.'); enableAll(); }
-        }).catch(() => { setStatus('Network error.'); enableAll(); });
-      });
-      el.append(inp, saveBtn);
-      inp.focus();
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
-    }
-
-    s1();
   }
 
   function renderTip(d) {

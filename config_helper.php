@@ -696,3 +696,65 @@ function saveCassowary(array $data): void {
     @chmod($path, 0600);
 }
 
+// ---------- Badges ----------
+
+function getBadgeDefinitions(): array {
+    return [
+        'first_task'   => ['name' => 'First Step',      'desc' => 'Complete your first task',                    'color' => '#e74c3c'],
+        'task_10'      => ['name' => 'Getting Started',  'desc' => 'Complete 10 tasks',                           'color' => '#e67e22'],
+        'task_50'      => ['name' => 'Momentum',         'desc' => 'Complete 50 tasks',                           'color' => '#f1c40f'],
+        'task_100'     => ['name' => 'Centurion',         'desc' => 'Complete 100 tasks',                          'color' => '#c0a030'],
+        'inbox_clear'  => ['name' => 'Clear Desk',        'desc' => 'Have an empty inbox',                         'color' => '#2ecc71'],
+        'trivia_10'    => ['name' => 'Quiz Night',         'desc' => '10 trivia questions answered correctly',      'color' => '#3498db'],
+        'story_start'  => ['name' => 'Once Upon a Time',  'desc' => 'Read the first page of The Chai Meridian',    'color' => '#9b59b6'],
+        'story_deep'   => ['name' => 'Turning the Page',  'desc' => 'Make 5 choices in The Chai Meridian',         'color' => '#e91e63'],
+    ];
+}
+
+function checkAndAwardBadges(): array {
+    global $database;
+    $config  = getConfig() ?? [];
+    $earned  = $config['badges'] ?? [];
+    $changed = false;
+
+    $award = function (string $id) use (&$earned, &$changed): void {
+        if (!isset($earned[$id])) { $earned[$id] = date('c'); $changed = true; }
+    };
+
+    try {
+        $tasks      = getTasks();
+        $total      = (int)($tasks['total_pages'] ?? 0);
+        $inboxCount = count(array_filter($tasks['tasks'], fn($t) =>
+            ($t['status'] ?? '') === 'active' &&
+            ($t['task_type'] ?? '') === 'inbox' &&
+            empty($t['parent_id'])
+        ));
+        if ($total >= 1)   $award('first_task');
+        if ($total >= 10)  $award('task_10');
+        if ($total >= 50)  $award('task_50');
+        if ($total >= 100) $award('task_100');
+        if ($inboxCount === 0 && $total >= 1) $award('inbox_clear');
+    } catch (Throwable $e) {}
+
+    try {
+        $prog = getStoryProgress(1);
+        if ($prog['depth'] >= 1) $award('story_start');
+        if ($prog['depth'] >= 5) $award('story_deep');
+    } catch (Throwable $e) {}
+
+    if ($database) {
+        try {
+            $stmt    = $database->query('SELECT COUNT(*) FROM question_seen WHERE correct_count > 0');
+            $correct = (int)$stmt->fetchColumn();
+            if ($correct >= 10) $award('trivia_10');
+        } catch (Throwable $e) {}
+    }
+
+    if ($changed) {
+        $config['badges'] = $earned;
+        saveConfig($config);
+    }
+
+    return $earned;
+}
+

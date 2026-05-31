@@ -4,6 +4,7 @@
 
     const PAPERS        = parseInt(canvas.dataset.papers, 10) || 0;
     const STORY_STARTED = canvas.dataset.storyStarted === '1';
+    const BADGE_IDS     = JSON.parse(canvas.dataset.badgeIds || '[]');
 
     const STORY_BOOKS = [
         { id: 1, color: '#C8813A', h: 0.82 },
@@ -14,7 +15,8 @@
         { id: 6, color: '#6B7A3A', h: 0.68 },
     ];
 
-    let bookBounds = [];
+    let bookBounds  = [];
+    let boardBounds = null;
 
     function frand(s) { return ((Math.sin(s * 91.3 + 217.5) * 53758.5) % 1 + 1) % 1; }
 
@@ -133,6 +135,21 @@
         ctx.closePath();
     }
 
+    function ptInQuad(px, py, corners) {
+        if (!corners) return false;
+        const n = corners.length;
+        let sign = 0;
+        for (let i = 0; i < n; i++) {
+            const [ax, ay] = corners[i];
+            const [bx, by] = corners[(i + 1) % n];
+            const cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+            if (sign === 0)             { sign = cross >= 0 ? 1 : -1; }
+            else if (sign ===  1 && cross < 0)  return false;
+            else if (sign === -1 && cross >= 0) return false;
+        }
+        return true;
+    }
+
     function drawWindow(ctx, iL, iW, iT, flY, h, w, isNight) {
         const lp = (t, v) => wallPt('left', t, v, iL, iW, iT, flY, h, w);
 
@@ -197,79 +214,153 @@
     function drawTableAndLamp(ctx, iL, iW, iT, flY, h, w, lampOn) {
         const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
 
-        // Table: depth t=[0.20, 0.72], tabletop v=[0.73, 0.78], floor v=1
-        const t1 = 0.20, t2 = 0.72;
-        const vTop = 0.73, vTbot = 0.785;
+        // v=1.0 is the floor. Table occupies the bottom ~12% of room height.
+        // Depth: t=0 is viewer's edge, t=1 is back wall. Table sits around t=0.35–0.65.
+        const t1 = 0.28, t2 = 0.62, tMid = (t1 + t2) * 0.5;
+        const vFloor   = 1.0;
+        const vTableTop = 0.88;  // table top = 12% of room height above floor
+        const vApron   = 0.905; // thin front apron below tabletop
 
-        // Tabletop
-        const ttTL = rp(t1, vTop),  ttTR = rp(t2, vTop);
-        const ttBL = rp(t1, vTbot), ttBR = rp(t2, vTbot);
-
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.12)';
-        quadPath(ctx,[ttTL[0]+3,ttTL[1]+3],[ttTR[0]+3,ttTR[1]+3],[ttBL[0]+3,ttBL[1]+3],[ttBR[0]+3,ttBR[1]+3]);
+        // Shadow on floor
+        const fc = rp(tMid, vFloor);
+        ctx.fillStyle = 'rgba(0,0,0,0.10)';
+        ctx.beginPath();
+        ctx.ellipse(fc[0], fc[1], (rp(t2,vFloor)[0]-rp(t1,vFloor)[0])*0.4, 5, 0, 0, Math.PI*2);
         ctx.fill();
 
-        // Tabletop surface with gradient
+        // Front face: from apron to floor (the visible front panel + legs implied)
+        const apTL = rp(t1, vApron), apTR = rp(t2, vApron);
+        const apBL = rp(t1, vFloor), apBR = rp(t2, vFloor);
+        ctx.fillStyle = '#5a3c1e';
+        quadPath(ctx, apTL, apTR, apBL, apBR); ctx.fill();
+
+        // Legs (slightly darker, over the front face)
+        const legW = 5;
+        ctx.fillStyle = '#3d2410';
+        [t1, t2].forEach(t => {
+            const lt = rp(t, vApron), lb = rp(t, vFloor);
+            ctx.fillRect(lt[0] - legW, lt[1], legW * 2, lb[1] - lt[1]);
+        });
+
+        // Tabletop surface
+        const ttTL = rp(t1, vTableTop), ttTR = rp(t2, vTableTop);
+        const ttBL = rp(t1, vApron),    ttBR = rp(t2, vApron);
         const tg = ctx.createLinearGradient(ttTL[0], ttTL[1], ttBL[0], ttBL[1]);
         tg.addColorStop(0, '#9a7040'); tg.addColorStop(1, '#7a5828');
         ctx.fillStyle = tg;
         quadPath(ctx, ttTL, ttTR, ttBL, ttBR); ctx.fill();
 
-        // Front apron panel (dark strip below tabletop)
-        const apBL = rp(t1, Math.min(1, vTbot + 0.025)), apBR = rp(t2, Math.min(1, vTbot + 0.025));
-        ctx.fillStyle = '#5a3c1e';
-        quadPath(ctx, ttBL, ttBR, apBL, apBR); ctx.fill();
+        // Tabletop edge highlight
+        ctx.fillStyle = '#b08848';
+        quadPath(ctx, ttTL, ttTR, [ttTL[0],ttTL[1]+3], [ttTR[0],ttTR[1]+3]); ctx.fill();
 
-        // Legs: vertical lines at near and far corners
-        const legW = 5;
-        const lNT = rp(t1, vTbot), lNB = rp(t1, 1.0);
-        const lFT = rp(t2, vTbot), lFB = rp(t2, 1.0);
-        ctx.fillStyle = '#4a2e14';
-        ctx.fillRect(lNT[0] - legW, lNT[1], legW * 2, lNB[1] - lNT[1]);
-        ctx.fillRect(lFT[0] - legW, lFT[1], legW * 2, lFB[1] - lFT[1]);
-
-        // Lamp: centred on table at mid-depth
-        const tMid   = (t1 + t2) * 0.5;
-        const lbase  = rp(tMid, vTop);
-        const ltop   = rp(tMid, 0.38);
+        // --- Lamp ---
+        const lbase  = rp(tMid, vTableTop);
+        const vLampT = vTableTop - 0.065;        // lamp is 6.5% of room height tall
+        const ltop   = rp(tMid, vLampT);
         const poleH  = lbase[1] - ltop[1];
-        const scale  = 0.65 + (1 - tMid) * 0.35; // perspective scale
-        const sw     = Math.round(52 * scale);
-        const sh     = Math.round(poleH * 0.38);
+        const scale  = 0.7 + (1 - tMid) * 0.3;
+        const sw     = Math.round(42 * scale);
+        const sh     = Math.round(poleH * 0.42);
         const shadeY = ltop[1];
 
-        // Pole
         ctx.fillStyle = '#3a3a3a';
         ctx.fillRect(lbase[0] - 2, ltop[1], 4, poleH);
 
-        // Shade (trapezoid)
         ctx.fillStyle = lampOn ? '#d9a84e' : '#7a7060';
         ctx.beginPath();
-        ctx.moveTo(lbase[0] - sw * 0.32, shadeY);
-        ctx.lineTo(lbase[0] + sw * 0.32, shadeY);
-        ctx.lineTo(lbase[0] + sw * 0.50, shadeY + sh);
-        ctx.lineTo(lbase[0] - sw * 0.50, shadeY + sh);
+        ctx.moveTo(lbase[0] - sw*0.30, shadeY);
+        ctx.lineTo(lbase[0] + sw*0.30, shadeY);
+        ctx.lineTo(lbase[0] + sw*0.50, shadeY + sh);
+        ctx.lineTo(lbase[0] - sw*0.50, shadeY + sh);
         ctx.closePath(); ctx.fill();
 
-        // Highlight
-        ctx.fillStyle = lampOn ? 'rgba(255,220,130,0.3)' : 'rgba(255,255,255,0.07)';
+        ctx.fillStyle = lampOn ? 'rgba(255,220,130,0.28)' : 'rgba(255,255,255,0.07)';
         ctx.beginPath();
-        ctx.moveTo(lbase[0] - sw * 0.32,        shadeY);
-        ctx.lineTo(lbase[0] - sw * 0.32 + sw*0.15, shadeY);
-        ctx.lineTo(lbase[0] - sw * 0.50 + sw*0.14, shadeY + sh);
-        ctx.lineTo(lbase[0] - sw * 0.50,        shadeY + sh);
+        ctx.moveTo(lbase[0]-sw*0.30, shadeY);
+        ctx.lineTo(lbase[0]-sw*0.30+sw*0.14, shadeY);
+        ctx.lineTo(lbase[0]-sw*0.50+sw*0.13, shadeY+sh);
+        ctx.lineTo(lbase[0]-sw*0.50, shadeY+sh);
         ctx.closePath(); ctx.fill();
 
-        // Glow pool
         if (lampOn) {
-            const gr = ctx.createRadialGradient(lbase[0], shadeY + sh, 0, lbase[0], shadeY + sh, sw * 2);
+            const gr = ctx.createRadialGradient(lbase[0], shadeY+sh, 0, lbase[0], shadeY+sh, sw*2.2);
             gr.addColorStop(0, 'rgba(255,196,80,0.30)');
             gr.addColorStop(0.5, 'rgba(255,196,80,0.10)');
             gr.addColorStop(1, 'rgba(255,196,80,0)');
             ctx.fillStyle = gr;
-            ctx.beginPath(); ctx.arc(lbase[0], shadeY + sh, sw * 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(lbase[0], shadeY+sh, sw*2.2, 0, Math.PI*2); ctx.fill();
         }
+    }
+
+    function drawNoticeBoard(ctx, iL, iW, iT, flY, h, w, earnedIds) {
+        const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
+        const t1  = 0.20, t2 = 0.66;
+        const v1  = 0.12, v2 = 0.62;
+        const pad = 0.025;
+
+        // Frame
+        const fTL = rp(t1 - pad, v1 - pad), fTR = rp(t2 + pad, v1 - pad);
+        const fBL = rp(t1 - pad, v2 + pad), fBR = rp(t2 + pad, v2 + pad);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        quadPath(ctx, [fTL[0]+3,fTL[1]+3],[fTR[0]+3,fTR[1]+3],[fBL[0]+3,fBL[1]+3],[fBR[0]+3,fBR[1]+3]);
+        ctx.fill();
+
+        ctx.fillStyle = '#5a3820';
+        quadPath(ctx, fTL, fTR, fBL, fBR);
+        ctx.fill();
+
+        // Cork surface
+        const TL = rp(t1, v1), TR = rp(t2, v1);
+        const BL = rp(t1, v2), BR = rp(t2, v2);
+
+        const bg = ctx.createLinearGradient(TL[0], TL[1], BL[0], BL[1]);
+        bg.addColorStop(0, '#c89060');
+        bg.addColorStop(1, '#a87040');
+        ctx.fillStyle = bg;
+        quadPath(ctx, TL, TR, BL, BR);
+        ctx.fill();
+
+        // Store click bounds (clockwise in screen coords)
+        boardBounds = [TL, TR, BR, BL];
+
+        // Badge pins: 2 rows × 4 columns
+        const BADGE_DEFS = [
+            { id: 'first_task',  color: '#e74c3c' },
+            { id: 'task_10',     color: '#e67e22' },
+            { id: 'task_50',     color: '#f1c40f' },
+            { id: 'task_100',    color: '#c0a030' },
+            { id: 'inbox_clear', color: '#2ecc71' },
+            { id: 'trivia_10',   color: '#3498db' },
+            { id: 'story_start', color: '#9b59b6' },
+            { id: 'story_deep',  color: '#e91e63' },
+        ];
+
+        const bp   = (s, t) => bilerp(TL, TR, BL, BR, s, t);
+        const pinR = Math.max(5, Math.round((TL[0] - TR[0]) * 0.09));
+
+        BADGE_DEFS.forEach((badge, i) => {
+            const col      = i % 4;
+            const row      = Math.floor(i / 4);
+            const s        = 0.14 + col * 0.24;
+            const t        = 0.30 + row * 0.44;
+            const [px, py] = bp(s, t);
+            const earned   = earnedIds.includes(badge.id);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.beginPath(); ctx.arc(px + 2, py + 2, pinR, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = earned ? badge.color : 'rgba(155,120,85,0.4)';
+            ctx.beginPath(); ctx.arc(px, py, pinR, 0, Math.PI * 2); ctx.fill();
+
+            if (earned) {
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.beginPath();
+                ctx.arc(px - pinR * 0.28, py - pinR * 0.28, pinR * 0.38, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
     }
 
     function updateBackground() {
@@ -332,6 +423,9 @@
             const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
             drawWindow      (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
             drawTableAndLamp(ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
+            drawNoticeBoard (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, BADGE_IDS);
+        } else {
+            boardBounds = null;
         }
 
         drawPapers(ctx, PAPERS, width, height, floorY);
@@ -358,6 +452,12 @@
         const rect = this.getBoundingClientRect();
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
+
+        if (ptInQuad(cx, cy, boardBounds)) {
+            loadOverlay('api/badges.php');
+            return;
+        }
+
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
                 if (b.unlocked) loadOverlay('api/story_read.php');

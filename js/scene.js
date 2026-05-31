@@ -111,127 +111,164 @@
         return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
     }
 
-    function drawWindow(ctx, wallLeft, wallWidth, innerTop, floorY, isNight) {
-        const cx = Math.floor(wallLeft + wallWidth * 0.5);
-        const ww = Math.min(Math.floor(wallWidth * 0.68), 110);
-        const wh = Math.floor(ww * 0.75);
-        const wy = Math.floor(innerTop + (floorY - innerTop) * 0.28);
-
-        // outer frame (shadow)
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.fillRect(cx - ww / 2 + 3, wy + 3, ww, wh);
-
-        // frame
-        ctx.fillStyle = '#6b4c2a';
-        ctx.fillRect(cx - ww / 2 - 7, wy - 7, ww + 14, wh + 14);
-
-        // glass panes
-        const skyTop    = isNight ? '#080c1a' : '#a8c8e8';
-        const skyBottom = isNight ? '#0e1528' : '#c8dff5';
-        const halfW = ww / 2 - 4;
-        const halfH = wh / 2 - 4;
-
-        [[cx - ww/2 + 1, wy + 1, halfW, halfH],
-         [cx + 3,        wy + 1, halfW, halfH],
-         [cx - ww/2 + 1, wy + halfH + 7, halfW, halfH],
-         [cx + 3,        wy + halfH + 7, halfW, halfH]
-        ].forEach(([px, py, pw, ph]) => {
-            const g = ctx.createLinearGradient(px, py, px, py + ph);
-            g.addColorStop(0, skyTop);
-            g.addColorStop(1, skyBottom);
-            ctx.fillStyle = g;
-            ctx.fillRect(px, py, pw, ph);
-        });
-
-        // glazing bars
-        ctx.fillStyle = '#6b4c2a';
-        ctx.fillRect(cx - 3, wy, 6, wh);          // vertical centre
-        ctx.fillRect(cx - ww/2, wy + wh/2 - 3, ww, 6); // horizontal centre
-
-        // night: faint moon
-        if (isNight) {
-            ctx.fillStyle = 'rgba(200,210,255,0.55)';
-            ctx.beginPath();
-            ctx.arc(cx - ww / 5, wy + wh * 0.3, 9, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.beginPath();
-            ctx.arc(cx - ww / 5 + 6, wy + wh * 0.3, 8, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // window sill
-        ctx.fillStyle = '#8a6540';
-        ctx.fillRect(cx - ww / 2 - 10, wy + wh + 7, ww + 20, 7);
+    // One-point perspective helpers.
+    // t=0: front (viewer's edge of side wall), t=1: back (bookshelf edge)
+    // v=0: ceiling, v=1: floor
+    function wallPt(side, t, v, iL, iW, iT, flY, h, w) {
+        const x    = side === 'left' ? t * iL : w - t * (w - iL - iW);
+        const yTop = t * iT;
+        const yBot = h * (1 - t) + flY * t;
+        return [Math.round(x), Math.round(yTop + v * (yBot - yTop))];
+    }
+    function bilerp(TL, TR, BL, BR, s, t) {
+        const tx = (a, b) => a + s * (b - a);
+        const ty = (a, b) => a + t * (b - a);
+        return [Math.round(ty(tx(TL[0], TR[0]), tx(BL[0], BR[0]))),
+                Math.round(ty(tx(TL[1], TR[1]), tx(BL[1], BR[1])))];
+    }
+    function quadPath(ctx, A, B, C, D) {
+        ctx.beginPath();
+        ctx.moveTo(...A); ctx.lineTo(...B);
+        ctx.lineTo(...D); ctx.lineTo(...C);
+        ctx.closePath();
     }
 
-    function drawTableAndLamp(ctx, wallLeft, wallWidth, floorY, lampOn) {
-        const tableW = Math.min(Math.floor(wallWidth * 0.72), 120);
-        const cx     = Math.floor(wallLeft + wallWidth * 0.5);
-        const legH   = Math.floor(tableW * 0.55);
-        const tableH = 11;
-        const tableY = floorY - legH - tableH;
+    function drawWindow(ctx, iL, iW, iT, flY, h, w, isNight) {
+        const lp = (t, v) => wallPt('left', t, v, iL, iW, iT, flY, h, w);
 
-        // table shadow
+        // Window position: depth t=[0.25, 0.78], vertical v=[0.10, 0.58]
+        const t1 = 0.25, t2 = 0.78, v1 = 0.10, v2 = 0.58;
+        const pad = 0.04;
+
+        // Frame (slightly expanded)
+        const fTL = lp(t1 - pad, v1 - pad), fTR = lp(t2 + pad, v1 - pad);
+        const fBL = lp(t1 - pad, v2 + pad), fBR = lp(t2 + pad, v2 + pad);
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        quadPath(ctx, [fTL[0]+3,fTL[1]+3],[fTR[0]+3,fTR[1]+3],[fBL[0]+3,fBL[1]+3],[fBR[0]+3,fBR[1]+3]);
+        ctx.fill();
+
+        ctx.fillStyle = '#6b4c2a';
+        quadPath(ctx, fTL, fTR, fBL, fBR);
+        ctx.fill();
+
+        // Glass pane corners
+        const TL = lp(t1, v1), TR = lp(t2, v1);
+        const BL = lp(t1, v2), BR = lp(t2, v2);
+        const bp = (s, t) => bilerp(TL, TR, BL, BR, s, t);
+
+        const skyA = isNight ? '#060a16' : '#9ec4e8';
+        const skyB = isNight ? '#0d1424' : '#c0d8f2';
+
+        // 2×2 panes: [TL corner, TR corner, BL corner, BR corner]
+        [[bp(0,0),bp(0.47,0),bp(0,0.47),bp(0.47,0.47)],
+         [bp(0.53,0),bp(1,0),bp(0.53,0.47),bp(1,0.47)],
+         [bp(0,0.53),bp(0.47,0.53),bp(0,1),bp(0.47,1)],
+         [bp(0.53,0.53),bp(1,0.53),bp(0.53,1),bp(1,1)]
+        ].forEach(([a,b,c,d]) => {
+            const g = ctx.createLinearGradient(a[0], a[1], c[0], c[1]);
+            g.addColorStop(0, skyA); g.addColorStop(1, skyB);
+            ctx.fillStyle = g;
+            quadPath(ctx, a, b, c, d); ctx.fill();
+        });
+
+        // Glazing bars (perspective-correct strips)
+        ctx.fillStyle = '#6b4c2a';
+        quadPath(ctx, bp(0,0.47), bp(1,0.47), bp(0,0.53), bp(1,0.53)); ctx.fill();
+        quadPath(ctx, bp(0.47,0), bp(0.53,0), bp(0.47,1), bp(0.53,1)); ctx.fill();
+
+        // Sill
+        const sTL = lp(t1-0.06, v2+pad), sTR = lp(t2+0.06, v2+pad);
+        const sBL = lp(t1-0.09, v2+0.07), sBR = lp(t2+0.09, v2+0.07);
+        ctx.fillStyle = '#8a6540'; quadPath(ctx, sTL, sTR, sBL, sBR); ctx.fill();
+
+        // Night: crescent moon in top-left pane
+        if (isNight) {
+            const mc = bp(0.2, 0.18);
+            const mr = Math.max(5, Math.abs(TL[0] - TR[0]) * 0.07);
+            ctx.fillStyle = 'rgba(200,215,255,0.55)';
+            ctx.beginPath(); ctx.arc(mc[0], mc[1], mr, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(6,10,22,0.85)';
+            ctx.beginPath(); ctx.arc(mc[0]+mr*0.55, mc[1]-mr*0.25, mr, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    function drawTableAndLamp(ctx, iL, iW, iT, flY, h, w, lampOn) {
+        const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
+
+        // Table: depth t=[0.20, 0.72], tabletop v=[0.73, 0.78], floor v=1
+        const t1 = 0.20, t2 = 0.72;
+        const vTop = 0.73, vTbot = 0.785;
+
+        // Tabletop
+        const ttTL = rp(t1, vTop),  ttTR = rp(t2, vTop);
+        const ttBL = rp(t1, vTbot), ttBR = rp(t2, vTbot);
+
+        // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.12)';
-        ctx.fillRect(cx - tableW / 2 + 4, tableY + 4, tableW, tableH + legH);
+        quadPath(ctx,[ttTL[0]+3,ttTL[1]+3],[ttTR[0]+3,ttTR[1]+3],[ttBL[0]+3,ttBL[1]+3],[ttBR[0]+3,ttBR[1]+3]);
+        ctx.fill();
 
-        // legs
-        ctx.fillStyle = '#5a3c1e';
-        const lw = 7;
-        ctx.fillRect(cx - tableW / 2 + 6,     tableY + tableH, lw, legH);
-        ctx.fillRect(cx + tableW / 2 - 6 - lw, tableY + tableH, lw, legH);
-
-        // tabletop
-        const tg = ctx.createLinearGradient(0, tableY, 0, tableY + tableH);
-        tg.addColorStop(0, '#9a7040');
-        tg.addColorStop(1, '#7a5828');
+        // Tabletop surface with gradient
+        const tg = ctx.createLinearGradient(ttTL[0], ttTL[1], ttBL[0], ttBL[1]);
+        tg.addColorStop(0, '#9a7040'); tg.addColorStop(1, '#7a5828');
         ctx.fillStyle = tg;
-        ctx.fillRect(cx - tableW / 2, tableY, tableW, tableH);
+        quadPath(ctx, ttTL, ttTR, ttBL, ttBR); ctx.fill();
 
-        // lamp pole
-        const px   = cx + Math.floor(tableW * 0.15);
-        const poleH = Math.floor(tableW * 0.55);
+        // Front apron panel (dark strip below tabletop)
+        const apBL = rp(t1, Math.min(1, vTbot + 0.025)), apBR = rp(t2, Math.min(1, vTbot + 0.025));
+        ctx.fillStyle = '#5a3c1e';
+        quadPath(ctx, ttBL, ttBR, apBL, apBR); ctx.fill();
+
+        // Legs: vertical lines at near and far corners
+        const legW = 5;
+        const lNT = rp(t1, vTbot), lNB = rp(t1, 1.0);
+        const lFT = rp(t2, vTbot), lFB = rp(t2, 1.0);
+        ctx.fillStyle = '#4a2e14';
+        ctx.fillRect(lNT[0] - legW, lNT[1], legW * 2, lNB[1] - lNT[1]);
+        ctx.fillRect(lFT[0] - legW, lFT[1], legW * 2, lFB[1] - lFT[1]);
+
+        // Lamp: centred on table at mid-depth
+        const tMid   = (t1 + t2) * 0.5;
+        const lbase  = rp(tMid, vTop);
+        const ltop   = rp(tMid, 0.38);
+        const poleH  = lbase[1] - ltop[1];
+        const scale  = 0.65 + (1 - tMid) * 0.35; // perspective scale
+        const sw     = Math.round(52 * scale);
+        const sh     = Math.round(poleH * 0.38);
+        const shadeY = ltop[1];
+
+        // Pole
         ctx.fillStyle = '#3a3a3a';
-        ctx.fillRect(px - 3, tableY - poleH, 6, poleH);
+        ctx.fillRect(lbase[0] - 2, ltop[1], 4, poleH);
 
-        // lamp base disc
-        ctx.fillStyle = '#444';
-        ctx.fillRect(px - 10, tableY - 5, 20, 5);
-
-        // shade
-        const sw = Math.floor(tableW * 0.52);
-        const sh = Math.floor(poleH  * 0.40);
-        const sy = tableY - poleH;
+        // Shade (trapezoid)
         ctx.fillStyle = lampOn ? '#d9a84e' : '#7a7060';
         ctx.beginPath();
-        ctx.moveTo(px - sw * 0.35, sy);
-        ctx.lineTo(px + sw * 0.35, sy);
-        ctx.lineTo(px + sw / 2,    sy + sh);
-        ctx.lineTo(px - sw / 2,    sy + sh);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(lbase[0] - sw * 0.32, shadeY);
+        ctx.lineTo(lbase[0] + sw * 0.32, shadeY);
+        ctx.lineTo(lbase[0] + sw * 0.50, shadeY + sh);
+        ctx.lineTo(lbase[0] - sw * 0.50, shadeY + sh);
+        ctx.closePath(); ctx.fill();
 
-        // shade highlight stripe
-        ctx.fillStyle = lampOn ? 'rgba(255,220,120,0.35)' : 'rgba(255,255,255,0.08)';
+        // Highlight
+        ctx.fillStyle = lampOn ? 'rgba(255,220,130,0.3)' : 'rgba(255,255,255,0.07)';
         ctx.beginPath();
-        ctx.moveTo(px - sw * 0.35,        sy);
-        ctx.lineTo(px - sw * 0.35 + 10,   sy);
-        ctx.lineTo(px - sw / 2 + 12,      sy + sh);
-        ctx.lineTo(px - sw / 2,           sy + sh);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(lbase[0] - sw * 0.32,        shadeY);
+        ctx.lineTo(lbase[0] - sw * 0.32 + sw*0.15, shadeY);
+        ctx.lineTo(lbase[0] - sw * 0.50 + sw*0.14, shadeY + sh);
+        ctx.lineTo(lbase[0] - sw * 0.50,        shadeY + sh);
+        ctx.closePath(); ctx.fill();
 
-        // glow
+        // Glow pool
         if (lampOn) {
-            const gr = ctx.createRadialGradient(px, sy + sh, 0, px, sy + sh, sw * 1.8);
+            const gr = ctx.createRadialGradient(lbase[0], shadeY + sh, 0, lbase[0], shadeY + sh, sw * 2);
             gr.addColorStop(0, 'rgba(255,196,80,0.30)');
             gr.addColorStop(0.5, 'rgba(255,196,80,0.10)');
             gr.addColorStop(1, 'rgba(255,196,80,0)');
             ctx.fillStyle = gr;
-            ctx.beginPath();
-            ctx.arc(px, sy + sh, sw * 1.8, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(lbase[0], shadeY + sh, sw * 2, 0, Math.PI*2); ctx.fill();
         }
     }
 
@@ -292,11 +329,9 @@
 
         // Desktop-only decorations: window on left wall, table + lamp on right
         if (width > 640) {
-            const info   = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
-            const leftW  = innerLeft;
-            const rightW = width - (innerLeft + innerWidth);
-            if (leftW > 60)  drawWindow     (ctx, 0,                   leftW,  innerTop, floorY, info.isNight);
-            if (rightW > 60) drawTableAndLamp(ctx, innerLeft + innerWidth, rightW, floorY, info.isLampOn);
+            const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
+            drawWindow      (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
+            drawTableAndLamp(ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
         }
 
         drawPapers(ctx, PAPERS, width, height, floorY);

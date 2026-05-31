@@ -197,37 +197,27 @@ function setupOverlayListeners() {
         });
   }
 
-  const justGamesBtn = document.getElementById('just-games-btn');
-  if (justGamesBtn) {
-    justGamesBtn.addEventListener('click', () => {
-        const turningOn = !document.body.classList.contains('regulation-mode');
-        fetch('api/regulation_mode.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ on: turningOn }),
-        }).then(r => r.json()).then(d => {
-            document.body.classList.toggle('regulation-mode', d.active);
-            if (d.active) loadSpeechBubble('lets-go.php');
-        }).catch(() => {});
+  const resetBtn = document.getElementById('reset-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        loadSpeechBubble('lets-go.php?reset=1');
     });
   }
 
   const tiredBtn = document.getElementById('tired-btn');
   if (tiredBtn) {
-    const isTired = () => tiredBtn.dataset.tired === '1';
-    if (isTired()) tiredBtn.style.opacity = '1';
+    if (tiredBtn.dataset.tired === '1') tiredBtn.classList.add('active');
     tiredBtn.addEventListener('click', () => {
-        const goingTired = !isTired();
-        const energy = goingTired ? 2 : 3;
+        if (tiredBtn.dataset.tired === '1') return; // already set, no toggle
         fetch('api/checkin.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({field: 'energy_level', value: energy}),
+            body: JSON.stringify({field: 'energy_level', value: 2}),
         }).then(r => r.json()).then(d => {
             if (d.ok) {
-                tiredBtn.dataset.tired = goingTired ? '1' : '0';
-                tiredBtn.style.opacity = goingTired ? '1' : '';
-                if (goingTired) loadSpeechBubble('lets-go.php');
+                tiredBtn.dataset.tired = '1';
+                tiredBtn.classList.add('active');
+                loadSpeechBubble('lets-go.php');
             }
         }).catch(() => {});
     });

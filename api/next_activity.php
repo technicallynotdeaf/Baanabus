@@ -18,6 +18,26 @@ try {
     $hasInbox   = false;
 }
 
+// Reset mode — find the single smallest task, or a quote/tip for grounding
+if (!empty($_GET['reset'])) {
+    try { $tasks = getDoableTasks(); } catch (Throwable $e) { $tasks = []; }
+    if (!empty($tasks)) {
+        // Sort by time (shortest first), then by energy level (lowest first)
+        $energyOrder = ['low' => 0, 'medium' => 1, 'high' => 2];
+        usort($tasks, function($a, $b) use ($energyOrder) {
+            $ta = (int)($a['time'] ?? 999);
+            $tb = (int)($b['time'] ?? 999);
+            if ($ta !== $tb) return $ta <=> $tb;
+            return ($energyOrder[$a['energy'] ?? 'medium'] ?? 1) <=> ($energyOrder[$b['energy'] ?? 'medium'] ?? 1);
+        });
+        $t = $tasks[0];
+        json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => [], 'reset_context' => true]);
+    }
+    $q = pick_quote(); if ($q) json_response($q);
+    $t = pick_tip();   if ($t) json_response($t);
+    json_response(['type' => 'tip', 'id' => 0, 'text' => "Take a breath. You don't have to fix everything right now. One small thing is enough."]);
+}
+
 // Fatigue counter — increments each call, resets with the PHP session
 $actCount = (int)($_SESSION['activity_count'] ?? 0);
 $_SESSION['activity_count'] = $actCount + 1;

@@ -35,6 +35,7 @@ window.initLetsGo = function() {
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
       case 'topic_picker':   renderTopicPicker(d);   break;
+      case 'reset_msg':      renderResetMsg(d);      break;
       case 'quote':          renderQuote(d);         break;
       case 'tip':            renderTip(d);           break;
       case 'missing_info':   renderMissingInfo(d);   break;
@@ -142,6 +143,11 @@ window.initLetsGo = function() {
       }
       document.getElementById('trivia-next').style.display = 'inline-flex';
     };
+  }
+
+  function renderResetMsg(d) {
+    c.innerHTML = `<p style="line-height:1.6;">${esc(d.text)}</p>
+      <button class="action-button" style="margin-top:0.75rem;" onclick="loadSpeechBubble('lets-go.php')">OK, next</button>`;
   }
 
   function renderTopicPicker(d) {

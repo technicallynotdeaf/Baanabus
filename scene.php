@@ -28,5 +28,6 @@ $fillPct = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0
   <div id="scene-progress-fill" class="scene-progress-fill" style="width:<?= $fillPct ?>%"></div>
 </div>
 <div id="scene-total-pips">★ <?= $totalPages ?></div>
+<div id="scene-clock"></div>
 
 <script src="js/scene.js"></script>

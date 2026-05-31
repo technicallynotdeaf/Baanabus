@@ -37,7 +37,7 @@
             timeZone: TZ,
             month: 'numeric',
             hour: 'numeric',
-            minute: 'numeric',
+            minute: '2-digit',
             hour12: false,
         });
         const p = Object.fromEntries(fmt.formatToParts(now).map(x => [x.type, x.value]));
@@ -98,6 +98,22 @@
         document.body.classList.toggle('night-mode', h >= ss);
     }
 
+    function updateClock() {
+        const el = document.getElementById('scene-clock');
+        if (!el) return;
+        const now = new Date();
+        const fmt = new Intl.DateTimeFormat('en-AU', {
+            timeZone: TZ,
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: false,
+        });
+        const p = Object.fromEntries(fmt.formatToParts(now).map(x => [x.type, x.value]));
+        el.textContent = `${p.hour}:${p.minute}`;
+    }
+
     apply();
+    updateClock();
     setInterval(apply, 60000);
+    setInterval(updateClock, 1000);
 })();

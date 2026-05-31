@@ -430,6 +430,28 @@ body.scene-view .scene-progress { display: block; }
 }
 body.scene-view #scene-total-pips { display: block; }
 
+/* Clock on right wall (desktop scene only) */
+#scene-clock {
+    position: fixed;
+    right: 3vw;
+    top: 38%;
+    transform: translateY(-50%);
+    font-size: clamp(2rem, 4vw, 3.8rem);
+    font-weight: 200;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.6);
+    pointer-events: none;
+    display: none;
+    z-index: 50;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+/* Only show on desktop scene view */
+@media (min-width: 641px) {
+    body.scene-view #scene-clock { display: block; }
+}
+
 /* Just games / regulation mode */
 body.regulation-mode #just-games-btn {
     color: #fff;

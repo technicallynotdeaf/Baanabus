@@ -43,22 +43,62 @@ if ($vaultOpen) {
 
   <!-- Passkey section -->
   <div class="card" style="margin-bottom:1rem;">
-    <h3 style="margin-bottom:0.5rem;">Vault access</h3>
-    <?php if ($vaultOpen): ?>
-      <p class="muted" style="margin-bottom:1rem;">
-        Your vault is open. Add another way to unlock it.
-      </p>
+    <h3 style="margin-bottom:0.75rem;">Vault access</h3>
+    <?php if ($vaultOpen):
+      // Load enrolled keys for this user
+      $enrolledKeys = [];
+      $credsDir = __DIR__ . '/../data/creds';
+      if (is_dir($credsDir)) {
+          foreach (glob("$credsDir/*.json") ?: [] as $f) {
+              $c = json_decode(file_get_contents($f), true);
+              if (($c['userId'] ?? '') === $_SESSION['user_id']) {
+                  $transports = $c['transports'] ?? [];
+                  $hint = in_array('usb', $transports) ? 'USB' : (in_array('nfc', $transports) ? 'NFC' : (in_array('internal', $transports) ? 'device' : ''));
+                  $enrolledKeys[] = [
+                      'credId'    => $c['credentialId'] ?? '',
+                      'label'     => $c['label'] ?? '',
+                      'hint'      => $hint,
+                      'createdAt' => substr($c['createdAt'] ?? '', 0, 10),
+                  ];
+              }
+          }
+      }
+    ?>
+      <?php if ($enrolledKeys): ?>
+      <div style="margin-bottom:1rem;">
+        <?php foreach ($enrolledKeys as $k): ?>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06);gap:8px;">
+          <div>
+            <span style="font-size:0.95em;font-weight:500;"><?= htmlspecialchars($k['label'] ?: 'Unnamed key') ?></span>
+            <?php if ($k['hint']): ?>
+              <span class="muted" style="font-size:0.8em;margin-left:5px;">(<?= htmlspecialchars($k['hint']) ?>)</span>
+            <?php endif; ?>
+            <span class="muted" style="font-size:0.8em;margin-left:6px;"><?= htmlspecialchars($k['createdAt']) ?></span>
+          </div>
+          <button class="btn btn-secondary" style="font-size:0.8em;padding:4px 10px;min-height:30px;color:#c0392b;border-color:#c0392b;"
+            data-revoke="<?= htmlspecialchars($k['credId']) ?>"
+            data-label="<?= htmlspecialchars($k['label'] ?: 'this key') ?>">
+            Revoke
+          </button>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <p class="muted" style="margin-bottom:0.75rem;">Add another way to unlock your vault.</p>
+      <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.3rem;">Name this key</label>
+      <input type="text" id="enroll-label-input" placeholder="e.g. YubiKey blue, Pixel 8, MacBook" maxlength="60" style="margin-bottom:0.75rem;">
       <button id="btn-enroll-device" class="btn" style="width:100%;margin-bottom:0.35rem;">
         Create a passkey on this device
       </button>
-      <p class="hint" style="margin-bottom:0.9rem;">
+      <p class="hint" style="margin-bottom:0.75rem;">
         Fingerprint, face, or screen lock on your phone or laptop. Use the device's own passkey,
-        not 1Password or Bitwarden (those don't support the encryption feature Baanabus needs).
+        not 1Password or Bitwarden (those strip the encryption feature Baanabus needs).
       </p>
       <button id="btn-enroll-key" class="btn btn-secondary" style="width:100%;margin-bottom:0.35rem;">
         Register a new USB or NFC key
       </button>
-      <p class="hint" style="margin-bottom:0.9rem;">
+      <p class="hint" style="margin-bottom:0.75rem;">
         A new YubiKey or other hardware authenticator you haven't used with Baanabus before.
       </p>
       <p id="enrollStatus" class="muted" style="margin-top:0.25rem;min-height:1.4em;"></p>

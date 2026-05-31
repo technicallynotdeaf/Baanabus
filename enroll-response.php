@@ -82,6 +82,14 @@ $paths = getConfigPaths();  // uses current session's user_id
 $dek   = b64u_dec_ev($_SESSION['DEK']);
 wrapDekWithPrf($dek, $prfResultB64u, $paths, $credId_b64u);
 
+// Save label to credential record if provided
+$label = trim($_SESSION['enroll_label'] ?? '');
+unset($_SESSION['enroll_label']);
+if ($label !== '' && is_file($credPath)) {
+    $rec['label'] = $label;
+    file_put_contents($credPath, json_encode($rec, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), LOCK_EX);
+}
+
 error_log('Enroll: created PRF wrap for credId=' . substr($credId_b64u, 0, 12) . '… by user=' . ($_SESSION['user_id'] ?? 'unknown'));
 
 respond_ev(['ok' => true, 'enrolled' => true]);

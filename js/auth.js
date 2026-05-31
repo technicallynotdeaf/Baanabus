@@ -147,13 +147,13 @@ async function signInPasskey(hintUsername=null) {
 }
 
 // ---------- enroll a passkey into the vault (called while vault is already open) ----------
-async function enrollPasskey() {
+async function enrollPasskey(label = '') {
   try {
     say('Touch the key you want to enroll…');
     const resp = await fetch('enroll-challenge.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: '{}'
+      body: JSON.stringify({ label })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
@@ -199,13 +199,13 @@ async function enrollPasskey() {
 // ---------- enroll a brand-new credential (credentials.create) ----------
 // Use this when the device has never been registered with Baanabus before.
 // type: 'platform' = device screen lock (phone/laptop), 'cross-platform' = USB/NFC hardware key
-async function enrollNewPasskey(type = 'platform') {
+async function enrollNewPasskey(type = 'platform', label = '') {
   try {
     say(`Creating a new ${type === 'platform' ? 'device' : 'hardware'} passkey…`);
     const resp = await fetch('enroll-create-challenge.php', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ type })
+      body: JSON.stringify({ type, label })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Challenge error');
@@ -260,7 +260,7 @@ async function enrollNewPasskey(type = 'platform') {
     if (result.needsPrfAuth) {
       // PRF not returned at create time — need one more touch to retrieve it via authentication
       say('Almost there — touch the key once more to complete vault setup…');
-      return await enrollPasskey();
+      return await enrollPasskey(label);
     }
 
     throw new Error('Unexpected response from server');

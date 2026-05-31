@@ -18,6 +18,9 @@ function respond_en(array $d, int $c = 200): void {
 if (empty($_SESSION['is_authenticated'])) respond_en(['error' => 'Not authenticated'], 401);
 if (empty($_SESSION['DEK']))              respond_en(['error' => 'Vault locked — sign in from a working device first'], 423);
 
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
+$_SESSION['enroll_label']     = substr(trim($input['label'] ?? ''), 0, 60) ?: '';
+
 $challenge = random_bytes(32);
 $_SESSION['enroll_challenge'] = base64_encode($challenge);
 

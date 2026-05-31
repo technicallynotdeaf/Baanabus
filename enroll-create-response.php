@@ -106,11 +106,14 @@ $credSafe = preg_replace('/[^A-Za-z0-9_\-]/', '_', $credIdB64u);
 $credsDir = __DIR__ . '/data/creds';
 @mkdir($credsDir, 0700, true);
 $credPath = "$credsDir/$credSafe.json";
+$label = trim($_SESSION['enroll_create_label'] ?? '');
+unset($_SESSION['enroll_create_label']);
 if (!is_file($credPath)) {
     file_put_contents($credPath, json_encode([
         'credentialId' => $credIdB64u,
         'userId'       => $userId,
         'username'     => $username,
+        'label'        => $label,
         'publicKeyPem' => $publicKeyPem,
         'counter'      => 0,
         'transports'   => $in['response']['transports'] ?? [],

@@ -25,15 +25,27 @@ window.initSettings = function() {
     }
   });
 
-  async function runEnroll(fn, btn) {
+  function enrollLabel() {
+    return document.getElementById('enroll-label-input')?.value?.trim() || '';
+  }
+
+  async function runEnroll(fn) {
+    const label    = enrollLabel();
+    if (!label) {
+      const statusEl = document.getElementById('enrollStatus');
+      statusEl.style.color = 'crimson';
+      statusEl.textContent = 'Give this key a name first.';
+      document.getElementById('enroll-label-input')?.focus();
+      return;
+    }
     const statusEl = document.getElementById('enrollStatus');
     const allBtns  = [document.getElementById('btn-enroll-device'), document.getElementById('btn-enroll-key')].filter(Boolean);
     allBtns.forEach(b => b.disabled = true);
     statusEl.style.color = '';
     statusEl.textContent = '';
     try {
-      await fn();
-      statusEl.textContent = 'Enrolled — this key can now unlock your vault.';
+      await fn(label);
+      statusEl.textContent = 'Enrolled. Reload the page to see the updated key list.';
     } catch(e) {
       statusEl.textContent = e.message;
       statusEl.style.color = 'crimson';
@@ -42,10 +54,37 @@ window.initSettings = function() {
   }
 
   const btnDevice = document.getElementById('btn-enroll-device');
-  if (btnDevice) btnDevice.addEventListener('click', () => runEnroll(() => BaanabusAuth.enrollNewPasskey('platform'), btnDevice));
+  if (btnDevice) btnDevice.addEventListener('click', () => runEnroll(label => BaanabusAuth.enrollNewPasskey('platform', label)));
 
   const btnKey = document.getElementById('btn-enroll-key');
-  if (btnKey) btnKey.addEventListener('click', () => runEnroll(() => BaanabusAuth.enrollNewPasskey('cross-platform'), btnKey));
+  if (btnKey) btnKey.addEventListener('click', () => runEnroll(label => BaanabusAuth.enrollNewPasskey('cross-platform', label)));
+
+  // Revoke buttons
+  document.querySelectorAll('[data-revoke]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const credId = this.dataset.revoke;
+      const label  = this.dataset.label;
+      if (!confirm(`Revoke "${label}"? You will no longer be able to unlock the vault with this key.`)) return;
+      this.disabled = true;
+      try {
+        const r = await fetch('api/revoke_passkey.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ credId })
+        });
+        const data = await r.json();
+        if (data.ok) {
+          this.closest('div[style]').remove();
+        } else {
+          alert(data.error || 'Revoke failed.');
+          this.disabled = false;
+        }
+      } catch(e) {
+        alert('Network error.');
+        this.disabled = false;
+      }
+    });
+  });
 
   document.getElementById('habitica-form').addEventListener('submit', async function(e) {
     e.preventDefault();

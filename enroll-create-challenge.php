@@ -21,6 +21,7 @@ if (empty($_SESSION['DEK']))              respond_ecc(['error' => 'Vault locked 
 
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $type  = ($input['type'] ?? '') === 'cross-platform' ? 'cross-platform' : 'platform';
+$_SESSION['enroll_create_label'] = substr(trim($input['label'] ?? ''), 0, 60) ?: '';
 
 $userId   = $_SESSION['user_id'] ?? 'default';
 $username = $_SESSION['username'] ?? 'user';

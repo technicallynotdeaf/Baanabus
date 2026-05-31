@@ -340,7 +340,8 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
     unset($t);
     if (!$found) throw new Exception('Task not found');
 
-    $data['pages'] = ($data['pages'] ?? 0) + 1;
+    $data['pages']       = ($data['pages']       ?? 0) + 1;
+    $data['total_pages'] = ($data['total_pages'] ?? 0) + 1;
     $newStoryPage = false;
     if ($data['pages'] >= $target) {
         $data['pages'] = 0;
@@ -350,6 +351,7 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
     return [
         'pages'            => $data['pages'],
         'pages_target'     => $target,
+        'total_pages'      => $data['total_pages'],
         'newStoryPage'     => $newStoryPage,
         'habitica_id'      => $habiticaId,
         'habitica_item_id' => $habiticaItemId,

@@ -20,7 +20,7 @@ try {
     $result = vaultMarkComplete($taskId, $target);
 
     if ($result['newStoryPage']) {
-        try { incrementStoryPages(1); } catch (Throwable $e) { /* non-fatal */ }
+        try { incrementStoryPages(1); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
     }
 
     if (!empty($result['habitica_id'])) {
@@ -44,7 +44,7 @@ try {
         }
     }
 
-    respond_mc(['success' => true, 'pages' => $result['pages'], 'pages_target' => $result['pages_target'], 'newStoryPage' => $result['newStoryPage']]);
+    respond_mc(['success' => true, 'pages' => $result['pages'], 'pages_target' => $result['pages_target'], 'total_pages' => $result['total_pages'], 'newStoryPage' => $result['newStoryPage']]);
 } catch (Throwable $e) {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);
 }

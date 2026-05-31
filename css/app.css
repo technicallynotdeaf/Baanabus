@@ -413,6 +413,22 @@ input:focus, textarea:focus, select:focus {
     pointer-events: none;
 }
 body.scene-view .scene-progress { display: block; }
+
+#scene-total-pips {
+    position: fixed;
+    bottom: 0.45rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65em;
+    color: rgba(255, 255, 255, 0.55);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    display: none;
+    z-index: 50;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+}
+body.scene-view #scene-total-pips { display: block; }
 .scene-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #f5a623, #f7c96a);

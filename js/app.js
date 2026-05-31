@@ -72,7 +72,7 @@ function setupOverlayListeners() {
       .then(response => response.json())
       .then(data => {
           if (data.success) {
-          updateProgressBar(data.pages, data.pages_target);
+          updateProgressBar(data.pages, data.pages_target, data.total_pages);
           if (data.newStoryPage && typeof window.refreshScene === 'function') {
               window.refreshScene();
           }
@@ -189,6 +189,14 @@ function setupOverlayListeners() {
         });
   }
 
+  const story_link = document.getElementById('story-book-link');
+  if (story_link) {
+    story_link.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadOverlay('api/story_read.php');
+        });
+  }
+
   // ============================
   // Close Listeners 
   // ============================
@@ -244,7 +252,7 @@ function spawnStarPip() {
   setTimeout(() => el.parentNode && el.parentNode.removeChild(el), 900);
 }
 
-function updateProgressBar(pages, target) {
+function updateProgressBar(pages, target, totalPages) {
   const fill = document.getElementById('scene-progress-fill');
   const bar  = document.getElementById('scene-progress');
   if (!fill) return;
@@ -252,6 +260,10 @@ function updateProgressBar(pages, target) {
   const pct = Math.min(100, Math.round((pages / t) * 100));
   fill.style.width = pct + '%';
   if (bar) bar.dataset.target = t;
+  if (totalPages !== undefined) {
+    const tot = document.getElementById('scene-total-pips');
+    if (tot) tot.textContent = '★ ' + totalPages;
+  }
   spawnStarPip();
 }
 

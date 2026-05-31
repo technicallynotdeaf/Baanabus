@@ -15,7 +15,7 @@ window.initLetsGo = function() {
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
-          updateProgressBar(d.pages, d.pages_target);
+          updateProgressBar(d.pages, d.pages_target, d.total_pages);
           if (d.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
         }
       })
@@ -87,7 +87,7 @@ window.initLetsGo = function() {
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            updateProgressBar(data.pages, data.pages_target);
+            updateProgressBar(data.pages, data.pages_target, data.total_pages);
             if (data.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
             setTimeout(() => {
               row.remove();
@@ -692,7 +692,7 @@ window.initLetsGo = function() {
           fetch(`api/mark_complete.api.php?task_id=${d.id}`)
             .then(r => r.json())
             .then(res => {
-              if (res.success) updateProgressBar(res.pages, res.pages_target);
+              if (res.success) updateProgressBar(res.pages, res.pages_target, res.total_pages);
               setTimeout(() => loadSpeechBubble('lets-go.php'), 300);
             })
             .catch(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));

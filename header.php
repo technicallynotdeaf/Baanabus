@@ -17,6 +17,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/welcome.js?v=<?= filemtime(__DIR__ . '/js/welcome.js') ?>" defer></script>
   <script src="js/settings.js?v=<?= filemtime(__DIR__ . '/js/settings.js') ?>" defer></script>
   <script src="js/story_read.js?v=<?= filemtime(__DIR__ . '/js/story_read.js') ?>" defer></script>
+  <script src="js/story_books.js?v=<?= filemtime(__DIR__ . '/js/story_books.js') ?>" defer></script>
   <script src="js/day_tasks.js?v=<?= filemtime(__DIR__ . '/js/day_tasks.js') ?>" defer></script>
   <script src="js/upload_questions.js?v=<?= filemtime(__DIR__ . '/js/upload_questions.js') ?>" defer></script>
   <script src="js/badges.js?v=<?= filemtime(__DIR__ . '/js/badges.js') ?>" defer></script>

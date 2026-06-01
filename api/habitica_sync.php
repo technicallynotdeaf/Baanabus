@@ -4,8 +4,15 @@ require_once __DIR__ . '/../config_helper.php';
 require_once __DIR__ . '/habitica_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
-if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
+// Accept BSK token for agent-triggered force sync
+$bskAuth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+$bskToken = strncmp($bskAuth, 'Bearer ', 7) === 0 ? trim(substr($bskAuth, 7)) : '';
+if ($bskToken && authenticateAgentKey($bskToken)) {
+    // agent-key path: vault is unlocked by authenticateAgentKey
+} else {
+    if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
+    if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
+}
 
 try {
     $cfg   = getConfig() ?? [];
@@ -16,7 +23,7 @@ try {
     }
 
     $today = date('Y-m-d');
-    $force = !empty($_GET['force']) && isAuthenticated();
+    $force = !empty($_GET['force']) && ($bskToken || isAuthenticated());
     if (!$force && ($cfg['habitica_sync_date'] ?? '') === $today) {
         json_response(['already_ran' => true]);
     }

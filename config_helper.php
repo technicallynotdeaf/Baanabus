@@ -681,6 +681,17 @@ function incrementStoryPages(int $storyId): int {
     return $p['pages_available'];
 }
 
+function getActiveStoryId(): int {
+    $cfg = getConfig() ?? [];
+    return (int)($cfg['active_story_id'] ?? 1);
+}
+
+function setActiveStoryId(int $storyId): void {
+    $cfg = getConfig() ?? [];
+    $cfg['active_story_id'] = $storyId;
+    saveConfig($cfg);
+}
+
 // ---------- Cassowary vault (API keys / integration secrets) ----------
 
 function cassowaryPath(): string {

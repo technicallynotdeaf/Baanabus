@@ -20,7 +20,7 @@ try {
     $result = vaultMarkComplete($taskId, $target);
 
     if ($result['newStoryPage']) {
-        try { incrementStoryPages(1); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
+        try { incrementStoryPages(getActiveStoryId()); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
     }
 
     if (!empty($result['habitica_id'])) {

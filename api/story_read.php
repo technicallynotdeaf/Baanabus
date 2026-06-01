@@ -60,6 +60,9 @@ if ($prevIdx >= 0 && isset($history[$prevIdx])) {
     exit;
 }
 
+// Mark this story as the active one so pips go to the right place
+try { setActiveStoryId($storyId); } catch (Throwable $e) {}
+
 $pageKey  = $prog['current_key'];
 $page     = $story['pages'][$pageKey] ?? null;
 if (!$page) { echo '<p>Story page not found.</p>'; exit; }

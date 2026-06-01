@@ -52,6 +52,10 @@ $prog['history'][] = [
 // Advance
 $prog['current_key'] = $choiceKey;
 $prog['depth']++;
+$nextPage = $story['pages'][$choiceKey] ?? null;
+if ($nextPage && !empty($nextPage['ending'])) {
+    $prog['ended'] = true;
+}
 saveStoryProgress($storyId, $prog);
 
 json_response(['ok' => true]);

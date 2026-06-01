@@ -72,6 +72,12 @@ $pageKey  = $prog['current_key'];
 $page     = $story['pages'][$pageKey] ?? null;
 if (!$page) { echo '<p>Story page not found.</p>'; exit; }
 
+// Retroactively stamp ended flag if we're on an ending page and it isn't set yet
+if (!empty($page['ending']) && empty($prog['ended'])) {
+    $prog['ended'] = true;
+    try { saveStoryProgress($storyId, $prog); } catch (Throwable $e) {}
+}
+
 $prose     = base64_decode($page['prose']);
 $canChoose = $prog['pages_available'] > $prog['depth'];
 $choices   = $page['choices'] ?? [];
@@ -83,7 +89,7 @@ $firstHistIdx = 0; // oldest history entry index
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.25rem;">
     <p style="font-size:0.8em;color:#999;margin:0;letter-spacing:0.05em;"><?= htmlspecialchars(strtoupper($story['title'])) ?></p>
     <?php if ($history): ?>
-      <button onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= count($history) - 1 ?>')"
+      <button onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=0')"
               style="background:none;border:none;font-size:0.78em;color:#aaa;cursor:pointer;padding:0;">
         &larr; From the start
       </button>
@@ -102,7 +108,7 @@ $firstHistIdx = 0; // oldest history entry index
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <?php if ($history): ?>
           <button class="action-button" style="background:transparent;color:#555;border:1px solid #ccc;font-size:0.85em;padding:6px 14px;"
-            onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= count($history) - 1 ?>')">
+            onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=0')">
             From the start
           </button>
         <?php endif; ?>

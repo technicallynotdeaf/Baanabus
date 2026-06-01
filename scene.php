@@ -1,19 +1,27 @@
 <?php
-$paperCount    = 0;
-$storyStarted  = false;
-$badgeIds      = [];
+$paperCount      = 0;
+$storyStarted    = false;
+$badgeIds        = [];
+$storyBooksAvail = [];
 if (isUnlocked()) {
     try {
         $paperCount   = count(getInboxTasks());
         $storyStarted = true;
         $badgeIds     = array_keys(checkAndAwardBadges());
+        $storyFiles   = [1 => 'chai_meridian.php', 2 => 'the_platform.php', 3 => 'below_the_alcyon.php'];
+        foreach ($storyFiles as $sid => $file) {
+            if (file_exists(__DIR__ . '/content/stories/' . $file)) {
+                $storyBooksAvail[] = $sid;
+            }
+        }
     } catch (Throwable $e) {}
 }
 ?>
 <canvas id="sceneCanvas"
   data-papers="<?= (int)$paperCount ?>"
   data-story-started="<?= $storyStarted ? '1' : '0' ?>"
-  data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"></canvas>
+  data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"
+  data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"></canvas>
 
 <?php
 $pageCount   = 0;

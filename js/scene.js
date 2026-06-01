@@ -3,8 +3,9 @@
     if (!canvas) return;
 
     const PAPERS        = parseInt(canvas.dataset.papers, 10) || 0;
-    const STORY_STARTED = canvas.dataset.storyStarted === '1';
-    const BADGE_IDS     = JSON.parse(canvas.dataset.badgeIds || '[]');
+    const STORY_STARTED       = canvas.dataset.storyStarted === '1';
+    const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
+    const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[1]');
 
     const STORY_BOOKS = [
         { id: 1, color: '#C8813A', h: 0.82 },
@@ -66,7 +67,7 @@
             [book1Idx, book2Idx].forEach((bookIdx, bi) => {
                 if (bookIdx >= STORY_BOOKS.length) return;
                 const book     = STORY_BOOKS[bookIdx];
-                const unlocked = bookIdx === 0 && STORY_STARTED;
+                const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
                 const bkH      = Math.floor(bayHeight * book.h);
                 const bx       = secX + 4 + bi * (bookW + 2);
                 const by       = bayBottom - bkH;
@@ -460,7 +461,7 @@
 
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
-                if (b.unlocked) loadOverlay('api/story_read.php');
+                if (b.unlocked) loadOverlay('api/story_books.php');
                 break;
             }
         }

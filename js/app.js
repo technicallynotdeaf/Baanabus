@@ -193,7 +193,7 @@ function setupOverlayListeners() {
   if (story_link) {
     story_link.addEventListener('click', (e) => {
         e.preventDefault();
-        loadOverlay('api/story_read.php');
+        loadOverlay('api/story_books.php');
         });
   }
 

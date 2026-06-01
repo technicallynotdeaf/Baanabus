@@ -5,8 +5,14 @@ require_once __DIR__ . '/../config_helper.php';
 if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
-$storyId = 1;
-$story   = require __DIR__ . '/../content/stories/chai_meridian.php';
+$storyFiles = [
+    1 => 'chai_meridian.php',
+    2 => 'the_platform.php',
+    3 => 'below_the_alcyon.php',
+];
+$storyId = (int)($_GET['story'] ?? 1);
+if (!isset($storyFiles[$storyId])) $storyId = 1;
+$story   = require __DIR__ . '/../content/stories/' . $storyFiles[$storyId];
 $prog    = getStoryProgress($storyId);
 $history = $prog['history'] ?? [];
 
@@ -15,14 +21,14 @@ $prevIdx = isset($_GET['prev']) ? (int)$_GET['prev'] : -1;
 
 if ($prevIdx >= 0 && isset($history[$prevIdx])) {
     $hEntry  = $history[$prevIdx];
-    $hPage   = $story['pages'][$hEntry['key']] ?? null;
+    $hPage   = $story['pages'][$hEntry['key'] ?? ''] ?? null;
     $hProse  = $hPage ? base64_decode($hPage['prose']) : '';
     $prevPrev = $prevIdx - 1;
     $nextIdx  = $prevIdx + 1;
     $isLast   = ($nextIdx >= count($history));
     ?>
     <div id="story-content" data-init="initStoryRead" style="max-width:520px;margin:0 auto;">
-      <p style="font-size:0.8em;color:#999;margin-bottom:0.25rem;letter-spacing:0.05em;">THE CHAI MERIDIAN &mdash; history</p>
+      <p style="font-size:0.8em;color:#999;margin-bottom:0.25rem;letter-spacing:0.05em;"><?= htmlspecialchars(strtoupper($story['title'])) ?> &mdash; history</p>
       <div style="line-height:1.75;margin-bottom:1rem;opacity:0.8;">
         <?php foreach (explode("\n\n", trim($hProse)) as $para): ?>
           <p style="margin:0 0 0.9rem;"><?= nl2br(htmlspecialchars(trim($para))) ?></p>
@@ -34,18 +40,18 @@ if ($prevIdx >= 0 && isset($history[$prevIdx])) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <?php if ($prevIdx > 0): ?>
           <button class="action-button" style="background:transparent;color:#555;border:1px solid #ccc;font-size:0.85em;padding:6px 12px;"
-            onclick="loadOverlay('api/story_read.php?prev=<?= $prevPrev ?>')">
+            onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= $prevPrev ?>')">
             &larr; Earlier
           </button>
         <?php endif; ?>
         <?php if (!$isLast): ?>
           <button class="action-button" style="background:transparent;color:#555;border:1px solid #ccc;font-size:0.85em;padding:6px 12px;"
-            onclick="loadOverlay('api/story_read.php?prev=<?= $nextIdx ?>')">
+            onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= $nextIdx ?>')">
             Later &rarr;
           </button>
         <?php endif; ?>
         <button class="action-button" style="font-size:0.85em;padding:6px 12px;"
-          onclick="loadOverlay('api/story_read.php')">
+          onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>')">
           Back to now
         </button>
       </div>
@@ -67,9 +73,9 @@ $firstHistIdx = 0; // oldest history entry index
 ?>
 <div id="story-content" data-init="initStoryRead" style="max-width:520px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.25rem;">
-    <p style="font-size:0.8em;color:#999;margin:0;letter-spacing:0.05em;">THE CHAI MERIDIAN</p>
+    <p style="font-size:0.8em;color:#999;margin:0;letter-spacing:0.05em;"><?= htmlspecialchars(strtoupper($story['title'])) ?></p>
     <?php if ($history): ?>
-      <button onclick="loadOverlay('api/story_read.php?prev=<?= count($history) - 1 ?>')"
+      <button onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= count($history) - 1 ?>')"
               style="background:none;border:none;font-size:0.78em;color:#aaa;cursor:pointer;padding:0;">
         &larr; From the start
       </button>

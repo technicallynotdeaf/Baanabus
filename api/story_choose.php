@@ -14,7 +14,12 @@ $storyId  = (int)($input['story_id']  ?? 1);
 $choiceKey = trim($input['choice_key'] ?? '');
 if (!$choiceKey) json_response(['error' => 'Missing choice_key'], 400);
 
-$story = require __DIR__ . '/../content/stories/chai_meridian.php';
+$storyFiles = [
+    1 => 'chai_meridian.php',
+    2 => 'the_platform.php',
+    3 => 'below_the_alcyon.php',
+];
+$story = require __DIR__ . '/../content/stories/' . ($storyFiles[$storyId] ?? 'chai_meridian.php');
 $prog  = getStoryProgress($storyId);
 
 // Validate the choice exists from the current page

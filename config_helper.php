@@ -681,15 +681,27 @@ function incrementStoryPages(int $storyId): int {
     return $p['pages_available'];
 }
 
-function getActiveStoryId(): int {
+function getActiveStoryId(): ?int {
     $cfg = getConfig() ?? [];
-    return (int)($cfg['active_story_id'] ?? 1);
+    return isset($cfg['active_story_id']) ? (int)$cfg['active_story_id'] : null;
 }
 
 function setActiveStoryId(int $storyId): void {
     $cfg = getConfig() ?? [];
     $cfg['active_story_id'] = $storyId;
     saveConfig($cfg);
+}
+
+function consumePendingStoryPages(int $storyId): void {
+    $cfg     = getConfig() ?? [];
+    $pending = (int)($cfg['pending_story_pages'] ?? 0);
+    if ($pending <= 0) return;
+    $cfg['pending_story_pages'] = 0;
+    $cfg['active_story_id']     = $storyId;
+    saveConfig($cfg);
+    for ($i = 0; $i < $pending; $i++) {
+        incrementStoryPages($storyId);
+    }
 }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------

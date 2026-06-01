@@ -74,6 +74,18 @@ function setupOverlayListeners() {
           if (data.newStoryPage && typeof window.refreshScene === 'function') {
             window.refreshScene();
           }
+          if (data.bookUnlocked) {
+            const ac = document.getElementById('activity-container');
+            if (ac) {
+              ac.innerHTML = `
+                <p style="font-weight:600;margin-bottom:0.4rem;">You've earned a story page.</p>
+                <p style="color:#555;font-size:0.92em;line-height:1.5;margin-bottom:0.75rem;">
+                  Open the bookshelf and choose a book — your page will be waiting there.
+                </p>
+                <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Nice one</button>`;
+              return;
+            }
+          }
           if (data.callout) {
             const ac = document.getElementById('activity-container');
             if (ac) {

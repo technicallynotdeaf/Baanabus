@@ -60,8 +60,12 @@ if ($prevIdx >= 0 && isset($history[$prevIdx])) {
     exit;
 }
 
-// Mark this story as the active one so pips go to the right place
+// Apply any pages banked before a book was chosen, then mark as active
+try { consumePendingStoryPages($storyId); } catch (Throwable $e) {}
 try { setActiveStoryId($storyId); } catch (Throwable $e) {}
+
+// Reload progress in case pending pages just changed pages_available
+$prog = getStoryProgress($storyId);
 
 $pageKey  = $prog['current_key'];
 $page     = $story['pages'][$pageKey] ?? null;
@@ -110,10 +114,20 @@ $firstHistIdx = 0; // oldest history entry index
       <p style="color:#888;font-size:0.9em;font-style:italic;">
         — To be continued. Fill the pip bar to unlock the next part.
       </p>
-    <?php elseif (!$canChoose): ?>
-      <p style="color:#888;font-size:0.9em;">
-        Fill the pip bar <?= ($prog['depth'] + 1 - $prog['pages_available']) > 1 ? ($prog['depth'] + 1 - $prog['pages_available']) . ' more times' : 'once more' ?> to read on.
-      </p>
+    <?php elseif (!$canChoose):
+        $pipsNeeded = $prog['depth'] + 1 - $prog['pages_available'];
+        $pipsText   = $pipsNeeded === 1 ? 'one more full pip bar' : $pipsNeeded . ' more full pip bars';
+    ?>
+      <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;">
+        <p style="margin:0 0 0.3rem;font-weight:500;font-size:0.95em;">The story is waiting.</p>
+        <p style="margin:0;color:#666;font-size:0.88em;line-height:1.5;">
+          Complete enough tasks to fill the pip bar <?= htmlspecialchars($pipsText) ?> and the next choice will open up.
+        </p>
+      </div>
+      <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+        onclick="document.getElementById('close-overlay').click()">
+        Back to tasks
+      </button>
     <?php else: ?>
       <?php if (count($choices) === 1): ?>
         <button class="action-button" onclick="window._storyChoose('<?= htmlspecialchars($choices[0]['next']) ?>')">

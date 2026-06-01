@@ -19,8 +19,20 @@ try {
     $target = todayPagesTarget();
     $result = vaultMarkComplete($taskId, $target);
 
+    $bookUnlocked = false;
     if ($result['newStoryPage']) {
-        try { incrementStoryPages(getActiveStoryId()); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
+        $activeStory = getActiveStoryId();
+        if ($activeStory !== null) {
+            try { incrementStoryPages($activeStory); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
+        } else {
+            // No book chosen yet — bank the page and prompt to pick one
+            try {
+                $cfg = getConfig() ?? [];
+                $cfg['pending_story_pages'] = ($cfg['pending_story_pages'] ?? 0) + 1;
+                saveConfig($cfg);
+            } catch (Throwable $e) {}
+            $bookUnlocked = true;
+        }
     }
 
     if (!empty($result['habitica_id'])) {
@@ -99,7 +111,8 @@ try {
         'pages'        => $result['pages'],
         'pages_target' => $result['pages_target'],
         'total_pages'  => $result['total_pages'],
-        'newStoryPage' => $result['newStoryPage'],
+        'newStoryPage' => $result['newStoryPage'] && !$bookUnlocked,
+        'bookUnlocked' => $bookUnlocked,
         'callout'      => $callout,
     ]);
 } catch (Throwable $e) {

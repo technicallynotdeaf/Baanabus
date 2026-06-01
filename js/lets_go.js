@@ -936,10 +936,10 @@ window.initLetsGo = function() {
     if (!overlayEl || !overlayBody) return;
 
     const COLS = 7, ROWS = 7, N_COLORS = 6, GAP = 4, START_MOVES = 25;
-    const GEM_FILL  = ['#e63946','#4895ef','#52b788','#f9c74f','#9b5de5','#ff6b35'];
-    const GEM_GLOSS = ['rgba(255,175,175,0.5)','rgba(155,210,255,0.5)',
+    const GEM_FILL  = ['#d62839','#4895ef','#52b788','#f9c74f','#9b5de5','#ff8c00'];
+    const GEM_GLOSS = ['rgba(255,155,165,0.5)','rgba(155,210,255,0.5)',
                        'rgba(155,255,210,0.5)','rgba(255,252,175,0.5)',
-                       'rgba(205,175,255,0.5)','rgba(255,200,155,0.5)'];
+                       'rgba(205,175,255,0.5)','rgba(255,215,130,0.5)'];
 
     overlayBody.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -991,41 +991,68 @@ window.initLetsGo = function() {
     }
 
     // Returns {toRemove: Set, toCreate: [{r,c,type}]}
-    // Uses run-detection so special gems (same colour, different type) still match
+    // type 0=normal 1=hline 2=vline 3=star 4=bomb (L/T shape → 3×3 blast)
     function findMatches() {
       const toRemove = new Set();
       const toCreate = [];
-      // Horizontal runs
+
+      // Collect all horizontal runs ≥3
+      const hRuns = [];
       for (let r=0; r<ROWS; r++) {
         let c=0;
         while (c<COLS) {
           const g=gemColor(grid[r][c]);
           let e=c; while(e+1<COLS && gemColor(grid[r][e+1])===g) e++;
-          const len=e-c+1;
-          if (len>=3) {
-            for (let i=c;i<=e;i++) toRemove.add(`${r},${i}`);
-            const mid=Math.floor((c+e)/2);
-            if      (len>=5) toCreate.push({r, c:mid, type:3}); // star
-            else if (len===4) toCreate.push({r, c:mid, type:1}); // hline
-          }
+          if (e-c+1>=3) hRuns.push({r, c1:c, c2:e, color:g});
           c=e+1;
         }
       }
-      // Vertical runs
+      // Collect all vertical runs ≥3
+      const vRuns = [];
       for (let c=0; c<COLS; c++) {
         let r=0;
         while (r<ROWS) {
           const g=gemColor(grid[r][c]);
           let e=r; while(e+1<ROWS && gemColor(grid[e+1][c])===g) e++;
-          const len=e-r+1;
-          if (len>=3) {
-            for (let i=r;i<=e;i++) toRemove.add(`${i},${c}`);
-            const mid=Math.floor((r+e)/2);
-            if      (len>=5) toCreate.push({r:mid, c, type:3}); // star
-            else if (len===4) toCreate.push({r:mid, c, type:2}); // vline
-          }
+          if (e-r+1>=3) vRuns.push({r1:r, r2:e, c, color:g});
           r=e+1;
         }
+      }
+      if (!hRuns.length && !vRuns.length) return {toRemove, toCreate};
+
+      // L/T overlap detection → bomb at intersection
+      const usedH=new Set(), usedV=new Set();
+      for (let hi=0; hi<hRuns.length; hi++) {
+        const h=hRuns[hi];
+        for (let vi=0; vi<vRuns.length; vi++) {
+          const v=vRuns[vi];
+          if (h.color!==v.color) continue;
+          if (v.c>=h.c1 && v.c<=h.c2 && h.r>=v.r1 && h.r<=v.r2) {
+            for (let c=h.c1;c<=h.c2;c++) toRemove.add(`${h.r},${c}`);
+            for (let r=v.r1;r<=v.r2;r++) toRemove.add(`${r},${v.c}`);
+            toRemove.delete(`${h.r},${v.c}`); // bomb cell stays
+            toCreate.push({r:h.r, c:v.c, type:4});
+            usedH.add(hi); usedV.add(vi);
+          }
+        }
+      }
+      // Remaining horizontal runs — normal hline/star logic
+      for (let hi=0; hi<hRuns.length; hi++) {
+        if (usedH.has(hi)) continue;
+        const h=hRuns[hi]; const len=h.c2-h.c1+1;
+        for (let c=h.c1;c<=h.c2;c++) toRemove.add(`${h.r},${c}`);
+        const mid=Math.floor((h.c1+h.c2)/2);
+        if      (len>=5) toCreate.push({r:h.r, c:mid, type:3});
+        else if (len===4) toCreate.push({r:h.r, c:mid, type:1});
+      }
+      // Remaining vertical runs — normal vline/star logic
+      for (let vi=0; vi<vRuns.length; vi++) {
+        if (usedV.has(vi)) continue;
+        const v=vRuns[vi]; const len=v.r2-v.r1+1;
+        for (let r=v.r1;r<=v.r2;r++) toRemove.add(`${r},${v.c}`);
+        const mid=Math.floor((v.r1+v.r2)/2);
+        if      (len>=5) toCreate.push({r:mid, c:v.c, type:3});
+        else if (len===4) toCreate.push({r:mid, c:v.c, type:2});
       }
       return {toRemove, toCreate};
     }
@@ -1046,6 +1073,12 @@ window.initLetsGo = function() {
             const col=gemColor(grid[r][c]);
             for (let rr=0;rr<ROWS;rr++) for (let cc=0;cc<COLS;cc++)
               if (gemColor(grid[rr][cc])===col && !ms.has(`${rr},${cc}`)) { ms.add(`${rr},${cc}`); changed=true; }
+          } else if (type===4) { // bomb: blast 3×3 area
+            for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) {
+              if (!dr&&!dc) continue;
+              const rr=r+dr, cc=c+dc;
+              if (rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&!ms.has(`${rr},${cc}`)) { ms.add(`${rr},${cc}`); changed=true; }
+            }
           }
         }
       }
@@ -1175,6 +1208,20 @@ window.initLetsGo = function() {
         ctx.font=`bold ${Math.round(GEM*0.44)}px sans-serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillText('★',0,1);
+      } else if (type===4) { // bomb: radial burst
+        const r1=hw*0.22, r2=hw*0.54;
+        ctx.strokeStyle='rgba(255,255,255,0.88)';
+        ctx.lineWidth=Math.max(1.5,hw*0.11);
+        ctx.lineCap='round';
+        for (let i=0;i<8;i++) {
+          const a=i*Math.PI/4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
+          ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+          ctx.stroke();
+        }
+        ctx.fillStyle='rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.arc(0,0,r1*0.75,0,Math.PI*2); ctx.fill();
       }
       ctx.restore();
     }

@@ -16,7 +16,8 @@ try {
     }
 
     $today = date('Y-m-d');
-    if (($cfg['habitica_sync_date'] ?? '') === $today) {
+    $force = !empty($_GET['force']) && isAuthenticated();
+    if (!$force && ($cfg['habitica_sync_date'] ?? '') === $today) {
         json_response(['already_ran' => true]);
     }
 
@@ -98,9 +99,10 @@ try {
     if ($synced > 0) saveTasks($data);
 
     $cfg['habitica_sync_date'] = $today;
+    $cfg['habitica_sync_last_count'] = $synced;
     saveConfig($cfg);
 
-    json_response(['synced' => $synced]);
+    json_response(['synced' => $synced, 'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

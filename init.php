@@ -122,6 +122,10 @@ function _ensureSchema(PDO $db): void {
             last_seen     DATETIME,
             FOREIGN KEY (question_id) REFERENCES study_questions(id)
         );
+        CREATE TABLE IF NOT EXISTS daily_completions (
+            date  TEXT PRIMARY KEY,
+            count INTEGER NOT NULL DEFAULT 0
+        );
     ");
 
     // Seed reference data (INSERT OR IGNORE = safe to repeat)

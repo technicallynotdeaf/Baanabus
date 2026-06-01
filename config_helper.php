@@ -342,12 +342,20 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
     $found          = false;
     $habiticaId     = null;
     $habiticaItemId = null;
+    $taskUrgency   = null;
+    $taskCreatedAt = null;
+    $taskStuck     = false;
+    $taskType      = null;
     foreach ($data['tasks'] as &$t) {
         if ((int)$t['id'] === $taskId) {
             $t['status']       = 'complete';
             $t['completed_at'] = date('c');
             $habiticaId        = $t['habitica_id']      ?? null;
             $habiticaItemId    = $t['habitica_item_id'] ?? null;
+            $taskUrgency       = $t['urgency']           ?? null;
+            $taskCreatedAt     = $t['created_at']        ?? null;
+            $taskStuck         = !empty($t['stuck']);
+            $taskType          = $t['task_type']         ?? null;
             $found             = true;
             break;
         }
@@ -370,6 +378,10 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
         'newStoryPage'     => $newStoryPage,
         'habitica_id'      => $habiticaId,
         'habitica_item_id' => $habiticaItemId,
+        'task_urgency'     => $taskUrgency,
+        'task_created_at'  => $taskCreatedAt,
+        'task_stuck'       => $taskStuck,
+        'task_type'        => $taskType,
     ];
 }
 

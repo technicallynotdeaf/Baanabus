@@ -66,22 +66,29 @@ function setupOverlayListeners() {
   // ============================
 
   function markAsDone(taskId) {
-    const url = `api/mark_complete.api.php?task_id=${taskId}`;
-
-    fetch(url)
-      .then(response => response.json())
+    fetch(`api/mark_complete.api.php?task_id=${taskId}`)
+      .then(r => r.json())
       .then(data => {
-          if (data.success) {
+        if (data.success) {
           updateProgressBar(data.pages, data.pages_target, data.total_pages);
           if (data.newStoryPage && typeof window.refreshScene === 'function') {
-              window.refreshScene();
+            window.refreshScene();
+          }
+          if (data.callout) {
+            const ac = document.getElementById('activity-container');
+            if (ac) {
+              const safe = data.callout.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              ac.innerHTML = `<p style="line-height:1.6;margin-bottom:0.75rem;">${safe}</p>
+                <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+              return;
+            }
           }
           loadSpeechBubble('lets-go.php');
-          } else {
+        } else {
           console.error('mark_complete error:', data.message);
-          }
-          })
-    .catch(error => console.error('mark_complete fetch error:', error));
+        }
+      })
+      .catch(err => console.error('mark_complete fetch error:', err));
   }
 
 

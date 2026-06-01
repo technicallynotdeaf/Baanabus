@@ -96,6 +96,13 @@ try {
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
 
+// Comeback callout (set in mark_complete when best week detected) — fires once
+if (!empty($_SESSION['comeback_callout'])) {
+    unset($_SESSION['comeback_callout']);
+    json_response(['type' => 'comeback_callout',
+        'message' => "This is your best week in a while. I noticed."]);
+}
+
 // Return welcome on first activity after a gap — fires before check-in
 if ($actCount === 0 && $returnGap >= 1) {
     if ($returnGap >= 30)     $welcomeMsg = "Welcome back. Take your time — we'll figure out what matters first.";

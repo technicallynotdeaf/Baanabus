@@ -39,12 +39,85 @@ try {
                 }
             } catch (Throwable $e) {
                 error_log('Habitica score failed: ' . $e->getMessage());
-                // non-fatal — task is already marked done locally
             }
         }
     }
 
-    respond_mc(['success' => true, 'pages' => $result['pages'], 'pages_target' => $result['pages_target'], 'total_pages' => $result['total_pages'], 'newStoryPage' => $result['newStoryPage']]);
+    // ── Effort acknowledgement ─────────────────────────────────────────
+    $callout = null;
+    $urgency    = $result['task_urgency']    ?? null;
+    $createdAt  = $result['task_created_at'] ?? null;
+    $wasStuck   = !empty($result['task_stuck']);
+    $taskType   = $result['task_type']       ?? null;
+    $isUrgent   = in_array($urgency, ['urgent', 'critical'], true);
+    $isOld      = $createdAt && $taskType !== 'inbox'
+                  && strtotime($createdAt) < strtotime('-21 days');
+
+    if ($wasStuck) {
+        $callout = "You got past the block. That's the harder kind of done.";
+    } elseif ($isUrgent && $isOld) {
+        $callout = "That one had been waiting a while and it mattered. Really well done.";
+    } elseif ($isUrgent) {
+        $callout = "That was an important one. Well done.";
+    } elseif ($isOld) {
+        $callout = "That task has been waiting a while. Really glad you got there.";
+    }
+
+    // ── Daily completion tracking + comeback callout ───────────────────
+    if ($database) {
+        try {
+            $today = date('Y-m-d');
+            $database->prepare(
+                "INSERT INTO daily_completions (date, count) VALUES (?, 1)
+                 ON CONFLICT(date) DO UPDATE SET count = count + 1"
+            )->execute([$today]);
+
+            // Comeback callout: best week in a while (fire once per week)
+            $thisWeekKey = date('o-\WW');
+            if (($_SESSION['comeback_week'] ?? null) !== $thisWeekKey) {
+                $dow = (int)date('N'); // 1=Mon
+                if ($dow >= 3) { // Need Wednesday+ to have meaningful signal
+                    $thisWeekTotal = weekCompletions($database, 0);
+                    $prevBest = max(
+                        weekCompletions($database, 1),
+                        weekCompletions($database, 2),
+                        weekCompletions($database, 3)
+                    );
+                    if ($prevBest > 0 && $thisWeekTotal > $prevBest && $thisWeekTotal >= 5) {
+                        $_SESSION['comeback_week']    = $thisWeekKey;
+                        $_SESSION['comeback_callout'] = true;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('daily_completions: ' . $e->getMessage());
+        }
+    }
+
+    respond_mc([
+        'success'      => true,
+        'pages'        => $result['pages'],
+        'pages_target' => $result['pages_target'],
+        'total_pages'  => $result['total_pages'],
+        'newStoryPage' => $result['newStoryPage'],
+        'callout'      => $callout,
+    ]);
 } catch (Throwable $e) {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);
+}
+
+function weekCompletions(PDO $db, int $weeksAgo): int {
+    $dow        = (int)date('N');
+    $monOffset  = ($weeksAgo * 7) + ($dow - 1);
+    $mon        = date('Y-m-d', strtotime("-{$monOffset} days"));
+    $sun        = date('Y-m-d', strtotime($mon . ' +6 days'));
+    $cap        = date('Y-m-d');
+    if ($sun > $cap) $sun = $cap;
+    try {
+        $s = $db->prepare("SELECT COALESCE(SUM(count),0) FROM daily_completions WHERE date BETWEEN ? AND ?");
+        $s->execute([$mon, $sun]);
+        return (int)$s->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
 }

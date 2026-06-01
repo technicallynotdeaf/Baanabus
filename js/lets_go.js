@@ -30,7 +30,8 @@ window.initLetsGo = function() {
   function render(d) {
     switch (d.type) {
       case 'task':           renderTask(d);          break;
-      case 'return_welcome': renderReturnWelcome(d); break;
+      case 'return_welcome':   renderReturnWelcome(d);   break;
+      case 'comeback_callout': renderComebackCallout(d); break;
       case 'fun_task':       renderFunTask(d);       break;
       case 'easy_task':      renderEasyTask(d);      break;
       case 'trivia':         renderTrivia(d);        break;
@@ -69,6 +70,12 @@ window.initLetsGo = function() {
     c.innerHTML = `
       <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.message)}</p>
       <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Let's see what's up</button>`;
+  }
+
+  function renderComebackCallout(d) {
+    c.innerHTML = `
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.message)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Keep going</button>`;
   }
 
   function renderFunTask(d) {

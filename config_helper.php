@@ -363,6 +363,15 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
     unset($t);
     if (!$found) throw new Exception('Task not found');
 
+    // Cascade-complete any active children when parent is marked done
+    foreach ($data['tasks'] as &$child) {
+        if ((int)($child['parent_id'] ?? 0) === $taskId && ($child['status'] ?? '') === 'active') {
+            $child['status']       = 'complete';
+            $child['completed_at'] = date('c');
+        }
+    }
+    unset($child);
+
     $data['pages']       = ($data['pages']       ?? 0) + 1;
     $data['total_pages'] = ($data['total_pages'] ?? 0) + 1;
     $newStoryPage = false;

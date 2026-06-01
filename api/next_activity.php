@@ -38,7 +38,17 @@ if (!empty($_GET['reset'])) {
             return ($energyOrder[$a['energy'] ?? 'medium'] ?? 1) <=> ($energyOrder[$b['energy'] ?? 'medium'] ?? 1);
         });
         $t = $tasks[0];
-        json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => [], 'reset_context' => true]);
+        $resetNow = time();
+        $allTasks = getTasks()['tasks'];
+        $subtasks = array_values(array_filter($allTasks, fn($s) =>
+            !empty($s['parent_id']) &&
+            (int)$s['parent_id'] === (int)$t['id'] &&
+            $s['status'] === 'active' &&
+            (!$s['snoozed_until'] || strtotime($s['snoozed_until']) <= $resetNow)
+        ));
+        usort($subtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+        $subtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $subtasks);
+        json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks, 'reset_context' => true]);
     }
     $q = pick_quote(); if ($q) json_response($q);
     $t = pick_tip();   if ($t) json_response($t);
@@ -215,7 +225,17 @@ if ($choice === 'triage') {
             try { vaultUpdateTask((int)$t['id'], ['task_type' => 'next_action']); } catch (Throwable $e) {}
             continue;
         }
-        json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title'], 'question' => $q]);
+        // Include checklist items so the user can see what's inside a task during triage
+        $triageNow = time();
+        $allForTriage = getTasks()['tasks'];
+        $triageItems = array_values(array_filter($allForTriage, fn($s) =>
+            !empty($s['parent_id']) &&
+            (int)$s['parent_id'] === (int)$t['id'] &&
+            $s['status'] === 'active'
+        ));
+        usort($triageItems, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+        $triageItems = array_map(fn($s) => $s['title'], $triageItems);
+        json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title'], 'question' => $q, 'items' => $triageItems]);
     }
     json_response(pick_trivia()); // inbox empty or all auto-classified
 }
@@ -409,15 +429,16 @@ function pick_study(): ?array {
     global $database;
     if (!$database) return null;
     try {
-        // Prefer unseen questions first, then least-correctly-answered, then random
+        // Oldest-seen first (never-seen sorts as very old) so questions cycle back for a second pass
+        // Wrong answers (correct_count=0) still come before correct-once (correct_count=1)
         $stmt = $database->prepare("
             SELECT sq.* FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
             ORDER BY
-              CASE WHEN qs.question_id IS NULL THEN 0 ELSE 1 END ASC,
               COALESCE(qs.correct_count, 0) ASC,
+              COALESCE(qs.last_seen, '1970-01-01') ASC,
               RANDOM()
             LIMIT 1
         ");

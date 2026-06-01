@@ -357,6 +357,17 @@ if ($method === 'POST') {
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
         try {
             vaultUpdateTask($taskId, ['status' => 'deleted']);
+            // Cascade-delete active children
+            $allData = getTasks();
+            $changed = false;
+            foreach ($allData['tasks'] as &$child) {
+                if ((int)($child['parent_id'] ?? 0) === $taskId && ($child['status'] ?? '') === 'active') {
+                    $child['status'] = 'deleted';
+                    $changed = true;
+                }
+            }
+            unset($child);
+            if ($changed) saveTasks($allData);
             json_response(['ok' => true]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

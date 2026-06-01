@@ -226,7 +226,7 @@
         const fc = rp(tMid, vFloor);
         ctx.fillStyle = 'rgba(0,0,0,0.10)';
         ctx.beginPath();
-        ctx.ellipse(fc[0], fc[1], (rp(t2,vFloor)[0]-rp(t1,vFloor)[0])*0.4, 5, 0, 0, Math.PI*2);
+        ctx.ellipse(fc[0], fc[1], (rp(t1,vFloor)[0]-rp(t2,vFloor)[0])*0.4, 5, 0, 0, Math.PI*2);
         ctx.fill();
 
         // Front face: from apron to floor (the visible front panel + legs implied)

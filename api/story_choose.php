@@ -18,6 +18,7 @@ $storyFiles = [
     1 => 'chai_meridian.php',
     2 => 'the_platform.php',
     3 => 'below_the_alcyon.php',
+    4 => 'green_correspondence.php',
 ];
 $story = require __DIR__ . '/../content/stories/' . ($storyFiles[$storyId] ?? 'chai_meridian.php');
 $prog  = getStoryProgress($storyId);

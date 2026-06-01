@@ -9,6 +9,7 @@ $storyFiles = [
     1 => 'chai_meridian.php',
     2 => 'the_platform.php',
     3 => 'below_the_alcyon.php',
+    4 => 'green_correspondence.php',
 ];
 $storyId = (int)($_GET['story'] ?? 1);
 if (!isset($storyFiles[$storyId])) $storyId = 1;

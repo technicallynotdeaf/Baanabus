@@ -9,7 +9,7 @@ $books = [
     1 => ['title' => 'The Chai Meridian',    'color' => '#C8813A', 'file' => 'chai_meridian.php'],
     2 => ['title' => 'The Platform That Isn\'t', 'color' => '#2A7FA8', 'file' => 'the_platform.php'],
     3 => ['title' => 'Below the Alcyon',     'color' => '#6B5A8A', 'file' => 'below_the_alcyon.php'],
-    4 => ['title' => 'Book Four',            'color' => '#3A6B4A', 'file' => null],
+    4 => ['title' => 'The Green Correspondence', 'color' => '#3A6B4A', 'file' => 'green_correspondence.php'],
     5 => ['title' => 'Book Five',            'color' => '#7A3A3A', 'file' => null],
     6 => ['title' => 'Book Six',             'color' => '#6B7A3A', 'file' => null],
 ];
@@ -40,12 +40,14 @@ foreach ($books as $id => $book) {
         $prevId     = $id - 1;
         $prevDone   = ($id === 1) || ($bookEnded[$prevId] ?? false);
         $available  = $fileExists && $prevDone;
-        $prog       = $fileExists ? getStoryProgress($id) : null;
-        $depth      = $prog ? (int)($prog['depth'] ?? 0) : 0;
-        $currentKey = $prog ? ($prog['current_key'] ?? '1_start') : '1_start';
-        $started    = $depth > 0 || ($prog && ($prog['pages_available'] ?? 1) > 1);
-        $isEnded    = $bookEnded[$id] ?? false;
-        $isActive   = ($activeStory === $id);
+        $prog           = $fileExists ? getStoryProgress($id) : null;
+        $depth          = $prog ? (int)($prog['depth'] ?? 0) : 0;
+        $pagesAvailable = $prog ? (int)($prog['pages_available'] ?? 1) : 1;
+        $currentKey     = $prog ? ($prog['current_key'] ?? '1_start') : '1_start';
+        $started        = $depth > 0 || $pagesAvailable > 1;
+        $isEnded        = $bookEnded[$id] ?? false;
+        $isActive       = ($activeStory === $id);
+        $readyChoices   = $available && !$isEnded ? max(0, $pagesAvailable - $depth) : 0;
       ?>
       <div style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:8px;
                   background:<?= $isActive ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.03)' ?>;
@@ -63,9 +65,14 @@ foreach ($books as $id => $book) {
             <?php elseif ($isEnded): ?>
               Finished &middot; <?= $depth ?> choice<?= $depth === 1 ? '' : 's' ?>
             <?php elseif ($started): ?>
-              <?= $depth ?> choice<?= $depth === 1 ? '' : 's' ?> in<?= $isActive ? ' &middot; <span style="color:#7a9e7e;">active</span>' : '' ?>
+              <?= $depth ?> choice<?= $depth === 1 ? '' : 's' ?> in
+              <?php if ($readyChoices > 0): ?>
+                &middot; <span style="color:#7a9e7e;font-weight:600;"><?= $readyChoices ?> ready</span>
+              <?php elseif ($isActive): ?>
+                &middot; <span style="color:#7a9e7e;">active</span>
+              <?php endif; ?>
             <?php else: ?>
-              Not started
+              Not started<?php if ($readyChoices > 0): ?> &middot; <span style="color:#7a9e7e;font-weight:600;"><?= $readyChoices ?> ready</span><?php endif; ?>
             <?php endif; ?>
           </div>
         </div>

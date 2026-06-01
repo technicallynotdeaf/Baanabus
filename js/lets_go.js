@@ -1086,6 +1086,51 @@ window.initLetsGo = function() {
       grid=g2;
     }
 
+    function hasMoves() {
+      // Special gems can always be tapped directly
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if (gemType(grid[r][c])>0) return true;
+      // Check every adjacent swap for a resulting match
+      for (let r=0;r<ROWS;r++) {
+        for (let c=0;c<COLS;c++) {
+          if (c+1<COLS) {
+            [grid[r][c],grid[r][c+1]]=[grid[r][c+1],grid[r][c]];
+            const ok=findMatches().toRemove.size>0;
+            [grid[r][c],grid[r][c+1]]=[grid[r][c+1],grid[r][c]];
+            if (ok) return true;
+          }
+          if (r+1<ROWS) {
+            [grid[r][c],grid[r+1][c]]=[grid[r+1][c],grid[r][c]];
+            const ok=findMatches().toRemove.size>0;
+            [grid[r][c],grid[r+1][c]]=[grid[r+1][c],grid[r][c]];
+            if (ok) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function checkNoMoves() {
+      if (hasMoves()) return;
+      const msg=document.getElementById('gm-msg');
+      if (msg) msg.textContent='No moves left — reshuffling…';
+      setTimeout(()=>{
+        let attempts=0;
+        do {
+          // Fisher-Yates shuffle of gem values in place
+          const vals=[];
+          for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) vals.push(grid[r][c]);
+          for (let i=vals.length-1;i>0;i--) {
+            const j=Math.floor(Math.random()*(i+1));
+            [vals[i],vals[j]]=[vals[j],vals[i]];
+          }
+          let k=0;
+          for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) grid[r][c]=vals[k++];
+          attempts++;
+        } while (!hasMoves() && attempts<20);
+        if (msg) msg.textContent='';
+      }, 700);
+    }
+
     function updateUI() {
       const s=document.getElementById('gm-stats');
       if (s) s.innerHTML=`Score: <b>${score}</b>&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
@@ -1182,7 +1227,7 @@ window.initLetsGo = function() {
             else { [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]]; animT=0; animDur=160; state='BACK'; }
           } else {
             state='IDLE';
-            if (moves<=0) endGame();
+            if (moves<=0) endGame(); else checkNoMoves();
           }
         }
 
@@ -1210,7 +1255,7 @@ window.initLetsGo = function() {
           const cascade=computeMatchSet();
           if (cascade) { matchSet=cascade; score+=cascade.size*15; updateUI(); animT=0; animDur=350; state='MATCH'; }
           else if (moves<=0) endGame();
-          else state='IDLE';
+          else { state='IDLE'; checkNoMoves(); }
         }
       }
 

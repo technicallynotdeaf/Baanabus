@@ -429,16 +429,15 @@ function pick_study(): ?array {
     global $database;
     if (!$database) return null;
     try {
-        // Oldest-seen first (never-seen sorts as very old) so questions cycle back for a second pass
-        // Wrong answers (correct_count=0) still come before correct-once (correct_count=1)
+        // Prefer unseen questions first, then least-correctly-answered, then random
         $stmt = $database->prepare("
             SELECT sq.* FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
             ORDER BY
+              CASE WHEN qs.question_id IS NULL THEN 0 ELSE 1 END ASC,
               COALESCE(qs.correct_count, 0) ASC,
-              COALESCE(qs.last_seen, '1970-01-01') ASC,
               RANDOM()
             LIMIT 1
         ");
@@ -447,14 +446,20 @@ function pick_study(): ?array {
         if (!$q) return null;
         $out = question_row_to_response($q, 'study');
         // Attach progress counts
-        $total    = (int)$database->query("SELECT COUNT(*) FROM study_questions WHERE q_type='study'")->fetchColumn();
-        $mastered = (int)$database->query("
+        $total       = (int)$database->query("SELECT COUNT(*) FROM study_questions WHERE q_type='study'")->fetchColumn();
+        $mastered    = (int)$database->query("
             SELECT COUNT(*) FROM question_seen qs
             JOIN study_questions sq ON sq.id = qs.question_id
             WHERE sq.q_type = 'study' AND qs.correct_count >= 2
         ")->fetchColumn();
-        $out['total']    = $total;
-        $out['mastered'] = $mastered;
+        $once_correct = (int)$database->query("
+            SELECT COUNT(*) FROM question_seen qs
+            JOIN study_questions sq ON sq.id = qs.question_id
+            WHERE sq.q_type = 'study' AND qs.correct_count >= 1
+        ")->fetchColumn();
+        $out['total']        = $total;
+        $out['mastered']     = $mastered;
+        $out['once_correct'] = $once_correct;
         return $out;
     } catch (Throwable $e) {
         error_log('pick_study: ' . $e->getMessage());

@@ -308,16 +308,19 @@ window.initLetsGo = function() {
   }
 
   function renderStudy(d) {
-    const remaining = (d.total && d.mastered !== undefined) ? (d.total - d.mastered) : null;
-    const progressBar = (d.total && d.mastered !== undefined) ? (() => {
-      const pct = Math.round(d.mastered / d.total * 100);
+    const hasProgress = d.total && d.once_correct !== undefined;
+    const progressBar = hasProgress ? (() => {
+      const pct = Math.round(d.once_correct / d.total * 100);
       return `<div style="height:4px;background:#e0d8cc;border-radius:2px;margin-bottom:0.55rem;">
         <div style="height:4px;background:#7a9e7e;border-radius:2px;width:${pct}%;transition:width 0.4s;"></div>
       </div>`;
     })() : '';
-    const meta = (d.set_name || remaining !== null)
+    const progressText = hasProgress
+      ? `${d.once_correct}/${d.total} correct` + (d.mastered > 0 ? ` &middot; ${d.mastered} mastered` : '')
+      : null;
+    const meta = (d.set_name || progressText)
       ? `<p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.25rem;">
-           ${d.set_name ? esc(d.set_name) + (remaining !== null ? ' &middot; ' : '') : ''}${remaining !== null ? remaining + ' to go' : ''}
+           ${d.set_name ? esc(d.set_name) + (progressText ? ' &middot; ' : '') : ''}${progressText || ''}
          </p>`
       : '';
     const opts = d.options.map((o, i) =>

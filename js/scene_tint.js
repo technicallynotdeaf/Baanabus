@@ -106,10 +106,10 @@
             timeZone: TZ,
             hour: 'numeric',
             minute: '2-digit',
-            hour12: false,
+            hour12: true,
         });
         const p = Object.fromEntries(fmt.formatToParts(now).map(x => [x.type, x.value]));
-        el.textContent = `${p.hour}:${p.minute}`;
+        el.textContent = `${p.hour}:${p.minute} ${(p.dayPeriod || '').toLowerCase()}`;
     }
 
     window.getMelbourneInfo = function() {

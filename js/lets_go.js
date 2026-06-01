@@ -38,6 +38,7 @@ window.initLetsGo = function() {
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
+      case 'bedtime':        renderBedtime(d);       break;
       case 'topic_picker':   renderTopicPicker(d);   break;
       case 'reset_msg':      renderResetMsg(d);      break;
       case 'quote':          renderQuote(d);         break;
@@ -806,6 +807,12 @@ window.initLetsGo = function() {
     }
 
     drawRound();
+  }
+
+  function renderBedtime(d) {
+    c.innerHTML = `
+      <p style="font-size:1.05em;line-height:1.5;margin-bottom:0.9rem;">${esc(d.message)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">...</button>`;
   }
 
   function renderTriage(d) {

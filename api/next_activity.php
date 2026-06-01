@@ -124,6 +124,24 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
+// Bedtime mode — after 9pm Melbourne time, wind down instead of tasking
+$melbHour = (int)(new DateTime('now', new DateTimeZone('Australia/Melbourne')))->format('H');
+if ($melbHour >= 21) {
+    $bedtimeMessages = [
+        "You've done enough for today.",
+        "Yawn.",
+        "Close your eyes and take a deep breath.",
+        "Go fill up a hot water bottle.",
+        "Go get ready for bed.",
+        "The to-do list will still be there tomorrow.",
+        "Time to put the phone down.",
+        "Wind down. Tomorrow is another day.",
+        "You showed up today. That counts.",
+        "Rest is part of the work.",
+    ];
+    json_response(['type' => 'bedtime', 'message' => $bedtimeMessages[array_rand($bedtimeMessages)]]);
+}
+
 // Energy-aware + fatigue pool:
 //   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
 //   fatigue shift: every 4 activities, move 1 slot from task → minigame

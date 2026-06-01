@@ -100,8 +100,31 @@ if ($database) {
         }
     } catch (Throwable $e) {}
 }
-$allTopics   = ['Plants', 'Pop Music', 'Food'];
+$allTopics    = ['Plants', 'Pop Music', 'Food'];
 $lockedTopics = array_values(array_filter($allTopics, fn($t) => !isset($triviaStats[$t])));
+
+// Study stats (exam questions, q_type = 'study')
+$studyStats = [];
+if ($database) {
+    try {
+        $stmt = $database->query("
+            SELECT sq.set_name,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN qs.correct_count >= 2 THEN 1 ELSE 0 END) AS mastered
+            FROM study_questions sq
+            LEFT JOIN question_seen qs ON sq.id = qs.question_id
+            WHERE sq.q_type = 'study'
+            GROUP BY sq.set_name
+            ORDER BY sq.set_name
+        ");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $studyStats[$row['set_name']] = [
+                'total'   => (int)$row['total'],
+                'mastered'=> (int)$row['mastered'],
+            ];
+        }
+    } catch (Throwable $e) {}
+}
 ?>
 <div data-init="initSettings">
   <h2 style="margin-bottom:0.75rem;">Settings</h2>
@@ -305,8 +328,27 @@ $lockedTopics = array_values(array_filter($allTopics, fn($t) => !isset($triviaSt
   <!-- ===== TRIVIA ===== -->
   <div id="tab-trivia" class="settings-panel" hidden>
 
+    <?php if ($studyStats): ?>
     <div class="card" style="margin-bottom:1rem;">
-      <h3 style="margin-bottom:0.75rem;">Current pools</h3>
+      <h3 style="margin-bottom:0.75rem;">Study progress</h3>
+      <?php foreach ($studyStats as $setName => $stat):
+        $pct = $stat['total'] > 0 ? round($stat['mastered'] / $stat['total'] * 100) : 0;
+      ?>
+      <div style="margin-bottom:0.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;">
+          <span style="font-weight:500;"><?= htmlspecialchars($setName) ?></span>
+          <span class="muted" style="font-size:0.88em;"><?= $stat['mastered'] ?>/<?= $stat['total'] ?> mastered</span>
+        </div>
+        <div style="height:6px;background:#e0d8cc;border-radius:3px;">
+          <div style="height:6px;background:#7a9e7e;border-radius:3px;width:<?= $pct ?>%;"></div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.75rem;">Trivia pools</h3>
       <?php if ($triviaStats): ?>
         <?php foreach ($triviaStats as $setName => $stat): ?>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06);">
@@ -315,7 +357,7 @@ $lockedTopics = array_values(array_filter($allTopics, fn($t) => !isset($triviaSt
         </div>
         <?php endforeach; ?>
       <?php else: ?>
-        <p class="muted">No trivia questions loaded yet.</p>
+        <p class="muted">No trivia questions loaded yet — unlock a topic below.</p>
       <?php endif; ?>
     </div>
 
@@ -331,10 +373,29 @@ $lockedTopics = array_values(array_filter($allTopics, fn($t) => !isset($triviaSt
       <p id="topic-unlock-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>
     </div>
     <?php else: ?>
-    <div class="card">
+    <div class="card" style="margin-bottom:1rem;">
       <p class="muted">All topics unlocked.</p>
     </div>
     <?php endif; ?>
+
+    <div class="card">
+      <h3 style="margin-bottom:0.5rem;">Import study questions</h3>
+      <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">
+        Paste a CSV — header row required. Columns: <code>question, option_a, option_b, option_c, option_d, correct, explanation</code>.
+        <code>correct</code> must be <code>a</code>–<code>d</code>. <code>explanation</code> is optional.
+      </p>
+      <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.25rem;">Set name</label>
+      <input type="text" id="imp-setname" placeholder="e.g. MS-102" style="margin-bottom:0.6rem;">
+      <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.25rem;">Type</label>
+      <select id="imp-type" style="margin-bottom:0.6rem;">
+        <option value="study">Study (exam / revision)</option>
+        <option value="trivia">Trivia</option>
+      </select>
+      <textarea id="imp-csv" style="width:100%;box-sizing:border-box;min-height:160px;font-family:monospace;font-size:0.8em;resize:vertical;"
+        placeholder="question,option_a,option_b,option_c,option_d,correct,explanation"></textarea>
+      <button class="btn" id="imp-btn" style="margin-top:0.6rem;">Import</button>
+      <p id="imp-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;font-size:0.85em;"></p>
+    </div>
 
   </div><!-- /tab-trivia -->
 

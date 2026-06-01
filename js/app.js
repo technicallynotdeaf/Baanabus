@@ -173,13 +173,6 @@ function setupOverlayListeners() {
         });
   }
 
-  const study_link = document.getElementById('study-import-link');
-  if (study_link) {
-    study_link.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadOverlay('upload_questions.php');
-        });
-  }
 
   const settings_link = document.getElementById('settings-page-link');
   if (settings_link) {

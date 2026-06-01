@@ -283,6 +283,38 @@ window.initSettings = function() {
     });
   }
 
+  // ── Trivia: import study questions ────────────────────────────────
+  const impBtn = document.getElementById('imp-btn');
+  if (impBtn) {
+    impBtn.addEventListener('click', async function() {
+      const csv     = document.getElementById('imp-csv').value.trim();
+      const setName = document.getElementById('imp-setname').value.trim();
+      const qType   = document.getElementById('imp-type').value;
+      const status  = document.getElementById('imp-status');
+      if (!csv) { status.textContent = 'Paste some CSV first.'; return; }
+      impBtn.disabled = true;
+      status.textContent = 'Importing…';
+      try {
+        const r = await fetch('api/upload_questions.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ csv, set_name: setName, q_type: qType }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          const errs = d.errors.length ? ` (${d.errors.length} skipped)` : '';
+          status.textContent = `Imported ${d.inserted} question${d.inserted !== 1 ? 's' : ''}${errs}.`;
+          if (!d.errors.length) document.getElementById('imp-csv').value = '';
+        } else {
+          status.textContent = d.error || 'Import failed.';
+        }
+      } catch(e) {
+        status.textContent = 'Network error.';
+      }
+      impBtn.disabled = false;
+    });
+  }
+
   // ── Trivia: unlock topic ───────────────────────────────────────────
   document.querySelectorAll('[data-unlock-topic]').forEach(btn => {
     btn.addEventListener('click', async function() {

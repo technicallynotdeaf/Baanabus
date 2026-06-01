@@ -27,7 +27,7 @@ if ($prevIdx >= 0 && isset($history[$prevIdx])) {
     $nextIdx  = $prevIdx + 1;
     $isLast   = ($nextIdx >= count($history));
     ?>
-    <div id="story-content" data-init="initStoryRead" style="max-width:520px;margin:0 auto;">
+    <div id="story-content" data-init="initStoryRead" data-story-id="<?= $storyId ?>" style="max-width:520px;margin:0 auto;">
       <p style="font-size:0.8em;color:#999;margin-bottom:0.25rem;letter-spacing:0.05em;"><?= htmlspecialchars(strtoupper($story['title'])) ?> &mdash; history</p>
       <div style="line-height:1.75;margin-bottom:1rem;opacity:0.8;">
         <?php foreach (explode("\n\n", trim($hProse)) as $para): ?>
@@ -71,7 +71,7 @@ $terminal  = !empty($page['terminal']);
 $ending    = !empty($page['ending']);
 $firstHistIdx = 0; // oldest history entry index
 ?>
-<div id="story-content" data-init="initStoryRead" style="max-width:520px;margin:0 auto;">
+<div id="story-content" data-init="initStoryRead" data-story-id="<?= $storyId ?>" style="max-width:520px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.25rem;">
     <p style="font-size:0.8em;color:#999;margin:0;letter-spacing:0.05em;"><?= htmlspecialchars(strtoupper($story['title'])) ?></p>
     <?php if ($history): ?>
@@ -90,7 +90,19 @@ $firstHistIdx = 0; // oldest history entry index
 
   <div id="story-choices">
     <?php if ($ending): ?>
-      <p style="color:#888;font-size:0.9em;font-style:italic;">— The End.</p>
+      <p style="color:#888;font-size:0.9em;font-style:italic;margin-bottom:1rem;">— The End.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <?php if ($history): ?>
+          <button class="action-button" style="background:transparent;color:#555;border:1px solid #ccc;font-size:0.85em;padding:6px 14px;"
+            onclick="loadOverlay('api/story_read.php?story=<?= $storyId ?>&prev=<?= count($history) - 1 ?>')">
+            From the start
+          </button>
+        <?php endif; ?>
+        <button class="action-button" style="font-size:0.85em;padding:6px 14px;"
+          onclick="loadOverlay('api/story_books.php')">
+          Back to bookshelf
+        </button>
+      </div>
     <?php elseif ($terminal): ?>
       <p style="color:#888;font-size:0.9em;font-style:italic;">
         — To be continued. Fill the pip bar to unlock the next part.

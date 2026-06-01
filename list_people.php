@@ -60,7 +60,23 @@ function renderPeopleList(): void {
     <div data-init="initPeopleList" style="position:relative;padding-bottom:1rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h2 style="margin:0;">People <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($active) ?></span></h2>
+        <button class="btn" id="btn-show-add-person" style="padding:8px 14px;font-size:0.88em;min-height:36px;">+ Add person</button>
       </div>
+
+      <!-- Add person form -->
+      <div id="add-person-form" style="display:none;background:#f8f9fa;border-radius:10px;padding:1rem;margin-bottom:1rem;">
+        <input type="text" id="new-person-name" placeholder="Name" maxlength="200"
+               style="margin-bottom:0.5rem;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:140px;">
+            <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Circles (optional)</label>
+            <input type="text" id="new-person-circles" placeholder="e.g. family, work" maxlength="200">
+          </div>
+          <button class="btn" id="btn-add-person" style="flex-shrink:0;padding:8px 14px;font-size:0.88em;min-height:44px;">Save</button>
+        </div>
+        <p id="add-person-status" class="muted" style="margin-top:0.4rem;min-height:1.2em;font-size:0.85em;"></p>
+      </div>
+
       <input type="search" id="people-search" placeholder="Search people…" style="margin-bottom:1rem;">
 
       <?php foreach ($groups as $g): ?>

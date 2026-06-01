@@ -23,6 +23,50 @@ try {
             ]);
             json_response(['ok' => true]);
 
+        case 'blocked':
+            $reason = $input['reason'] ?? '';
+            switch ($reason) {
+                case 'wrong_place':
+                    vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime('+4 hours'))]);
+                    break;
+                case 'low_energy':
+                    vaultUpdateTask($taskId, [
+                        'energy'        => 'high',
+                        'snoozed_until' => date('c', strtotime('tomorrow 08:00')),
+                    ]);
+                    break;
+                case 'no_time':
+                    vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime('+4 hours'))]);
+                    break;
+                case 'waiting_on':
+                    vaultUpdateTask($taskId, [
+                        'stuck'         => true,
+                        'stuck_at'      => date('c'),
+                        'snoozed_until' => date('c', strtotime('tomorrow 08:00')),
+                    ]);
+                    break;
+                case 'too_vague':
+                    // Return to inbox for re-triage
+                    vaultUpdateTask($taskId, [
+                        'task_type'        => 'inbox',
+                        'triage_actionable'=> false,
+                        'time'             => null,
+                        'snoozed_until'    => null,
+                        'stuck'            => false,
+                    ]);
+                    break;
+                case 'waiting_date':
+                    $until = $input['until'] ?? null;
+                    if (!$until || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until)) {
+                        json_response(['error' => 'Invalid date'], 400);
+                    }
+                    vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime($until . ' 08:00'))]);
+                    break;
+                default:
+                    json_response(['error' => 'Unknown blocked reason'], 400);
+            }
+            json_response(['ok' => true]);
+
         case 'snooze':
             $when = $input['when'] ?? '2h';
             $until = match ($when) {

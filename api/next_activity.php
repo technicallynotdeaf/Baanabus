@@ -49,6 +49,16 @@ if (!empty($_GET['reset'])) {
 $actCount = (int)($_SESSION['activity_count'] ?? 0);
 $_SESSION['activity_count'] = $actCount + 1;
 
+// Return welcome — detect gap since last visit
+$todayDate    = date('Y-m-d');
+$lastSeenDate = $cfg['last_seen_date'] ?? null;
+$returnGap    = ($lastSeenDate && $lastSeenDate !== $todayDate)
+    ? (int)(new DateTime($todayDate))->diff(new DateTime($lastSeenDate))->days
+    : 0;
+if ($lastSeenDate !== $todayDate) {
+    try { $cfg['last_seen_date'] = $todayDate; saveConfig($cfg); } catch (Throwable $e) {}
+}
+
 // Pull today's check-in from the diary vault
 $missing = null;
 $energy  = 3; // default: Okay
@@ -86,8 +96,16 @@ try {
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
 
-// Always surface the check-in on the very first activity of a session
-if ($missing && $actCount === 0 && $checkinOn) json_response($missing);
+// Return welcome on first activity after a gap — fires before check-in
+if ($actCount === 0 && $returnGap >= 1) {
+    if ($returnGap >= 30)     $welcomeMsg = "Welcome back. Take your time — we'll figure out what matters first.";
+    elseif ($returnGap >= 7)  $welcomeMsg = "You're here. That's enough to start.";
+    else                      $welcomeMsg = "Good to see you. No rush — let's just see what today needs.";
+    json_response(['type' => 'return_welcome', 'message' => $welcomeMsg, 'gap_days' => $returnGap]);
+}
+
+// Surface the check-in on the first or second activity of a session
+if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
 // Energy-aware + fatigue pool:
 //   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
@@ -123,6 +141,8 @@ if ($database) {
     catch (Throwable $e) {}
 }
 
+$easySlots = ($energy <= 2) ? 2 : 1;
+
 $pool = array_merge(
     array_fill(0, $doableSlots,                        'task'),
     array_fill(0, $triageSlots,                        'triage'),
@@ -131,6 +151,8 @@ $pool = array_merge(
     array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
     array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
+    array_fill(0, 1,                                   'fun_task'),
+    array_fill(0, $easySlots,                          'easy_task'),
     ($missing && $checkinOn) ? ['missing_info'] : []
 );
 
@@ -157,6 +179,8 @@ if ($choice === 'tip') {
     if ($t) json_response($t);
     json_response(pick_trivia());
 }
+if ($choice === 'fun_task')  json_response(pick_fun_task());
+if ($choice === 'easy_task') json_response(pick_easy_task());
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'study') {
     $s = pick_study();
@@ -336,6 +360,42 @@ function pick_quote(): ?array {
     } catch (Throwable $e) {
         return null;
     }
+}
+
+function pick_fun_task(): array {
+    $tasks = [
+        "Do 5 star jumps",
+        "Close your eyes for 20 seconds and imagine you're somewhere beautiful",
+        "Put on one song you love and just listen to it",
+        "Draw something badly on purpose",
+        "Walk to the end of the street and back",
+        "Look up at the sky for 30 seconds",
+        "Make yourself a proper cup of tea or coffee — no rushing",
+        "Text someone you haven't spoken to in a while",
+        "Stretch — arms up, side to side, touch your toes if you can",
+        "Step outside for two minutes, even just to the doorstep",
+        "Write down one thing you're glad happened this week",
+        "Find something nearby that's a colour you like and look at it for a moment",
+        "Send someone a voice message instead of a text",
+    ];
+    return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];
+}
+
+function pick_easy_task(): array {
+    $tasks = [
+        "Drink a full glass of water",
+        "Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds.",
+        "Tidy one small thing — just one",
+        "Sit quietly for two minutes",
+        "Stretch your arms above your head and hold for ten seconds",
+        "Write one sentence — anything at all",
+        "Step outside for five minutes",
+        "Put away three things that are out of place",
+        "Take your vitamins or any medication you need today",
+        "Wash your face",
+        "Make your bed or straighten where you're sitting",
+    ];
+    return ['type' => 'easy_task', 'text' => $tasks[array_rand($tasks)]];
 }
 
 function pick_study(): ?array {

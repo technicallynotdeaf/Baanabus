@@ -30,6 +30,9 @@ window.initLetsGo = function() {
   function render(d) {
     switch (d.type) {
       case 'task':           renderTask(d);          break;
+      case 'return_welcome': renderReturnWelcome(d); break;
+      case 'fun_task':       renderFunTask(d);       break;
+      case 'easy_task':      renderEasyTask(d);      break;
       case 'trivia':         renderTrivia(d);        break;
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
@@ -56,11 +59,103 @@ window.initLetsGo = function() {
         <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
-          <button class="action-button" onclick="markAsStuck(${d.id})">Stuck</button>
+          <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
           <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
         </div>`;
     }
   }
+
+  function renderReturnWelcome(d) {
+    c.innerHTML = `
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.message)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Let's see what's up</button>`;
+  }
+
+  function renderFunTask(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Take a moment</p>
+      <p style="line-height:1.5;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" onclick="window._funDone()">Done</button>
+        <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+          onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+      </div>`;
+    window._funDone = function() {
+      earnPip();
+      loadSpeechBubble('lets-go.php');
+    };
+  }
+
+  function renderEasyTask(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Easy win</p>
+      <p style="line-height:1.5;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" onclick="window._easyDone()">Done</button>
+        <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+          onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+      </div>`;
+    window._easyDone = function() {
+      earnPip();
+      loadSpeechBubble('lets-go.php');
+    };
+  }
+
+  window._showBlocked = function(taskId) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">What's in the way?</p>
+      <div id="blocked-opts" style="display:flex;flex-direction:column;gap:7px;"></div>
+      <p id="blocked-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
+
+    const opts = document.getElementById('blocked-opts');
+    const status = document.getElementById('blocked-status');
+
+    function mkBtn(label, onClick, style) {
+      const b = document.createElement('button');
+      b.className = 'action-button';
+      b.style.cssText = 'width:100%;text-align:left;' + (style || '');
+      b.textContent = label;
+      b.addEventListener('click', onClick);
+      return b;
+    }
+
+    function sendBlocked(reason, extra) {
+      opts.querySelectorAll('button').forEach(b => b.disabled = true);
+      status.textContent = 'Got it.';
+      fetch('api/task_action.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ task_id: taskId, action: 'blocked', reason, ...extra }),
+      }).then(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 400))
+        .catch(() => { status.textContent = 'Network error.'; opts.querySelectorAll('button').forEach(b => b.disabled = false); });
+    }
+
+    opts.append(
+      mkBtn("Wrong place right now",          () => sendBlocked('wrong_place')),
+      mkBtn("Not enough energy for this",     () => sendBlocked('low_energy')),
+      mkBtn("Need a longer stretch of time",  () => sendBlocked('no_time')),
+      mkBtn("Waiting on something else first",() => sendBlocked('waiting_on')),
+      mkBtn("Not sure what to do with it",    () => sendBlocked('too_vague')),
+    );
+
+    // "Waiting for a date" needs inline date input
+    const dateRow = document.createElement('div');
+    dateRow.style.cssText = 'display:flex;gap:8px;align-items:center;';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.min  = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    dateInput.style.cssText = 'flex:1;min-width:0;';
+    const dateBtn = document.createElement('button');
+    dateBtn.className = 'action-button';
+    dateBtn.style.cssText = 'flex-shrink:0;white-space:nowrap;';
+    dateBtn.textContent = 'Not until…';
+    dateBtn.addEventListener('click', () => {
+      if (!dateInput.value) { status.textContent = 'Pick a date first.'; return; }
+      sendBlocked('waiting_date', { until: dateInput.value });
+    });
+    dateRow.append(dateInput, dateBtn);
+    opts.append(dateRow);
+  };
 
   function renderBlockTask(d) {
     const rows = d.subtasks.map(s => `
@@ -76,7 +171,7 @@ window.initLetsGo = function() {
       <p style="font-weight:600;margin-bottom:0.5rem;">${esc(d.title)}</p>
       <div id="subtask-list" style="margin-bottom:0.75rem;">${rows}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" onclick="markAsStuck(${d.id})">Stuck</button>
+        <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
         <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
       </div>`;
 

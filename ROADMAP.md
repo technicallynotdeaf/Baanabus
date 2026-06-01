@@ -73,6 +73,31 @@ The daily rhythm that makes the game loop feel intentional.
 
 ---
 
+## M3.5 — Warmth & Wellbeing
+
+The mental health layer — built into Baanabus's character, never announced.
+Full design philosophy: `mental-health-features.md` (light patterns, duty of care, intentional absences).
+
+- ✅ Return welcome — first interaction after a gap (≥1 day) opens with a warm shame-free message; `last_seen_date` tracked in `config.enc`
+- ✅ Fun task daily rotation — one playful micro-task per session in the activity pool (star jumps, look at the sky, draw something badly, etc.)
+- ✅ Easy-task roster — micro-tasks that count as real completions (drink water, box breathing, tidy one thing); 2 pool slots on low-energy days
+- ✅ Blocked button — replaces Stuck; six choice buttons with smart routing per reason:
+  - *Wrong place* → snooze 4h
+  - *Not enough energy* → set task energy to High, snooze until tomorrow
+  - *Need a longer block* → snooze 4h
+  - *Waiting on something else* → snooze until tomorrow
+  - *Not sure what to do with it* → returns task to inbox for re-triage
+  - *Waiting for a specific date* → date picker, snooze until chosen date
+- [ ] Effort acknowledgement — completing a high-urgency or long-deferred task earns a specific callout beyond just a pip
+- [ ] Comeback callout — "this is your best week in a while" detected when 7-day task count exceeds recent average by a meaningful margin; said once, not on repeat
+- [ ] Morning mode — before a configurable time on work days, show one sequential morning task on screen with no navigation; everything else wakes up after the sequence is done
+- [ ] Bunting daily essentials — 3–5 user-defined non-negotiable minimums visualised as flags across the scene; turns green on completion; Baanabus says something specific when all are green
+- [ ] Conversational check-ins — sparse (one every few days at most); triggered only when two passive signals align; Baanabus shares something first to make the question feel like commiseration
+- [ ] Lighter week mode — Settings toggle; reduces task pressure, surfaces easy-task roster more heavily, removes nudges; user-triggered, never algorithmically imposed
+- [ ] Reaction time longitudinal tracking — 7-day rolling trend; single sessions are noise; consistent slowdown is a fatigue/cognitive load signal
+
+---
+
 ## M4 — Scene Depth
 
 Make the world feel alive without adding complexity.
@@ -80,11 +105,12 @@ Make the world feel alive without adding complexity.
 - ✅ 6 story books on bookshelf canvas (correct spine colours; book 1 gold-highlighted when unlocked)
 - ✅ Paper scraps on floor = count of inbox-type tasks
 - ✅ 10-pip progress bar (bottom of scene); fills as tasks are completed; resets when a story page unlocks
+- ✅ Time-of-day tint + lamp: Melbourne sunrise/sunset cycle; lamp on at dusk; night sky + crescent moon in window
+- ✅ Badges notice board: corkboard on right wall; 8 badge pins; clicking opens badges overlay
 - [ ] Sheep click → greeting speech bubble + current task (replace auto-load with click trigger; keep auto on first visit of the day)
-- [ ] Time-of-day tint: warm morning / neutral afternoon / cooler evening
 - [ ] Daily NPC message: first load of each day shows a short greeting
 - [ ] "New book" animation / notification when a story page unlocks
-- [ ] **Badges notice board** — pinboard/corkboard on the wall beside the bookshelf, rendered on canvas; badges earned for milestones (tasks completed, streak, triage cleared, trivia correct, minigame wins, story progress, etc.); badges stored in vault config; clicking the board opens a badges overlay showing earned + locked badges with descriptions
+- [ ] **Bunting daily essentials** (see M3.5) — 3–5 flags rendered across the top of the scene canvas
 
 ---
 

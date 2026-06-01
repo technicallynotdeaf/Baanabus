@@ -1,2 +1,1 @@
 function initBadges() {}
-function initStoryBooks() {}

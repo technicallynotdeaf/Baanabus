@@ -9,6 +9,11 @@ $data    = getTasks();
 $all     = $data['tasks'];
 $now     = time();
 
+$completedIds = [];
+foreach ($all as $t) {
+    if (($t['status'] ?? '') === 'complete') $completedIds[(int)$t['id']] = true;
+}
+
 $inbox   = [];
 $active  = [];
 foreach ($all as $t) {
@@ -97,17 +102,28 @@ $typeLabels = [
         <span class="task-group-count muted" style="font-size:0.75em;"><?= count($tasks) ?></span>
       </div>
       <?php foreach ($tasks as $t): ?>
-        <?php $type = $typeLabels[$t['task_type'] ?? ''] ?? ($t['task_type'] ?? ''); ?>
+        <?php
+          $type       = $typeLabels[$t['task_type'] ?? ''] ?? ($t['task_type'] ?? '');
+          $isSnoozed  = !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now;
+          $isStuck    = !empty($t['stuck']);
+          $prereqsMet = empty($t['prereq_tasks']) ||
+              !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
+          $notDoable  = $isSnoozed || $isStuck || !$prereqsMet;
+        ?>
         <div class="task-row" data-id="<?= (int)$t['id'] ?>"
              data-title="<?= htmlspecialchars(strtolower($t['title'])) ?>"
-             style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;">
+             style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
           <div style="flex:1;min-width:0;">
             <span style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></span>
             <?php if ($type): ?>
               <span style="font-size:0.72em;color:#aaa;margin-left:4px;"><?= htmlspecialchars($type) ?></span>
             <?php endif; ?>
-            <?php if (!empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > time()): ?>
+            <?php if ($isSnoozed): ?>
               <span style="font-size:0.72em;color:#aaa;margin-left:4px;">snoozed <?= date('d M', strtotime($t['snoozed_until'])) ?></span>
+            <?php elseif ($isStuck): ?>
+              <span style="font-size:0.72em;color:#aaa;margin-left:4px;">stuck</span>
+            <?php elseif (!$prereqsMet): ?>
+              <span style="font-size:0.72em;color:#aaa;margin-left:4px;">blocked</span>
             <?php endif; ?>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;">

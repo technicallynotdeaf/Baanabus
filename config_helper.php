@@ -287,12 +287,27 @@ function getDoableTasks(): array {
     $prereqsMet = fn($t) => empty($t['prereq_tasks']) ||
         !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
 
+    $dayType = null;
+    try {
+        $entry   = getDiaryEntry(date('Y-m-d'));
+        $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
+    } catch (Throwable $e) {}
+
+    // 1=Home suppresses work-context tasks; 2=Work suppresses home-context tasks
+    $contextOk = function(array $t) use ($dayType): bool {
+        $ctx = $t['context'] ?? null;
+        if ($dayType === 1 && $ctx === 'work') return false;
+        if ($dayType === 2 && $ctx === 'home') return false;
+        return true;
+    };
+
     return array_values(array_filter($data['tasks'], fn($t) =>
         $t['status'] === 'active' &&
         empty($t['parent_id']) &&
         ($t['task_type'] ?? '') !== 'inbox' &&
         (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now) &&
-        $prereqsMet($t)
+        $prereqsMet($t) &&
+        $contextOk($t)
     ));
 }
 

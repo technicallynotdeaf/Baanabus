@@ -78,6 +78,21 @@ window.initLetsGo = function() {
       <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Keep going</button>`;
   }
 
+  const AFFIRMATIONS = [
+    "Good work.", "Good stuff, keep going.", "You got this.",
+    "Nice one.", "That counts.", "Look at you go.",
+    "Keep it up.", "Solid.", "That's the one.", "Well done.",
+    "You're doing great.", "Every little thing helps.",
+  ];
+
+  function maybeAffirm() {
+    if (Math.random() >= 0.3) return false;
+    const msg = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+    c.innerHTML = `<p style="line-height:1.6;margin-bottom:0.75rem;">${msg}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+    return true;
+  }
+
   function renderFunTask(d) {
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Take a moment</p>
@@ -89,7 +104,7 @@ window.initLetsGo = function() {
       </div>`;
     window._funDone = function() {
       earnPip();
-      loadSpeechBubble('lets-go.php');
+      if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
     };
   }
 
@@ -104,7 +119,7 @@ window.initLetsGo = function() {
       </div>`;
     window._easyDone = function() {
       earnPip();
-      loadSpeechBubble('lets-go.php');
+      if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
     };
   }
 

@@ -342,16 +342,32 @@ function pick_study(): ?array {
     global $database;
     if (!$database) return null;
     try {
+        // Prefer unseen questions first, then least-correctly-answered, then random
         $stmt = $database->prepare("
             SELECT sq.* FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
-            ORDER BY RANDOM() LIMIT 1
+            ORDER BY
+              CASE WHEN qs.question_id IS NULL THEN 0 ELSE 1 END ASC,
+              COALESCE(qs.correct_count, 0) ASC,
+              RANDOM()
+            LIMIT 1
         ");
         $stmt->execute();
         $q = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $q ? question_row_to_response($q, 'study') : null;
+        if (!$q) return null;
+        $out = question_row_to_response($q, 'study');
+        // Attach progress counts
+        $total    = (int)$database->query("SELECT COUNT(*) FROM study_questions WHERE q_type='study'")->fetchColumn();
+        $mastered = (int)$database->query("
+            SELECT COUNT(*) FROM question_seen qs
+            JOIN study_questions sq ON sq.id = qs.question_id
+            WHERE sq.q_type = 'study' AND qs.correct_count >= 2
+        ")->fetchColumn();
+        $out['total']    = $total;
+        $out['mastered'] = $mastered;
+        return $out;
     } catch (Throwable $e) {
         error_log('pick_study: ' . $e->getMessage());
         return null;

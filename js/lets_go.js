@@ -191,15 +191,24 @@ window.initLetsGo = function() {
   }
 
   function renderStudy(d) {
-    const setLabel = d.set_name
-      ? `<p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">${esc(d.set_name)}</p>`
+    const remaining = (d.total && d.mastered !== undefined) ? (d.total - d.mastered) : null;
+    const progressBar = (d.total && d.mastered !== undefined) ? (() => {
+      const pct = Math.round(d.mastered / d.total * 100);
+      return `<div style="height:4px;background:#e0d8cc;border-radius:2px;margin-bottom:0.55rem;">
+        <div style="height:4px;background:#7a9e7e;border-radius:2px;width:${pct}%;transition:width 0.4s;"></div>
+      </div>`;
+    })() : '';
+    const meta = (d.set_name || remaining !== null)
+      ? `<p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.25rem;">
+           ${d.set_name ? esc(d.set_name) + (remaining !== null ? ' &middot; ' : '') : ''}${remaining !== null ? remaining + ' to go' : ''}
+         </p>`
       : '';
     const opts = d.options.map((o, i) =>
       `<button class="action-button" style="width:100%;text-align:left;"
          onclick="window._answerStudy(${i})">${esc(o)}</button>`
     ).join('');
     c.innerHTML = `
-      ${setLabel}
+      ${meta}${progressBar}
       <p style="font-weight:600;line-height:1.4;margin-bottom:0.75rem;">${esc(d.question)}</p>
       <div id="study-opts" style="display:flex;flex-direction:column;gap:6px;">${opts}</div>
       <p id="study-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>

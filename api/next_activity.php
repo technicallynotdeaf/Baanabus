@@ -76,11 +76,31 @@ try {
     $today = date('Y-m-d');
     $row   = getDiaryEntry($today);
     if (empty($row['energy_level'])) {
+        $greetings = [
+            'Good to see you.',
+            'Hey. Morning.',
+            'Oh good, you\'re here.',
+            'There you are.',
+            'You made it.',
+            'Hello, you.',
+            'Nice to see your face.',
+            'Morning. Glad you\'re here.',
+        ];
+        $prompts = [
+            'How\'d you sleep?',
+            'How\'s your energy today?',
+            'How are you feeling?',
+            'What kind of shape are you in?',
+            'How are you doing today?',
+            'How\'s your energy this morning?',
+            'Energy check — where are you at?',
+        ];
         $missing = [
-            'type'    => 'missing_info',
-            'field'   => 'energy_level',
-            'prompt'  => "How's your energy today?",
-            'options' => [
+            'type'     => 'missing_info',
+            'field'    => 'energy_level',
+            'greeting' => $greetings[array_rand($greetings)],
+            'prompt'   => $prompts[array_rand($prompts)],
+            'options'  => [
                 ['value' => 1, 'label' => 'Exhausted'],
                 ['value' => 2, 'label' => 'Low'],
                 ['value' => 3, 'label' => 'Okay'],
@@ -90,10 +110,16 @@ try {
         ];
     } elseif (empty($row['day_type'])) {
         $energy  = max(1, min(5, (int)$row['energy_level']));
+        $prompts = [
+            'What kind of day is it?',
+            'What\'s the day looking like?',
+            'What does today look like for you?',
+            'Home day, work day, or something else?',
+        ];
         $missing = [
             'type'    => 'missing_info',
             'field'   => 'day_type',
-            'prompt'  => 'What kind of day is it?',
+            'prompt'  => $prompts[array_rand($prompts)],
             'options' => [
                 ['value' => 1, 'label' => 'Home'],
                 ['value' => 2, 'label' => 'Work'],
@@ -188,6 +214,7 @@ $pool = array_merge(
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
     array_fill(0, 1,                                   'fun_task'),
     array_fill(0, $easySlots,                          'easy_task'),
+    array_fill(0, 1,                                   'joke'),
     ($missing && $checkinOn) ? ['missing_info'] : []
 );
 
@@ -216,6 +243,7 @@ if ($choice === 'tip') {
 }
 if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
+if ($choice === 'joke')      json_response(pick_joke());
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'study') {
     $s = pick_study();
@@ -424,6 +452,43 @@ function pick_fun_task(): array {
         "Send someone a voice message instead of a text",
     ];
     return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];
+}
+
+function pick_joke(): array {
+    $jokes = [
+        ['setup' => "Why don't scientists trust atoms?",                   'punchline' => "Because they make up everything."],
+        ['setup' => "I told my doctor I broke my arm in two places.",       'punchline' => "He told me to stop going to those places."],
+        ['setup' => "Why did the scarecrow win an award?",                  'punchline' => "He was outstanding in his field."],
+        ['setup' => "What do you call cheese that isn't yours?",            'punchline' => "Nacho cheese."],
+        ['setup' => "Why can't a bicycle stand on its own?",                'punchline' => "Because it's two-tired."],
+        ['setup' => "What do you call a factory that makes okay products?", 'punchline' => "A satisfactory."],
+        ['setup' => "I'm reading a book about anti-gravity.",               'punchline' => "It's impossible to put down."],
+        ['setup' => "Did you hear about the claustrophobic astronaut?",     'punchline' => "He just needed a little space."],
+        ['setup' => "Why do cows wear bells?",                              'punchline' => "Because their horns don't work."],
+        ['setup' => "What do you call an alligator in a vest?",             'punchline' => "An investigator."],
+        ['setup' => "How do you organise a space party?",                   'punchline' => "You planet."],
+        ['setup' => "What did the ocean say to the beach?",                 'punchline' => "Nothing. It just waved."],
+        ['setup' => "Why couldn't the leopard play hide and seek?",         'punchline' => "Because he was always spotted."],
+        ['setup' => "What's a computer's favourite snack?",                 'punchline' => "Microchips."],
+        ['setup' => "Why do we tell actors to 'break a leg'?",              'punchline' => "Because every play has a cast."],
+        ['setup' => "What do you call a parade of rabbits hopping backwards?", 'punchline' => "A receding hare-line."],
+        ['setup' => "I asked my dog what two minus two is.",                'punchline' => "He said nothing."],
+        ['setup' => "What did one wall say to the other wall?",             'punchline' => "I'll meet you at the corner."],
+        ['setup' => "Why did the math book look so sad?",                   'punchline' => "It had too many problems."],
+        ['setup' => "I used to hate facial hair.",                          'punchline' => "Then it grew on me."],
+        ['setup' => "Time flies like an arrow.",                            'punchline' => "Fruit flies like a banana."],
+        ['setup' => "What do you call a sleeping dinosaur?",               'punchline' => "A dino-snore."],
+        ['setup' => "I tried to come up with a joke about infinity.",       'punchline' => "But I couldn't find an ending."],
+        ['setup' => "Why don't eggs tell jokes?",                          'punchline' => "They'd crack each other up."],
+        ['setup' => "What do you call a fish without eyes?",               'punchline' => "A fsh."],
+        ['setup' => "I only know 25 letters of the alphabet.",             'punchline' => "I don't know y."],
+        ['setup' => "What's brown and sticky?",                            'punchline' => "A stick."],
+        ['setup' => "Why did the golfer bring an extra pair of pants?",    'punchline' => "In case he got a hole in one."],
+        ['setup' => "I have a joke about paper.",                          'punchline' => "It's tearable."],
+        ['setup' => "What do you call a bear with no teeth?",              'punchline' => "A gummy bear."],
+    ];
+    $j = $jokes[array_rand($jokes)];
+    return ['type' => 'joke', 'setup' => $j['setup'], 'punchline' => $j['punchline']];
 }
 
 function pick_easy_task(): array {

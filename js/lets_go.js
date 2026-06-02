@@ -34,6 +34,7 @@ window.initLetsGo = function() {
       case 'comeback_callout': renderComebackCallout(d); break;
       case 'fun_task':       renderFunTask(d);       break;
       case 'easy_task':      renderEasyTask(d);      break;
+      case 'joke':           renderJoke(d);          break;
       case 'trivia':         renderTrivia(d);        break;
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
@@ -107,6 +108,25 @@ window.initLetsGo = function() {
       earnPip();
       if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
     };
+  }
+
+  function renderJoke(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Joke</p>
+      <p style="line-height:1.5;margin-bottom:0.75rem;">${esc(d.setup)}</p>
+      <button class="action-button" id="joke-reveal-btn">...</button>`;
+    document.getElementById('joke-reveal-btn').addEventListener('click', function() {
+      this.remove();
+      const punchline = document.createElement('p');
+      punchline.style.cssText = 'line-height:1.5;margin-bottom:0.75rem;font-style:italic;';
+      punchline.textContent = d.punchline;
+      c.appendChild(punchline);
+      const next = document.createElement('button');
+      next.className = 'action-button';
+      next.textContent = 'Next';
+      next.addEventListener('click', () => loadSpeechBubble('lets-go.php'));
+      c.appendChild(next);
+    });
   }
 
   function renderEasyTask(d) {
@@ -920,7 +940,11 @@ window.initLetsGo = function() {
       `<button class="action-button"
          onclick="window._checkin('${d.field}', ${o.value}, this)">${esc(o.label)}</button>`
     ).join('');
+    const greetingHtml = d.greeting
+      ? `<p style="margin-bottom:0.35rem;color:#888;font-size:0.92em;">${esc(d.greeting)}</p>`
+      : '';
     c.innerHTML = `
+      ${greetingHtml}
       <p style="margin-bottom:0.75rem;">${esc(d.prompt)}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${opts}</div>
       <p id="checkin-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;

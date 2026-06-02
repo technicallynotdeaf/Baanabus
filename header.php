@@ -21,6 +21,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/day_tasks.js?v=<?= filemtime(__DIR__ . '/js/day_tasks.js') ?>" defer></script>
   <script src="js/upload_questions.js?v=<?= filemtime(__DIR__ . '/js/upload_questions.js') ?>" defer></script>
   <script src="js/badges.js?v=<?= filemtime(__DIR__ . '/js/badges.js') ?>" defer></script>
+  <script src="js/food_log.js?v=<?= filemtime(__DIR__ . '/js/food_log.js') ?>" defer></script>
 </head>
 <body<?php if (!empty($_SESSION['regulation_mode'])) echo ' class="regulation-mode"'; ?>>
 
@@ -34,6 +35,7 @@ require_once __DIR__ . '/init.php';
     <li><a href="#" id="note-to-self">📝<span class="nav-text"> Note to Self</span></a></li>
     <li><a href="#" id="people-book">👥<span class="nav-text"> People</span></a></li>
     <li><a href="#" id="task-list">📋<span class="nav-text"> Tasks</span></a></li>
+    <li><a href="#" id="food-log-link">🥦<span class="nav-text"> Food</span></a></li>
     <li><a href="#" id="settings-page-link">⚙️<span class="nav-text"> Settings</span></a></li>
     <li><a href="logout.php" id="logout-link">🚪<span class="nav-text"> Logout</span></a></li>
   </ul>

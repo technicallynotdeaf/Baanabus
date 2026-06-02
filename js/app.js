@@ -193,6 +193,14 @@ function setupOverlayListeners() {
   }
 
 
+  const food_log_link = document.getElementById('food-log-link');
+  if (food_log_link) {
+    food_log_link.addEventListener('click', (e) => {
+      e.preventDefault();
+      loadOverlay('api/food_log_overlay.php');
+    });
+  }
+
   const settings_link = document.getElementById('settings-page-link');
   if (settings_link) {
     settings_link.addEventListener('click', (e) => {

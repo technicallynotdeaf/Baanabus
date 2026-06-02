@@ -9,7 +9,7 @@ $greetings = [
     "Good to see you. Ready when you are.",
     "You're here. Let's make it count.",
     "Hey you. No pressure — just one thing at a time.",
-    "Look who it is. Let's do this.",
+    "There you are. Good to have you back.",
     "You made it. That matters.",
     "Welcome back. What are we doing today?",
     "Hi! Glad you're here.",

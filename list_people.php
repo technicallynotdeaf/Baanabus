@@ -225,13 +225,25 @@ function renderPersonPanel(int $personId): void {
           <?php endif; ?>
           <span class="muted" style="font-size:0.75em;margin-left:4px;">(every <?= $interval ?> days)</span>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.5rem;">
           <button id="btn-reviewed" class="action-button"
                   style="padding:5px 12px;font-size:0.82em;min-height:32px;"
                   onclick="window._markReviewed()">Mark reviewed</button>
           <button id="btn-snooze" class="action-button"
                   style="padding:5px 12px;font-size:0.82em;min-height:32px;background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
                   onclick="window._snoozeReview()">Snooze 1 week</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:0.82em;flex-wrap:wrap;">
+          <span style="color:#888;">Check in every</span>
+          <select id="interval-select" style="padding:3px 6px;border:1px solid #ccc;border-radius:5px;font-size:0.95em;">
+            <?php foreach ([7,14,30,60,90,180] as $d): ?>
+              <option value="<?= $d ?>" <?= $d === $interval ? 'selected' : '' ?>><?= $d ?> days</option>
+            <?php endforeach; ?>
+          </select>
+          <button onclick="window._saveInterval()"
+                  style="padding:3px 10px;font-size:0.85em;background:transparent;color:hsl(210,100%,30%);
+                         border:1.5px solid hsl(210,100%,30%);border-radius:6px;cursor:pointer;min-height:28px;">Save</button>
+          <span id="interval-status" style="color:#4caf50;font-size:0.82em;"></span>
         </div>
       </div>
 

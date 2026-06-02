@@ -40,6 +40,7 @@ window.initLetsGo = function() {
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
+      case 'person_review':  renderPersonReview(d);  break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'topic_picker':   renderTopicPicker(d);   break;
       case 'reset_msg':      renderResetMsg(d);      break;
@@ -952,6 +953,104 @@ window.initLetsGo = function() {
       el.append(sel, saveBtn,
         mkBtn("Doesn't apply", () => save({action:'save_context', context:' '}), skipStyle));
     }
+  }
+
+  function renderPersonReview(d) {
+    const hasQ = d.char1 && d.char2 && d.char3;
+    const intervalOpts = [14, 30, 60, 90].map(n =>
+      `<option value="${n}" ${d.review_interval === n ? 'selected' : ''}>${n} days</option>`
+    ).join('');
+    const freqRow = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.6rem;font-size:0.85em;flex-wrap:wrap;">
+        <span style="color:#888;">Check in every</span>
+        <select id="pr-interval" style="padding:3px 6px;border:1px solid #ccc;border-radius:5px;font-size:0.95em;">${intervalOpts}</select>
+      </div>`;
+    const archiveBtn = `<button onclick="window._prArchive()"
+      style="font-size:0.78em;background:transparent;color:#aaa;border:1px solid #ddd;
+             padding:3px 10px;border-radius:6px;cursor:pointer;margin-top:0.4rem;">
+      Archive this friendship</button>`;
+
+    if (hasQ) {
+      c.innerHTML = `
+        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">People</p>
+        <p style="line-height:1.5;margin-bottom:0.6rem;">
+          <strong>${esc(d.name)}</strong> is ${esc(d.char1)}, ${esc(d.char2)} and ${esc(d.char3)}.
+        </p>
+        <div id="pr-edit-form" style="display:none;margin-bottom:0.5rem;">
+          <input id="pr-char1" type="text" placeholder="Quality 1" value="${esc(d.char1)}" style="margin-bottom:0.3rem;">
+          <input id="pr-char2" type="text" placeholder="Quality 2" value="${esc(d.char2)}" style="margin-bottom:0.3rem;">
+          <input id="pr-char3" type="text" placeholder="Quality 3" value="${esc(d.char3)}" style="margin-bottom:0.4rem;">
+        </div>
+        <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
+          style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${freqRow}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
+          <button class="action-button" onclick="window._prDone()">Still true</button>
+          <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+            onclick="window._prEdit()">Update qualities</button>
+        </div>
+        <p id="pr-status" class="muted" style="font-size:0.82em;min-height:1em;"></p>
+        ${archiveBtn}`;
+    } else {
+      c.innerHTML = `
+        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">People</p>
+        <p style="margin-bottom:0.6rem;">What are three things you genuinely like about <strong>${esc(d.name)}</strong>? Keep it positive.</p>
+        <input id="pr-char1" type="text" placeholder="Quality 1" style="margin-bottom:0.3rem;">
+        <input id="pr-char2" type="text" placeholder="Quality 2" style="margin-bottom:0.3rem;">
+        <input id="pr-char3" type="text" placeholder="Quality 3" style="margin-bottom:0.5rem;">
+        <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
+          style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${freqRow}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
+          <button class="action-button" onclick="window._prDone()">Save</button>
+          <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
+            onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+        </div>
+        <p id="pr-status" class="muted" style="font-size:0.82em;min-height:1em;"></p>
+        ${archiveBtn}`;
+      document.getElementById('pr-char1').focus();
+    }
+
+    window._prEdit = function() {
+      const form = document.getElementById('pr-edit-form');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window._prDone = function() {
+      const status   = document.getElementById('pr-status');
+      const char1    = (document.getElementById('pr-char1')?.value ?? '').trim() || d.char1 || '';
+      const char2    = (document.getElementById('pr-char2')?.value ?? '').trim() || d.char2 || '';
+      const char3    = (document.getElementById('pr-char3')?.value ?? '').trim() || d.char3 || '';
+      const note     = (document.getElementById('pr-note')?.value ?? '').trim();
+      const interval = parseInt(document.getElementById('pr-interval').value) || d.review_interval;
+      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+      status.textContent = 'Saving…';
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({person_id: d.person_id, action: 'update_qualities',
+                              char1, char2, char3, life_note: note, review_interval: interval}),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          earnPip();
+          if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+        } else {
+          status.textContent = res.error || 'Could not save.';
+          document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+        }
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+      });
+    };
+
+    window._prArchive = function() {
+      if (!confirm(esc(d.name) + ' will be archived — they won\'t come up for review but stay in your contacts. OK?')) return;
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({person_id: d.person_id, action: 'archive'}),
+      }).then(() => loadSpeechBubble('lets-go.php'))
+        .catch(() => loadSpeechBubble('lets-go.php'));
+    };
   }
 
   function renderTip(d) {

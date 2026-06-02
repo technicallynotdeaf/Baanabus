@@ -211,6 +211,22 @@ if ($database) {
 
 $easySlots = ($energy <= 2) ? 2 : 1;
 
+$hasPersonReview = false;
+try {
+    $peopleData = getPeople();
+    $today_str  = date('Y-m-d');
+    foreach ($peopleData['people'] as $p) {
+        if (($p['is_active'] ?? 1) == 0) continue;
+        $nr = $p['next_review'] ?? null;
+        if (!$nr || $nr <= $today_str) { $hasPersonReview = true; break; }
+    }
+    if (!$hasPersonReview && !empty($peopleData['people'])) {
+        // If everyone is upcoming, still surface occasionally (1-in-5 chance)
+        $activePeople = array_values(array_filter($peopleData['people'], fn($p) => ($p['is_active'] ?? 1) != 0));
+        $hasPersonReview = !empty($activePeople) && (rand(1, 5) === 1);
+    }
+} catch (Throwable $e) {}
+
 $pool = array_merge(
     array_fill(0, $doableSlots,                        'task'),
     array_fill(0, $triageSlots,                        'triage'),
@@ -223,6 +239,7 @@ $pool = array_merge(
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),
     array_fill(0, 1,                                   'nutrition'),
+    array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
     ($missing && $checkinOn) ? ['missing_info'] : []
 );
 
@@ -248,6 +265,11 @@ if ($choice === 'tip') {
     $t = pick_tip();
     if ($t) json_response($t);
     json_response(pick_trivia());
+}
+if ($choice === 'person_review') {
+    $pr = pick_person_review();
+    if ($pr) json_response($pr);
+    json_response(pick_fun_task()); // fallback if no people
 }
 if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
@@ -450,6 +472,43 @@ function pick_topic_picker(): array {
     return ['type' => 'topic_picker', 'topics' => $available];
 }
 
+function pick_person_review(): ?array {
+    try {
+        $data   = getPeople();
+        $today  = date('Y-m-d');
+        $active = array_values(array_filter($data['people'], fn($p) => ($p['is_active'] ?? 1) != 0));
+        if (empty($active)) return null;
+
+        // Prefer overdue or never-reviewed
+        $due = array_values(array_filter($active, fn($p) => empty($p['next_review']) || $p['next_review'] <= $today));
+        if (!empty($due)) {
+            usort($due, function($a, $b) {
+                $da = $a['next_review'] ?? null;
+                $db = $b['next_review'] ?? null;
+                if (!$da && !$db) return 0;
+                if (!$da) return 1;
+                if (!$db) return -1;
+                return strcmp($da, $db);
+            });
+            $p = $due[0];
+        } else {
+            $p = $active[array_rand($active)];
+        }
+
+        return [
+            'type'            => 'person_review',
+            'person_id'       => (int)$p['person_id'],
+            'name'            => $p['name'] ?? 'this person',
+            'char1'           => $p['char1'] ?? '',
+            'char2'           => $p['char2'] ?? '',
+            'char3'           => $p['char3'] ?? '',
+            'review_interval' => (int)($p['review_interval'] ?? 30),
+        ];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 function pick_tip(): ?array {
     global $database;
     if (!$database) return null;
@@ -482,6 +541,11 @@ function pick_fun_task(): array {
         "Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.",
         "Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.",
         "Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment.",
+        "Think of something kind someone said to you recently. Write it down — even just a few words.",
+        "Think of one person you're genuinely glad exists. Just hold that thought for a moment.",
+        "Think about someone who's been quietly good to you lately. You don't need to do anything with it — just notice.",
+        "Write down one thing you genuinely appreciate about someone in your life. Just for you.",
+        "Send someone a photo of something that made you think of them — no need to reply, just a little signal.",
         "Make yourself a proper cup of tea or coffee — no rushing",
         "Stretch — arms up, side to side, touch your toes if you can",
         "Step outside for two minutes, even just to the doorstep",

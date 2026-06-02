@@ -16,7 +16,7 @@ $action   = $body['action'] ?? '';
 
 if (!$personId) json_response(['error' => 'Missing person_id'], 400);
 
-$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note'];
+$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'update_qualities', 'update_interval'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -47,6 +47,29 @@ try {
     } elseif ($action === 'unarchive') {
         vaultUpdatePerson($personId, ['is_active' => 1]);
         json_response(['ok' => true]);
+
+    } elseif ($action === 'update_qualities') {
+        $char1    = mb_substr(trim($body['char1']    ?? ''), 0, 100);
+        $char2    = mb_substr(trim($body['char2']    ?? ''), 0, 100);
+        $char3    = mb_substr(trim($body['char3']    ?? ''), 0, 100);
+        $lifeNote = mb_substr(trim($body['life_note'] ?? ''), 0, 2000);
+        $interval = max(1, min(365, (int)($body['review_interval'] ?? 30)));
+
+        $fields = ['review_interval' => $interval,
+                   'next_review'     => date('Y-m-d', strtotime("+{$interval} days"))];
+        if ($char1 !== '') $fields['char1'] = $char1;
+        if ($char2 !== '') $fields['char2'] = $char2;
+        if ($char3 !== '') $fields['char3'] = $char3;
+
+        vaultUpdatePerson($personId, $fields);
+        if ($lifeNote !== '') vaultAddPeopleNote($personId, $lifeNote);
+        json_response(['ok' => true, 'next_review' => $fields['next_review']]);
+
+    } elseif ($action === 'update_interval') {
+        $interval    = max(1, min(365, (int)($body['days'] ?? 30)));
+        $next_review = date('Y-m-d', strtotime("+{$interval} days"));
+        vaultUpdatePerson($personId, ['review_interval' => $interval, 'next_review' => $next_review]);
+        json_response(['ok' => true, 'next_review' => $next_review]);
 
     } elseif ($action === 'add_note') {
         $contents = trim($body['note_content'] ?? '');

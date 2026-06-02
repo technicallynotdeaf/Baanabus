@@ -122,6 +122,17 @@ window.initPersonPanel = function() {
     });
   };
 
+  window._saveInterval = function() {
+    const sel    = document.getElementById('interval-select');
+    const status = document.getElementById('interval-status');
+    const days   = parseInt(sel.value);
+    status.textContent = '';
+    personAction({ person_id: pid, action: 'update_interval', days }, () => {
+      status.textContent = 'Saved.';
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    });
+  };
+
   window._snoozeReview = function() {
     const btn = document.getElementById('btn-snooze');
     btn.disabled = true;

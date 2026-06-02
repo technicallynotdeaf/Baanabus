@@ -47,6 +47,7 @@ The two main data views.
 - ✅ Add task form: title + urgency + context selectors; submits via AJAX, adds row to group live
 - ✅ `list_people.php` — people overlay: contacts grouped by overdue/this week/upcoming/no date; search; archived contacts collapsed
 - ✅ Person panel: circles, birthday, traits, tasks, notes (add inline); Mark reviewed / Snooze 1 week / Archive actions
+- [ ] Pre-visit reminder: before you see someone, surface what you were going to do for them / ask them. Could be a speech bubble activity type ("You're seeing Jordan soon — here's what you had noted") or a manual trigger from the person panel.
 - [ ] Inbox triage: full GTD flow lives in speech bubble (lets-go.php); may want a standalone triage overlay too
 
 ---
@@ -107,10 +108,25 @@ Make the world feel alive without adding complexity.
 - ✅ 10-pip progress bar (bottom of scene); fills as tasks are completed; resets when a story page unlocks
 - ✅ Time-of-day tint + lamp: Melbourne sunrise/sunset cycle; lamp on at dusk; night sky + crescent moon in window
 - ✅ Badges notice board: corkboard on right wall; 8 badge pins; clicking opens badges overlay
+- ✅ **Kitchen scene** (`scene_kitchen.php` / `js/scene_kitchen.js`): warm terracotta room with pantry shelves, a chalk nutrition board, and Melbourne time-of-day window. Library door ↔ kitchen door navigation between scenes. 24 individual canvas food illustrations.
 - [ ] Sheep click → greeting speech bubble + current task (replace auto-load with click trigger; keep auto on first visit of the day)
 - [ ] Daily NPC message: first load of each day shows a short greeting
 - [ ] "New book" animation / notification when a story page unlocks
 - [ ] **Bunting daily essentials** (see M3.5) — 3–5 flags rendered across the top of the scene canvas
+
+---
+
+## M4.5 — Nutrition Tracking ✅
+
+Log whole foods and close nutrient gaps — woven into the game loop, not bolted on as a separate diet tracker.
+
+- ✅ **Schema** (`baanabus.db`): `foods` (65 whole foods with AFCD values per 100g), `food_servings` (suggested serving sizes), `food_log` (daily entries: food + serving + quantity, or write-off for packaged foods), `nutrient_rdis` (Australian women's RDIs; daily and weekly periods; min/upper limits with clinical notes)
+- ✅ **12 tracked nutrients**: fibre (soluble + insoluble), potassium, vitamin C, folate, calcium, iron, magnesium, vitamin K, vitamin A, vitamin D
+- ✅ **Food log overlay** (`api/food_log_overlay.php` / `js/food_log.js`): AJAX autocomplete search, serving selector, qty input, write-off entry, today's log with delete, nutrient progress bars with amber/red upper-limit warnings, gap suggestions
+- ✅ **Gap analysis** (`api/food_gaps.php`): daily and 7-day rolling totals vs RDIs; suggests 4 diverse foods (fruit/veg/legume/other) per nutrient gap
+- ✅ **Kitchen chalkboard**: perspective-correct 12-row progress bars rendered on the right-wall board; clicking opens the food log overlay
+- ✅ **Pantry shelves**: food illustrations curated from today's gap suggestions (falls back to a default set when no gap data)
+- ✅ **Nutrition facts in activity pool**: 34 food facts (feijoas, broccoli, avocado, legumes, etc.) drawn from AFCD; weight 1 in `next_activity.php`; rendered as "Food fact" with a Got it button
 
 ---
 
@@ -124,8 +140,11 @@ The long-term engagement layer.
 - ✅ Story reader overlay: `api/story_read.php` — renders current page, shows choices or "earn more tasks" message
 - ✅ Choice endpoint: `api/story_choose.php` — validates choice, advances `current_key`, increments depth
 - ✅ Story progress saved per story in `config.enc` under `config['stories'][$id]`
-- ✅ **The Chai Meridian** — 19-node CYOA story: branching path from Chandrapur tea house to a standing stone above the snowline and grandmother's impossible letter
-- [ ] Write stories 2–6 to match remaining book slots
+- ✅ **The Chai Meridian** (book 1) — 19-node CYOA: Chandrapur tea house to a standing stone above the snowline and grandmother's impossible letter
+- ✅ **The Platform That Isn't** (book 2) — written and active
+- ✅ **Below the Alcyon** (book 3) — written and active
+- ✅ **The Green Correspondence** (book 4) — written and active
+- [ ] Write stories 5, 6 to fill remaining book slots
 
 ---
 
@@ -165,4 +184,4 @@ Connect to services Alison already uses.
 
 ## Next up
 
-M0–M2 and most of M3 are complete. Likely candidates: M3 context filtering (day type → surfaces matching tasks), M4 scene depth (sheep click, time-of-day tint, daily greeting), or infra quick wins (auto-deploy hook).
+M0–M2, most of M3, M5 (first three stories), M6, and M4.5 are complete. Likely candidates: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), or M2.5 trivia expansion.

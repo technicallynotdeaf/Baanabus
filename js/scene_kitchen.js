@@ -5,9 +5,10 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    let gapFoods        = [];   // [{name}] from food_gaps API
-    let nutrientProgress = {};  // keyed by nutrient name
-    let doorBounds      = null; // click zone → library
+    let gapFoods          = [];   // [{name}] from food_gaps API
+    let nutrientProgress  = {};  // keyed by nutrient name
+    let doorBounds        = null; // click zone → library
+    let chalkboardBounds  = null; // click zone → food log overlay
 
     // ── Geometry helpers (same system as scene.js) ────────────────────────────
     function wallPt(side, t, v, iL, iW, iT, flY, H, W) {
@@ -415,6 +416,7 @@
         ctx.fillStyle='#3a2810'; quadPath(fTL,fTR,fBL,fBR); ctx.fill();
 
         const TL=rp(t1,v1), TR=rp(t2,v1), BL=rp(t1,v2), BR=rp(t2,v2);
+        chalkboardBounds = [TL, TR, BR, BL];
         const bg=ctx.createLinearGradient(TL[0],TL[1],BL[0],BL[1]);
         bg.addColorStop(0,'#1e3818'); bg.addColorStop(1,'#162c10');
         ctx.fillStyle=bg; quadPath(TL,TR,BL,BR); ctx.fill();
@@ -540,12 +542,18 @@
     // ── Click handling ────────────────────────────────────────────────────────
     canvas.addEventListener('click', function (e) {
         const rect = canvas.getBoundingClientRect();
-        if (ptInQuad(e.clientX - rect.left, e.clientY - rect.top, doorBounds)) {
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+        if (ptInQuad(cx, cy, doorBounds)) {
             window.location.href = 'index.php';
+            return;
+        }
+        if (ptInQuad(cx, cy, chalkboardBounds) && typeof loadOverlay === 'function') {
+            loadOverlay('api/food_log_overlay.php');
         }
     });
     canvas.addEventListener('mousemove', function (e) {
         const rect = canvas.getBoundingClientRect();
-        canvas.style.cursor = ptInQuad(e.clientX - rect.left, e.clientY - rect.top, doorBounds) ? 'pointer' : 'default';
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+        canvas.style.cursor = (ptInQuad(cx, cy, doorBounds) || ptInQuad(cx, cy, chalkboardBounds)) ? 'pointer' : 'default';
     });
 })();

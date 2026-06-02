@@ -488,6 +488,11 @@ function pick_fun_task(): array {
         "Step outside for two minutes, even just to the doorstep",
         "Write down one thing you're glad happened this week",
         "Find something nearby that's a colour you like and look at it for a moment",
+        "Find the softest thing within reach and hold it for a bit",
+        "Find something in the room you've never really looked at properly and spend 20 seconds on it",
+        "Find something that has an interesting texture and run your fingers over it slowly",
+        "Find the most beautiful thing you can see from where you're sitting and just look at it for 30 seconds",
+        "Find a plant, a leaf, or anything alive nearby and look at it closely — the detail, the colour, the edges",
         "Send someone a voice message instead of a text",
     ];
     return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];

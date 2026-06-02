@@ -529,7 +529,7 @@ function pick_nutrition(): array {
 
         // General
         "Eating a wide variety of vegetables — especially different colours — feeds different strains of gut bacteria. More colour variety on your plate = more microbiome diversity.",
-        "The Australian dietary guidelines recommend 5 serves of vegetables and 2 serves of fruit a day. Most Australians average about 2.5 serves of veg. So there's usually room to add more without overhauling anything.",
+
     ];
     return ['type' => 'nutrition', 'text' => $facts[array_rand($facts)]];
 }

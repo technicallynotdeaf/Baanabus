@@ -97,7 +97,9 @@ json_response(['error' => 'Method not allowed'], 405);
 function _nutrientTotals(PDO $db, string $uid, string $from, string $to): array {
     $stmt = $db->prepare("
         SELECT
-            COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.fibre_g),    0) AS fibre,
+            COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.fibre_g),            0) AS fibre,
+            COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.fibre_soluble_g),   0) AS fibre_soluble,
+            COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.fibre_insoluble_g), 0) AS fibre_insoluble,
             COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.potassium_mg),0) AS potassium,
             COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.vitamin_k_mcg),0) AS vitamin_k,
             COALESCE(SUM(fl.quantity * (fs.weight_g / 100.0) * f.vitamin_c_mg), 0) AS vitamin_c,

@@ -14,7 +14,9 @@ $rdis = $database->query("SELECT * FROM nutrient_rdis ORDER BY display_order")
 
 // Nutrient column map: rdi nutrient key → SQL column in foods + totals result
 $colMap = [
-    'fibre'     => ['foods_col' => 'fibre_g',       'totals_key' => 'fibre'],
+    'fibre'          => ['foods_col' => 'fibre_g',            'totals_key' => 'fibre'],
+    'fibre_soluble'  => ['foods_col' => 'fibre_soluble_g',   'totals_key' => 'fibre_soluble'],
+    'fibre_insoluble'=> ['foods_col' => 'fibre_insoluble_g', 'totals_key' => 'fibre_insoluble'],
     'potassium' => ['foods_col' => 'potassium_mg',   'totals_key' => 'potassium'],
     'vitamin_c' => ['foods_col' => 'vitamin_c_mg',   'totals_key' => 'vitamin_c'],
     'folate'    => ['foods_col' => 'folate_mcg',     'totals_key' => 'folate'],
@@ -135,7 +137,9 @@ json_response(['progress' => $progress, 'suggestions' => $suggestions, 'date' =>
 function _gapTotals(PDO $db, string $uid, string $from, string $to): array {
     $stmt = $db->prepare("
         SELECT
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_g),0)      AS fibre,
+            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_g),0)            AS fibre,
+            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_soluble_g),0)   AS fibre_soluble,
+            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_insoluble_g),0) AS fibre_insoluble,
             COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.potassium_mg),0)  AS potassium,
             COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_k_mcg),0) AS vitamin_k,
             COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_c_mg),0)  AS vitamin_c,

@@ -37,7 +37,12 @@ unset($_dataDir, $_dbPath);
 
 function _ensureMigrations(PDO $db): void {
     $alters = [
-        "ALTER TABLE contexts      ADD COLUMN description      TEXT",
+        "ALTER TABLE contexts        ADD COLUMN description       TEXT",
+        "ALTER TABLE foods           ADD COLUMN fibre_soluble_g   REAL",
+        "ALTER TABLE foods           ADD COLUMN fibre_insoluble_g REAL",
+        "ALTER TABLE nutrient_rdis   ADD COLUMN min_rdi           REAL",
+        "ALTER TABLE nutrient_rdis   ADD COLUMN upper_limit       REAL",
+        "ALTER TABLE nutrient_rdis   ADD COLUMN notes             TEXT",
     ];
     foreach ($alters as $sql) {
         try { $db->exec($sql); }
@@ -297,6 +302,89 @@ function _ensureFoodSchema(PDO $db): void {
         ('vitamin_d', 'Vitamin D', 'mcg',    5.0,    35.0, 'weekly', 0.9, 10)
     ");
     _seedFoodData($db);
+    _updateFibreData($db);
+}
+
+function _updateFibreData(PDO $db): void {
+    // Skip if already seeded
+    if ((int)$db->query("SELECT COUNT(*) FROM foods WHERE fibre_soluble_g IS NOT NULL")->fetchColumn() > 0) return;
+
+    // Update existing nutrient_rdis rows with evidence-based min_rdi, upper_limit, notes
+    $rdiMeta = [
+        ['fibre',      15.0,  null,    null],
+        ['potassium',  2000.0, null,   null],
+        ['vitamin_c',  10.0,  2000.0,  null],
+        ['folate',     200.0, 1000.0,  "UL applies to synthetic folic acid (supplements/fortified foods); naturally occurring food folate is safe at any dietary level"],
+        ['calcium',    500.0, 2500.0,  "Higher intakes — especially from supplements — are linked to kidney stones and possibly cardiovascular risk"],
+        ['iron',       8.0,   45.0,    "UL applies to supplemental iron; excess iron from whole food is rarely an issue for healthy adults"],
+        ['magnesium',  200.0, 350.0,   "UL applies to supplemental magnesium only; dietary magnesium from food has no established upper limit"],
+        ['vitamin_k',  30.0,  1000.0,  "No formal upper limit established. High intakes above ~600mcg/day can interact with anticoagulant medications (warfarin, heparin) — consistency matters more than amount"],
+        ['vitamin_a',  200.0, 3000.0,  "UL is for preformed retinol (liver, meat, dairy, supplements). Beta-carotene from plants converts more slowly and is not included in this limit"],
+        ['vitamin_d',  1.5,   100.0,   null],
+    ];
+    $updRdi = $db->prepare("UPDATE nutrient_rdis SET min_rdi=?, upper_limit=?, notes=? WHERE nutrient=?");
+    foreach ($rdiMeta as [$n, $min, $upper, $notes]) {
+        $updRdi->execute([$min, $upper, $notes, $n]);
+    }
+
+    // Add soluble and insoluble fibre as tracked nutrients
+    $db->exec("
+        INSERT OR IGNORE INTO nutrient_rdis
+            (nutrient,label,unit,daily_rdi,weekly_rdi,period,good_enough,display_order,min_rdi,upper_limit,notes) VALUES
+        ('fibre_soluble',   'Fibre — soluble',   'g', 7.0,  49.0, 'daily', 0.9, 1.5, 3.0, null,
+         'Dissolves in water; forms a gel that slows glucose absorption, feeds gut bacteria, and lowers LDL. Found in oats, legumes, fruit, psyllium.'),
+        ('fibre_insoluble', 'Fibre — insoluble', 'g', 18.0, 126.0,'daily', 0.9, 1.6, null, null,
+         'Adds bulk and speeds transit. Found in vegetable skins, wholegrains, nuts, seeds. Supports microbiome diversity.')
+    ");
+
+    // Update foods with per-100g soluble / insoluble fibre values (AFCD-based approximations)
+    $upd = $db->prepare("UPDATE foods SET fibre_soluble_g=?, fibre_insoluble_g=? WHERE name=?");
+    foreach ([
+        // Fruits
+        ['Apple',              1.0, 1.2], ['Avocado',           2.1, 4.6],
+        ['Banana',             0.6, 1.1], ['Blueberries',        0.5, 1.9],
+        ['Feijoa',             1.2, 2.8], ['Kiwifruit',          1.0, 2.0],
+        ['Mango',              0.8, 0.8], ['Orange',             1.1, 1.1],
+        ['Passionfruit',       1.2, 9.2], ['Pear',               1.2, 1.9],
+        ['Raspberries',        0.9, 5.6], ['Rockmelon',          0.2, 0.7],
+        ['Strawberries',       0.4, 1.6], ['Watermelon',         0.1, 0.3],
+        ['Grapes',             0.4, 0.5], ['Peach',              0.7, 0.8],
+        ['Plum',               0.7, 0.7],
+        // Vegetables
+        ['Asparagus',          1.7, 0.4], ['Beetroot',           0.5, 2.3],
+        ['Broccoli',           1.0, 1.6], ['Brussels sprouts',   1.5, 2.3],
+        ['Cabbage',            0.6, 1.9], ['Capsicum (red)',      0.5, 1.6],
+        ['Capsicum (green)',   0.4, 1.4], ['Carrot',             1.5, 1.3],
+        ['Cauliflower',        0.5, 1.5], ['Celery',             0.4, 1.2],
+        ['Corn',               0.2, 2.1], ['Cucumber',           0.1, 0.5],
+        ['Eggplant',           0.6, 2.4], ['Kale',               0.5, 3.1],
+        ['Leek',               1.2, 0.6], ['Lettuce (cos)',       0.4, 1.3],
+        ['Mushrooms',          0.1, 0.9], ['Onion',              1.1, 0.6],
+        ['Peas',               1.8, 3.3], ['Potato',             0.8, 1.0],
+        ['Pumpkin',            0.2, 0.3], ['Silverbeet',         0.4, 1.2],
+        ['Spinach',            0.6, 1.6], ['Sweet potato',       1.2, 1.8],
+        ['Tomato',             0.3, 0.9], ['Zucchini',           0.4, 0.7],
+        // Legumes (cooked)
+        ['Chickpeas',          3.5, 4.1], ['Kidney beans',       2.8, 4.6],
+        ['Lentils',            3.6, 4.3], ['Black beans',        4.8, 3.9],
+        ['Edamame',            2.0, 3.2], ['Butter beans',       2.5, 2.8],
+        // Nuts and seeds
+        ['Almonds',            0.9, 11.6], ['Cashews',            0.6, 2.7],
+        ['Chia seeds',        13.5, 20.9], ['Pumpkin seeds',      0.4, 5.6],
+        ['Walnuts',            0.7,  6.0], ['Sunflower seeds',    0.7, 7.9],
+        // Dairy — no fibre
+        ['Milk (full fat)',    0, 0], ['Milk (skim)',         0, 0],
+        ['Yogurt (plain)',     0, 0], ['Cheddar cheese',      0, 0],
+        ['Feta cheese',        0, 0],
+        // Protein — no fibre
+        ['Egg',                0, 0], ['Salmon',              0, 0],
+        ['Sardines (tinned)',  0, 0],
+        // Grains
+        ['Oats',               4.5, 6.1], ['Brown rice',         0.1, 1.7],
+        ['Quinoa',             0.4, 2.4], ['Wholegrain bread',   1.0, 5.4],
+    ] as [$name, $sol, $insol]) {
+        $upd->execute([$sol, $insol, $name]);
+    }
 }
 
 function _seedFoodData(PDO $db): void {

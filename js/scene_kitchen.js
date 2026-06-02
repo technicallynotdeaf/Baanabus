@@ -438,11 +438,14 @@
 
         // One row per nutrient
         const ROWS = [
-            ['fibre','Fibre'],['potassium','Potassium'],['vitamin_c','Vit C'],
-            ['folate','Folate'],['calcium','Calcium'],['iron','Iron'],
-            ['magnesium','Mg'],['vitamin_k','Vit K'],['vitamin_a','Vit A'],['vitamin_d','Vit D'],
+            ['fibre',          'Fibre'],  ['fibre_soluble',  'Sol. fibre'],
+            ['fibre_insoluble','Insol.'], ['potassium',      'Potassium'],
+            ['vitamin_c',      'Vit C'],  ['folate',         'Folate'],
+            ['calcium',        'Calcium'],['iron',           'Iron'],
+            ['magnesium',      'Mg'],     ['vitamin_k',      'Vit K'],
+            ['vitamin_a',      'Vit A'],  ['vitamin_d',      'Vit D'],
         ];
-        const startV=0.13, rowH=0.085, labelEnd=0.30, barStart=0.32, barEnd=0.95;
+        const startV=0.13, rowH=0.068, labelEnd=0.30, barStart=0.32, barEnd=0.95;
 
         ROWS.forEach(([key, label], i) => {
             const p   = progress[key];

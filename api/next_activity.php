@@ -493,6 +493,15 @@ function pick_fun_task(): array {
         "Find something that has an interesting texture and run your fingers over it slowly",
         "Find the most beautiful thing you can see from where you're sitting and just look at it for 30 seconds",
         "Find a plant, a leaf, or anything alive nearby and look at it closely — the detail, the colour, the edges",
+        "Find something that's lit up by the light right now — sunlight, lamplight, whatever — and look at how the light falls on it",
+        "Find something small and look at it like you've never seen it before. Turn it over. Notice everything.",
+        "Find a sound in the background you've been ignoring and just listen to it for 20 seconds",
+        "Look around the room and find something that makes you feel calm. Don't rush — wait until something actually does.",
+        "Find something that has a smell you like and breathe it in slowly a few times",
+        "Find a pattern — in fabric, on a wall, anywhere — and trace it with your eyes",
+        "Look out the window and find one thing that's moving. Watch it for a bit.",
+        "Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.",
+        "Find something that reminds you of someone you love and hold that thought for a moment",
         "Send someone a voice message instead of a text",
     ];
     return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];

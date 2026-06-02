@@ -279,6 +279,16 @@ if ($database) {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:0.5rem;">Backup</h3>
+      <?php if ($vaultOpen): ?>
+        <p class="muted" style="font-size:0.88em;margin-bottom:0.75rem;">Downloads a decrypted JSON file of all your vault data — tasks, people, diary, stories, everything. Keep it somewhere safe.</p>
+        <a href="api/vault_export.php" download class="btn" style="display:inline-block;text-decoration:none;">Download backup</a>
+      <?php else: ?>
+        <p class="muted">Vault locked.</p>
+      <?php endif; ?>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:0.5rem;">Import tasks from CSV</h3>
       <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">Inspect a tasks.csv before mapping the import.</p>
       <form id="csv-probe-form" enctype="multipart/form-data">

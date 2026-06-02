@@ -293,12 +293,20 @@ function getDoableTasks(): array {
         $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
     } catch (Throwable $e) {}
 
-    // 1=Home suppresses work-context tasks; 2=Work suppresses home-context tasks
-    $contextOk = function(array $t) use ($dayType): bool {
-        $ctx = $t['context'] ?? null;
-        if ($dayType === 1 && $ctx === 'work') return false;
-        if ($dayType === 2 && $ctx === 'home') return false;
-        return true;
+    // Context sets — case-insensitive. 'work' = requires being at work; 'home' = requires being home.
+    // 'shops' is suppressed on work days (can't pop out) but fine on home/out/rest.
+    // Out day suppresses both work and home contexts — you're mobile, only portable tasks.
+    $workCtxs  = ['work'];
+    $homeCtxs  = ['home', 'housework', 'home improvement', 'decluttering', 'garden'];
+    $shopsCtxs = ['shops'];
+
+    $contextOk = function(array $t) use ($dayType, $workCtxs, $homeCtxs, $shopsCtxs): bool {
+        $ctx = strtolower(trim($t['context'] ?? ''));
+        if (!$ctx || !$dayType) return true;
+        if ($dayType === 1) return !in_array($ctx, $workCtxs, true);                                      // Home: no work tasks
+        if ($dayType === 2) return !in_array($ctx, array_merge($homeCtxs, $shopsCtxs), true);             // Work: no home or shops tasks
+        if ($dayType === 3) return !in_array($ctx, array_merge($workCtxs, $homeCtxs), true);              // Out: no work or home tasks
+        return true; // Rest (4): no location suppression
     };
 
     return array_values(array_filter($data['tasks'], fn($t) =>

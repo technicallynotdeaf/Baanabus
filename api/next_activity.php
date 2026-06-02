@@ -18,11 +18,18 @@ try {
     $hasTasks   = !empty($tasks);
     $inboxTasks = getInboxTasks();
     $hasInbox   = !empty($inboxTasks);
+    $fillTasks  = array_values(array_filter($tasks, fn($t) =>
+        (!isset($t['energy']) || $t['energy'] === null) ||
+        (!isset($t['context']) || $t['context'] === null)
+    ));
+    $hasFillTasks = !empty($fillTasks);
 } catch (Throwable $e) {
-    $tasks      = [];
-    $hasTasks   = false;
-    $inboxTasks = [];
-    $hasInbox   = false;
+    $tasks        = [];
+    $hasTasks     = false;
+    $inboxTasks   = [];
+    $hasInbox     = false;
+    $fillTasks    = [];
+    $hasFillTasks = false;
 }
 
 // Reset mode — find the single smallest task, or a quote/tip for grounding
@@ -177,7 +184,7 @@ $fatigue   = (int)floor($actCount / 4);
 $taskSlots = max(0, $energy - $fatigue);
 $gameSlots = min(8, (6 - $energy) + $fatigue);
 
-$triageSlots = $hasInbox ? max(1, $taskSlots) : 0;
+$triageSlots = ($hasInbox || $hasFillTasks) ? max(1, $taskSlots) : 0;
 $doableSlots = (!$hasInbox && $hasTasks) ? $taskSlots : 0;
 
 // Check for available study questions (unseen or not yet correctly answered twice)
@@ -266,6 +273,7 @@ if ($choice === 'minigame') {
     json_response(['type' => 'minigame', 'game' => $game]);
 }
 if ($choice === 'triage') {
+    // Pass 1: inbox triage (actionable / duration / first_step)
     shuffle($inboxTasks);
     foreach ($inboxTasks as $t) {
         $q = triage_next_question($t);
@@ -273,19 +281,38 @@ if ($choice === 'triage') {
             try { vaultUpdateTask((int)$t['id'], ['task_type' => 'next_action']); } catch (Throwable $e) {}
             continue;
         }
-        // Include checklist items so the user can see what's inside a task during triage
-        $triageNow = time();
         $allForTriage = getTasks()['tasks'];
-        $triageItems = array_values(array_filter($allForTriage, fn($s) =>
+        $triageItems  = array_values(array_filter($allForTriage, fn($s) =>
             !empty($s['parent_id']) &&
             (int)$s['parent_id'] === (int)$t['id'] &&
             $s['status'] === 'active'
         ));
         usort($triageItems, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
         $triageItems = array_map(fn($s) => $s['title'], $triageItems);
-        json_response(['type' => 'triage', 'id' => (int)$t['id'], 'title' => $t['title'], 'question' => $q, 'items' => $triageItems]);
+        json_response(['type' => 'triage', 'source' => 'inbox', 'id' => (int)$t['id'],
+            'title' => $t['title'], 'question' => $q, 'items' => $triageItems]);
     }
-    json_response(pick_trivia()); // inbox empty or all auto-classified
+
+    // Pass 2: fill missing fields (energy / context) on already-classified tasks
+    shuffle($fillTasks);
+    foreach ($fillTasks as $t) {
+        $q = fill_next_question($t);
+        if ($q === 'done') continue;
+        $resp = ['type' => 'triage', 'source' => 'fill', 'id' => (int)$t['id'],
+            'title' => $t['title'], 'question' => $q, 'items' => []];
+        if ($q === 'context' && $database) {
+            try {
+                $resp['contexts'] = $database->query(
+                    "SELECT context FROM contexts ORDER BY context"
+                )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            } catch (Throwable $e) {
+                $resp['contexts'] = [];
+            }
+        }
+        json_response($resp);
+    }
+
+    json_response(pick_trivia()); // nothing left to triage
 }
 if ($choice === 'missing_info') json_response($missing);
 
@@ -357,6 +384,12 @@ function triage_next_question(array $t): string {
     if ($time === null) return 'duration';
     if ($time > 120) return 'first_step';
     return 'auto_classify'; // actionable + short = auto next_action
+}
+
+function fill_next_question(array $t): string {
+    if (!isset($t['energy']) || $t['energy'] === null) return 'energy';
+    if (!isset($t['context']) || $t['context'] === null) return 'context';
+    return 'done';
 }
 
 // ---------- question helpers ----------

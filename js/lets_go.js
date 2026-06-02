@@ -845,16 +845,19 @@ window.initLetsGo = function() {
 
   function renderTriage(d) {
     const question  = d.question || 'actionable';
+    const label     = d.source === 'fill' ? 'Quick question' : 'Inbox';
     const questions = {
       actionable: 'Is this still something you need to do?',
       duration:   'Roughly how long does this take?',
       first_step: 'Is there a quick 2-minute step that moves this forward?',
+      energy:     'How much energy does this take?',
+      context:    'Which area of your life does this belong to?',
     };
     const itemsHtml = (d.items && d.items.length > 0)
       ? `<ul style="margin:0 0 0.6rem 0;padding-left:1.2rem;font-size:0.88em;color:#555;line-height:1.5;">${d.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
       : '';
     c.innerHTML = `
-      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Inbox</p>
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">${label}</p>
       <p style="font-weight:600;line-height:1.4;margin-bottom:0.25rem;">${esc(d.title)}</p>
       ${itemsHtml}<p style="font-weight:500;color:#555;margin-bottom:0.75rem;font-size:0.95em;">${esc(questions[question] || '')}</p>
       <div id="triage-actions" style="display:flex;flex-direction:column;gap:8px;"></div>
@@ -925,6 +928,29 @@ window.initLetsGo = function() {
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'));
       inp.focus();
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+    } else if (question === 'energy') {
+      const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
+      el.append(
+        mkBtn("Low — can do it when tired",        () => save({action:'save_energy', energy:'low'})),
+        mkBtn("Medium — need to be reasonably on", () => save({action:'save_energy', energy:'medium'})),
+        mkBtn("High — needs my best brain",        () => save({action:'save_energy', energy:'high'})),
+        mkBtn("Doesn't matter",                    () => save({action:'save_energy', energy:' '}), skipStyle)
+      );
+
+    } else if (question === 'context') {
+      const contexts = d.contexts || [];
+      const sel = document.createElement('select');
+      sel.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:0.5rem;padding:0.35rem 0.4rem;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;';
+      sel.innerHTML = `<option value="">Choose an area…</option>` +
+        contexts.map(ctx => `<option value="${esc(ctx)}">${esc(ctx)}</option>`).join('');
+      const saveBtn = mkBtn("Save", () => {
+        if (!sel.value) { setStatus('Pick an area first.'); return; }
+        save({action:'save_context', context: sel.value});
+      });
+      const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
+      el.append(sel, saveBtn,
+        mkBtn("Doesn't apply", () => save({action:'save_context', context:' '}), skipStyle));
     }
   }
 

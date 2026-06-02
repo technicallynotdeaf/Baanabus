@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time'];
+$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -36,7 +36,16 @@ $timeRaw  = $body['time'] ?? null;
 $time     = (is_int($timeRaw) || ctype_digit((string)$timeRaw)) && (int)$timeRaw > 0 ? (int)$timeRaw : null;
 
 try {
-    if ($action === 'mark_actionable') {
+    if ($action === 'save_energy') {
+        $energy = $body['energy'] ?? ' ';
+        if (!in_array($energy, ['low', 'medium', 'high', ' '], true)) $energy = ' ';
+        vaultUpdateTask($taskId, ['energy' => $energy]);
+
+    } elseif ($action === 'save_context') {
+        $context = isset($body['context']) ? trim((string)$body['context']) : '';
+        vaultUpdateTask($taskId, ['context' => $context !== '' ? $context : ' ']);
+
+    } elseif ($action === 'mark_actionable') {
         vaultUpdateTask($taskId, ['triage_actionable' => true]);
 
     } elseif ($action === 'save_time') {

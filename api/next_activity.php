@@ -215,6 +215,7 @@ $pool = array_merge(
     array_fill(0, 1,                                   'fun_task'),
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),
+    array_fill(0, 1,                                   'nutrition'),
     ($missing && $checkinOn) ? ['missing_info'] : []
 );
 
@@ -244,6 +245,7 @@ if ($choice === 'tip') {
 if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
 if ($choice === 'joke')      json_response(pick_joke());
+if ($choice === 'nutrition') json_response(pick_nutrition());
 if ($choice === 'trivia') json_response(pick_trivia());
 if ($choice === 'study') {
     $s = pick_study();
@@ -452,6 +454,84 @@ function pick_fun_task(): array {
         "Send someone a voice message instead of a text",
     ];
     return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];
+}
+
+function pick_nutrition(): array {
+    $facts = [
+        // Feijoas
+        "Feijoas have about 2g of fibre each. Eat four or five and you've knocked out a decent chunk of your day's 25g target — and they taste like a tropical holiday.",
+        "Feijoas are one of the better fruit sources of folate. A cup of them gives you around 38mcg — useful if you're trying to get more B vitamins in.",
+
+        // Kiwifruit
+        "One kiwifruit has about 65mg of vitamin C. The Australian recommended daily intake for adults is just 45mg — so a single kiwi has you covered and then some.",
+        "Kiwifruit contains an enzyme called actinidin that helps break down protein. It's why kiwi works as a meat tenderiser.",
+        "Two kiwifruit before bed has been shown in studies to improve sleep onset and duration. The serotonin precursors in them are the likely reason.",
+
+        // Capsicum
+        "A red capsicum has around 190mg of vitamin C — that's more than four times the Australian daily recommended intake of 45mg. Green capsicum is just an unripe red one, and has about a third of the vitamin C.",
+        "Red capsicums have nearly twice the vitamin C of green ones and about 11 times more beta-carotene. Same plant, just left on longer.",
+
+        // Broccoli
+        "A cup of raw broccoli has about 90mg of vitamin C — more than an orange. It also has calcium, folate, and fibre, all in one go.",
+        "Broccoli belongs to the brassica family along with kale, cauliflower, cabbage, and Brussels sprouts. Eating more of any of them is associated with lower rates of some cancers.",
+
+        // Avocado
+        "Half an avocado has about 485mg of potassium — more than a banana. The Australian daily target for potassium is 2800mg (women) or 3800mg (men), so they add up fast.",
+        "Avocados are one of the few fruits with significant monounsaturated fat. This is the same type as olive oil, and it helps your body absorb fat-soluble vitamins like A, D, E, and K.",
+
+        // Sweet potato
+        "One medium sweet potato (about 130g) gives you over 1000mcg of beta-carotene — your body converts that to vitamin A. The Australian RDI for vitamin A is 700mcg for women and 900mcg for men.",
+        "Sweet potatoes are one of the most nutrient-dense foods by calorie. Fibre, potassium, vitamin C, vitamin B6, and a huge hit of beta-carotene, all under 500kJ.",
+
+        // Spinach
+        "Two cups of raw spinach gives you your full daily vitamin K — about 140mcg. Vitamin K is essential for blood clotting and bone metabolism.",
+        "Spinach is high in iron, but also contains oxalates that reduce absorption. Eating it with a vitamin C source (like lemon juice or capsicum) improves how much iron you actually get.",
+
+        // Beetroot
+        "Beetroot is high in dietary nitrates, which your body converts to nitric oxide. That relaxes blood vessels and can measurably lower blood pressure within a few hours.",
+        "The deep red colour in beetroot comes from betalains — pigments with antioxidant properties. Your body can't always break them down fully, which is why things can look alarming the next day.",
+
+        // Blueberries
+        "Blueberries are among the highest antioxidant foods measured by ORAC score (oxygen radical absorbance capacity). The blue pigment — anthocyanin — is the main driver.",
+        "Frozen blueberries are nutritionally near-identical to fresh. Freezing preserves the anthocyanins, so a bag from the freezer aisle counts just as much.",
+
+        // Mushrooms
+        "Mushrooms are the only non-animal food that naturally produces vitamin D — and only when they've been exposed to UV light. Leaving them gill-side up in a sunny window for 15 minutes before cooking actually works.",
+
+        // Garlic
+        "Garlic's active compound is allicin, which forms when you crush or chop the clove. It's what gives garlic its smell and most of its health benefits. Let crushed garlic sit for 10 minutes before cooking to maximise allicin formation.",
+
+        // Carrots
+        "Cooked carrots release more beta-carotene than raw ones — heat breaks down the cell walls. A small amount of fat (butter, oil) helps your body absorb it, since beta-carotene is fat-soluble.",
+
+        // Tomatoes
+        "Cooked tomatoes have more available lycopene than raw ones — the heat breaks down the cell matrix. This is why tinned tomatoes and passata are actually nutritionally excellent.",
+        "Tomatoes are technically a fruit, but Australia classifies them as a vegetable for dietary purposes. The lycopene in them is linked to reduced prostate cancer risk in observational studies.",
+
+        // Bananas
+        "Slightly underripe bananas contain resistant starch, which your gut bacteria ferment into short-chain fatty acids — good for the gut lining. As they ripen, the resistant starch converts to sugar.",
+
+        // Legumes
+        "Legumes — beans, lentils, chickpeas — are the one food consistently associated with longevity across every major long-lived population studied. They're high in fibre, protein, and slow-digesting carbs.",
+        "Half a cup of cooked lentils has about 8g of fibre and 9g of protein, and costs almost nothing. They're also one of the best dietary sources of folate.",
+
+        // Apples
+        "The fibre in apples is mostly pectin — a soluble fibre that feeds good gut bacteria and helps slow sugar absorption. Most of it is in or just under the skin.",
+
+        // Watermelon
+        "Watermelon is 92% water, making it one of the most hydrating foods you can eat. It also has lycopene and a reasonable hit of vitamin C.",
+
+        // Pumpkin
+        "A cup of cooked pumpkin has about 2600mcg of beta-carotene — well over twice the Australian RDI for vitamin A — plus good fibre and potassium, all under 200kJ.",
+
+        // Cabbage/brassicas
+        "Cabbage is cheap, underrated, and genuinely nutritious. Half a cup of cooked cabbage has about 30mg of vitamin C, good fibre, and vitamin K — for almost no calories.",
+
+        // General
+        "Eating a wide variety of vegetables — especially different colours — feeds different strains of gut bacteria. More colour variety on your plate = more microbiome diversity.",
+        "The Australian dietary guidelines recommend 5 serves of vegetables and 2 serves of fruit a day. Most Australians average about 2.5 serves of veg. So there's usually room to add more without overhauling anything.",
+    ];
+    return ['type' => 'nutrition', 'text' => $facts[array_rand($facts)]];
 }
 
 function pick_joke(): array {

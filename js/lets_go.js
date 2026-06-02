@@ -35,6 +35,7 @@ window.initLetsGo = function() {
       case 'fun_task':       renderFunTask(d);       break;
       case 'easy_task':      renderEasyTask(d);      break;
       case 'joke':           renderJoke(d);          break;
+      case 'nutrition':      renderNutrition(d);     break;
       case 'trivia':         renderTrivia(d);        break;
       case 'study':          renderStudy(d);         break;
       case 'minigame':       renderMinigame(d);      break;
@@ -108,6 +109,13 @@ window.initLetsGo = function() {
       earnPip();
       if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
     };
+  }
+
+  function renderNutrition(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Food fact</p>
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Got it</button>`;
   }
 
   function renderJoke(d) {

@@ -21,6 +21,28 @@ if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
 
+// Spread reviews evenly across the interval window for people sharing the same interval.
+// Finds the day in [tomorrow, today+interval] that has the fewest reviews already booked
+// for other active people with the same review_interval.
+function scheduleNextReview(int $excludeId, int $interval): string {
+    $people = getPeople()['people'];
+    $counts = [];
+    foreach ($people as $p) {
+        if ((int)$p['person_id'] === $excludeId) continue;
+        if ((int)($p['review_interval'] ?? 30) !== $interval) continue;
+        if (($p['is_active'] ?? 1) == 0) continue;
+        $nr = $p['next_review'] ?? null;
+        if ($nr) $counts[$nr] = ($counts[$nr] ?? 0) + 1;
+    }
+    $best = null; $bestCount = PHP_INT_MAX;
+    for ($i = 1; $i <= $interval; $i++) {
+        $d = date('Y-m-d', strtotime("+{$i} days"));
+        $c = $counts[$d] ?? 0;
+        if ($c < $bestCount) { $bestCount = $c; $best = $d; }
+    }
+    return $best ?? date('Y-m-d', strtotime("+{$interval} days"));
+}
+
 try {
     if ($action === 'mark_reviewed') {
         $people   = getPeople();
@@ -30,7 +52,7 @@ try {
         }
         if (!$person) json_response(['error' => 'Person not found'], 404);
         $interval    = max(1, (int)($person['review_interval'] ?? 30));
-        $next_review = date('Y-m-d', strtotime("+{$interval} days"));
+        $next_review = scheduleNextReview($personId, $interval);
         vaultUpdatePerson($personId, ['next_review' => $next_review]);
         json_response(['ok' => true, 'next_review' => $next_review]);
 
@@ -56,7 +78,7 @@ try {
         $interval = max(1, min(365, (int)($body['review_interval'] ?? 30)));
 
         $fields = ['review_interval' => $interval,
-                   'next_review'     => date('Y-m-d', strtotime("+{$interval} days"))];
+                   'next_review'     => scheduleNextReview($personId, $interval)];
         if ($char1 !== '') $fields['char1'] = $char1;
         if ($char2 !== '') $fields['char2'] = $char2;
         if ($char3 !== '') $fields['char3'] = $char3;
@@ -67,7 +89,7 @@ try {
 
     } elseif ($action === 'update_interval') {
         $interval    = max(1, min(365, (int)($body['days'] ?? 30)));
-        $next_review = date('Y-m-d', strtotime("+{$interval} days"));
+        $next_review = scheduleNextReview($personId, $interval);
         vaultUpdatePerson($personId, ['review_interval' => $interval, 'next_review' => $next_review]);
         json_response(['ok' => true, 'next_review' => $next_review]);
 

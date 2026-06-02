@@ -16,8 +16,9 @@
         { id: 6, color: '#6B7A3A', h: 0.68 },
     ];
 
-    let bookBounds  = [];
-    let boardBounds = null;
+    let bookBounds      = [];
+    let boardBounds     = null;
+    let kitchenDoorBounds = null;
 
     function frand(s) { return ((Math.sin(s * 91.3 + 217.5) * 53758.5) % 1 + 1) % 1; }
 
@@ -294,6 +295,39 @@
         }
     }
 
+    function drawKitchenDoor(ctx, iL, iW, iT, flY, h, w) {
+        const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
+        const TL = rp(0, 0.28), TR = rp(0.13, 0.28);
+        const BL = rp(0, 1.0),  BR = rp(0.13, 1.0);
+
+        // Warm kitchen glow through the open doorway
+        const glow = ctx.createLinearGradient(TR[0], 0, TL[0], 0);
+        glow.addColorStop(0, 'rgba(210,175,90,0.55)');
+        glow.addColorStop(1, 'rgba(210,175,90,0)');
+        ctx.fillStyle = glow;
+        quadPath(ctx, TL, TR, BL, BR); ctx.fill();
+
+        // Frame
+        ctx.strokeStyle = '#6b4c2a'; ctx.lineWidth = 4; ctx.lineCap = 'square';
+        ctx.beginPath(); ctx.moveTo(...TL); ctx.lineTo(...TR); ctx.lineTo(...BR); ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(...TL); ctx.lineTo(...BL); ctx.stroke();
+
+        kitchenDoorBounds = [TL, TR, BR, BL];
+
+        const boardW = Math.abs(TR[0] - TL[0]);
+        if (boardW > 10) {
+            const midX = (TL[0] + TR[0]) / 2;
+            const midY = TL[1] + (BL[1] - TL[1]) * 0.45;
+            ctx.save();
+            ctx.translate(midX, midY); ctx.rotate(Math.PI / 2 - 0.1);
+            ctx.font = `${Math.max(7, Math.round(boardW * 0.5))}px sans-serif`;
+            ctx.fillStyle = 'rgba(120,80,25,0.75)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('kitchen', 0, 0);
+            ctx.restore();
+        }
+    }
+
     function drawNoticeBoard(ctx, iL, iW, iT, flY, h, w, earnedIds) {
         const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const t1  = 0.20, t2 = 0.66;
@@ -423,10 +457,12 @@
         if (width > 640) {
             const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
             drawWindow      (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
+            drawKitchenDoor (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
             drawTableAndLamp(ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
             drawNoticeBoard (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, BADGE_IDS);
         } else {
             boardBounds = null;
+            kitchenDoorBounds = null;
         }
 
         drawPapers(ctx, PAPERS, width, height, floorY);
@@ -454,16 +490,26 @@
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
 
+        if (ptInQuad(cx, cy, kitchenDoorBounds)) {
+            window.location.href = 'scene_kitchen.php';
+            return;
+        }
         if (ptInQuad(cx, cy, boardBounds)) {
             loadOverlay('api/badges.php');
             return;
         }
-
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
                 if (b.unlocked) loadOverlay('api/story_books.php');
                 break;
             }
         }
+    });
+
+    canvas.addEventListener('mousemove', function(e) {
+        const rect = this.getBoundingClientRect();
+        const cx   = e.clientX - rect.left;
+        const cy   = e.clientY - rect.top;
+        this.style.cursor = ptInQuad(cx, cy, kitchenDoorBounds) ? 'pointer' : '';
     });
 })();

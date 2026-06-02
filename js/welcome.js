@@ -4,6 +4,21 @@ window.initWelcome = function() {
   const wizard = document.getElementById('setup-wizard');
   if (!wizard) return;
   const STATE = JSON.parse(wizard.dataset.state);
+
+  // Detect and save browser timezone silently — avoids assuming a default
+  (async () => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) {
+        await fetch('api/save_timezone.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ timezone: tz }),
+          credentials: 'same-origin'
+        });
+      }
+    } catch(e) { /* non-fatal */ }
+  })();
   let currentStep = 1;
 
   window.wizTo = function(n) {

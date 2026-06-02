@@ -36,6 +36,55 @@ window.initSettings = function() {
     });
   }
 
+  // ── Account: Timezone ─────────────────────────────────────────────
+  const tzSelect    = document.getElementById('timezone-select');
+  const tzSaveBtn   = document.getElementById('btn-save-timezone');
+  const tzStatus    = document.getElementById('timezoneStatus');
+  const tzBrowserRow = document.getElementById('browser-tz-row');
+  const tzBrowserName = document.getElementById('browser-tz-name');
+  const tzUseBrowserBtn = document.getElementById('btn-use-browser-tz');
+
+  if (tzSelect) {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    if (browserTz && tzBrowserRow && tzBrowserName) {
+      tzBrowserName.textContent = browserTz;
+      tzBrowserRow.style.display = 'flex';
+      // Pre-select browser timezone in dropdown if it's in the list
+      const opt = [...tzSelect.options].find(o => o.value === browserTz);
+      if (opt) opt.selected = true;
+    }
+
+    async function saveTz(tz) {
+      if (tzStatus) { tzStatus.style.color = ''; tzStatus.textContent = 'Saving…'; }
+      try {
+        const resp = await fetch('api/save_timezone.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ timezone: tz })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          if (tzStatus) tzStatus.textContent = 'Saved.';
+        } else {
+          throw new Error(result.error || 'Save failed');
+        }
+      } catch(e) {
+        if (tzStatus) { tzStatus.style.color = 'crimson'; tzStatus.textContent = e.message; }
+      }
+    }
+
+    if (tzSaveBtn) tzSaveBtn.addEventListener('click', () => saveTz(tzSelect.value));
+
+    if (tzUseBrowserBtn) {
+      tzUseBrowserBtn.addEventListener('click', () => {
+        const opt = [...tzSelect.options].find(o => o.value === browserTz);
+        if (opt) opt.selected = true;
+        saveTz(browserTz);
+      });
+    }
+  }
+
   // ── Account: Passkey enroll ────────────────────────────────────────
   function enrollLabel() {
     return document.getElementById('enroll-label-input')?.value?.trim() || '';

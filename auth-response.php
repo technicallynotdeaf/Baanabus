@@ -105,6 +105,13 @@ if ($prfResultB64u) {
             unlockWithPrf($prfResultB64u, $paths);
         }
         $vaultReady = true;
+        // Cache user timezone in session so init.php can apply it on every subsequent request
+        try {
+            $cfg = getConfig();
+            $tz  = $cfg['preferences']['timezone'] ?? 'Australia/Melbourne';
+            $_SESSION['user_timezone'] = $tz;
+            date_default_timezone_set($tz);
+        } catch (Throwable $e) {}
     } catch (Throwable $e) {
         error_log('Vault unlock failed: ' . $e->getMessage());
     }

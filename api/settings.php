@@ -239,6 +239,45 @@ if ($database) {
       <?php endif; ?>
     </div>
 
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.5rem;">Timezone</h3>
+      <?php if ($vaultOpen): ?>
+        <?php $savedTz = $cfg['preferences']['timezone'] ?? ''; ?>
+        <p class="muted" style="font-size:0.88em;margin-bottom:0.75rem;">Used to determine what counts as "today" for diary entries and check-ins.</p>
+        <?php if ($savedTz): ?>
+        <p style="font-size:0.88em;margin-bottom:0.75rem;">Current: <strong><?= htmlspecialchars($savedTz) ?></strong></p>
+        <?php endif; ?>
+        <div id="browser-tz-row" style="display:none;margin-bottom:0.75rem;padding:8px 10px;background:#f8f8f8;border-radius:6px;font-size:0.88em;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>Browser timezone: <strong id="browser-tz-name"></strong></span>
+          <button id="btn-use-browser-tz" class="btn btn-secondary" style="font-size:0.8em;padding:3px 10px;min-height:28px;">Use this</button>
+        </div>
+        <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.3rem;">Or choose manually:</label>
+        <select id="timezone-select" style="margin-bottom:0.75rem;width:100%;">
+          <?php
+          $tzGroups = [
+            'Australia' => ['Australia/Melbourne','Australia/Sydney','Australia/Brisbane','Australia/Perth','Australia/Adelaide','Australia/Darwin','Australia/Hobart'],
+            'Pacific'   => ['Pacific/Auckland','Pacific/Fiji','Pacific/Honolulu'],
+            'Asia'      => ['Asia/Singapore','Asia/Tokyo','Asia/Seoul','Asia/Shanghai','Asia/Kolkata','Asia/Dubai','Asia/Bangkok'],
+            'Europe'    => ['Europe/London','Europe/Paris','Europe/Berlin','Europe/Amsterdam','Europe/Rome','Europe/Madrid'],
+            'Americas'  => ['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Vancouver','America/Toronto','America/Sao_Paulo'],
+            'Other'     => ['UTC','Africa/Johannesburg'],
+          ];
+          foreach ($tzGroups as $group => $zones):
+          ?>
+          <optgroup label="<?= htmlspecialchars($group) ?>">
+            <?php foreach ($zones as $tz): ?>
+            <option value="<?= htmlspecialchars($tz) ?>"<?= $savedTz === $tz ? ' selected' : '' ?>><?= htmlspecialchars($tz) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+          <?php endforeach; ?>
+        </select>
+        <button id="btn-save-timezone" class="btn">Save</button>
+        <p id="timezoneStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+      <?php else: ?>
+        <p class="muted">Vault locked.</p>
+      <?php endif; ?>
+    </div>
+
     <div class="card">
       <h3 style="margin-bottom:0.5rem;">Import tasks from CSV</h3>
       <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">Inspect a tasks.csv before mapping the import.</p>

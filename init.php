@@ -6,6 +6,11 @@
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
+// Apply user timezone (stored in session after vault unlock; defaults to Melbourne)
+$_tz = $_SESSION['user_timezone'] ?? 'Australia/Melbourne';
+date_default_timezone_set(in_array($_tz, DateTimeZone::listIdentifiers(), true) ? $_tz : 'Australia/Melbourne');
+unset($_tz);
+
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 header_remove('X-Powered-By');

@@ -483,7 +483,6 @@ function pick_fun_task(): array {
         "Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.",
         "Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment.",
         "Make yourself a proper cup of tea or coffee — no rushing",
-        "Text someone you haven't spoken to in a while",
         "Stretch — arms up, side to side, touch your toes if you can",
         "Step outside for two minutes, even just to the doorstep",
         "Write down one thing you're glad happened this week",
@@ -501,8 +500,6 @@ function pick_fun_task(): array {
         "Find a pattern — in fabric, on a wall, anywhere — and trace it with your eyes",
         "Look out the window and find one thing that's moving. Watch it for a bit.",
         "Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.",
-        "Find something that reminds you of someone you love and hold that thought for a moment",
-        "Send someone a voice message instead of a text",
     ];
     return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];
 }

@@ -957,8 +957,15 @@ window.initLetsGo = function() {
 
   function renderPersonReview(d) {
     const hasQ = d.char1 && d.char2 && d.char3;
-    const intervalOpts = [14, 30, 60, 90].map(n =>
-      `<option value="${n}" ${d.review_interval === n ? 'selected' : ''}>${n} days</option>`
+    const intervalChoices = [
+      [2,  'Every 2 days — household'],
+      [7,  'Weekly — close friends'],
+      [14, 'Fortnightly — church/regular'],
+      [30, 'Monthly — active acquaintances'],
+      [90, 'Quarterly — distant/extended family'],
+    ];
+    const intervalOpts = intervalChoices.map(([n, label]) =>
+      `<option value="${n}" ${d.review_interval === n ? 'selected' : ''}>${label}</option>`
     ).join('');
     const freqRow = `
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.6rem;font-size:0.85em;flex-wrap:wrap;">

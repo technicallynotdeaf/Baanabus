@@ -236,8 +236,14 @@ function renderPersonPanel(int $personId): void {
         <div style="display:flex;align-items:center;gap:6px;font-size:0.82em;flex-wrap:wrap;">
           <span style="color:#888;">Check in every</span>
           <select id="interval-select" style="padding:3px 6px;border:1px solid #ccc;border-radius:5px;font-size:0.95em;">
-            <?php foreach ([7,14,30,60,90,180] as $d): ?>
-              <option value="<?= $d ?>" <?= $d === $interval ? 'selected' : '' ?>><?= $d ?> days</option>
+            <?php foreach ([
+                [2,  'Every 2 days — household'],
+                [7,  'Weekly — close friends'],
+                [14, 'Fortnightly — church/regular'],
+                [30, 'Monthly — active acquaintances'],
+                [90, 'Quarterly — distant/extended family'],
+              ] as [$d, $lbl]): ?>
+              <option value="<?= $d ?>" <?= $d === $interval ? 'selected' : '' ?>><?= htmlspecialchars($lbl) ?></option>
             <?php endforeach; ?>
           </select>
           <button onclick="window._saveInterval()"

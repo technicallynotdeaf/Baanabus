@@ -3,11 +3,12 @@
  * api/agent.php — vault + context API for agent use
  * Auth: Authorization: Bearer bsk_... header
  *
- * GET ?view=tasks          → active tasks + today's context (default)
- * GET ?view=inbox          → inbox (untriaged) tasks
- * GET ?view=all_tasks      → every task regardless of status/type
- * GET ?view=config         → app config (preferences, onboarding state, story progress)
- * GET ?view=snapshot       → tasks + inbox + config + context in one call
+ * GET ?view=tasks               → active tasks + today's context (default)
+ * GET ?view=inbox               → inbox (untriaged) tasks
+ * GET ?view=all_tasks           → every task regardless of status/type
+ * GET ?view=config              → app config (preferences, onboarding state, story progress)
+ * GET ?view=snapshot            → tasks + inbox + config + context in one call
+ * GET ?view=food_search&q=term  → search foods + servings by name (for finding food_id/serving_id)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
  *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status
@@ -140,7 +141,48 @@ if ($method === 'GET') {
         json_response(['ok' => true, 'date' => $date, 'entries' => $entries, 'totals' => $totals]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log"], 400);
+    if ($view === 'food_search') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $q = trim($_GET['q'] ?? '');
+        if (!$q) json_response(['error' => 'q parameter required'], 400);
+        try {
+            $stmt = $database->prepare(
+                "SELECT f.food_id, f.name, f.category, f.suggested_serving_g,
+                        fs.serving_id, fs.serving_description, fs.serving_weight_g
+                 FROM foods f
+                 JOIN food_servings fs ON f.food_id = fs.food_id
+                 WHERE lower(f.name) LIKE lower(:q) OR lower(f.search_name) LIKE lower(:q)
+                 ORDER BY f.name, fs.serving_weight_g
+                 LIMIT 40"
+            );
+            $stmt->execute([':q' => '%' . $q . '%']);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Group by food
+            $foods = [];
+            foreach ($rows as $row) {
+                $fid = (int)$row['food_id'];
+                if (!isset($foods[$fid])) {
+                    $foods[$fid] = [
+                        'food_id'            => $fid,
+                        'name'               => $row['name'],
+                        'category'           => $row['category'],
+                        'suggested_serving_g'=> $row['suggested_serving_g'],
+                        'servings'           => [],
+                    ];
+                }
+                $foods[$fid]['servings'][] = [
+                    'serving_id'         => (int)$row['serving_id'],
+                    'description'        => $row['serving_description'],
+                    'weight_g'           => (float)$row['serving_weight_g'],
+                ];
+            }
+            json_response(['ok' => true, 'query' => $q, 'foods' => array_values($foods)]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search"], 400);
 }
 
 // ---- POST ----

@@ -469,6 +469,27 @@ if ($method === 'POST') {
         json_response(['ok' => true, 'dry_run' => false, 'imported' => $imported]);
     }
 
+    if ($action === 'migrate_daily_completions') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        try {
+            $rows = $database->query("SELECT date, count FROM daily_completions ORDER BY date")
+                             ->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            json_response(['error' => 'Could not read daily_completions: ' . $e->getMessage()], 500);
+        }
+        $cfg    = getConfig() ?? [];
+        $daily  = $cfg['daily_completions'] ?? [];
+        $merged = 0;
+        foreach ($rows as $r) {
+            $daily[$r['date']] = ($daily[$r['date']] ?? 0) + (int)$r['count'];
+            $merged++;
+        }
+        $cfg['daily_completions'] = $daily;
+        saveConfig($cfg);
+        try { $database->exec("DROP TABLE IF EXISTS daily_completions"); } catch (Throwable $e) {}
+        json_response(['ok' => true, 'merged' => $merged, 'dates' => array_keys($daily)]);
+    }
+
     if ($action === 'delete_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);

@@ -132,10 +132,6 @@ function _ensureSchema(PDO $db): void {
             last_seen     DATETIME,
             FOREIGN KEY (question_id) REFERENCES study_questions(id)
         );
-        CREATE TABLE IF NOT EXISTS daily_completions (
-            date  TEXT PRIMARY KEY,
-            count INTEGER NOT NULL DEFAULT 0
-        );
     ");
 
     // Seed reference data (INSERT OR IGNORE = safe to repeat)
@@ -274,18 +270,6 @@ function _ensureFoodSchema(PDO $db): void {
             weight_g    REAL NOT NULL,
             is_default  INTEGER NOT NULL DEFAULT 0
         );
-        CREATE TABLE IF NOT EXISTS food_log (
-            log_id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id        TEXT NOT NULL,
-            date           TEXT NOT NULL,
-            food_id        INTEGER REFERENCES foods(food_id),
-            serving_id     INTEGER REFERENCES food_servings(serving_id),
-            quantity       REAL NOT NULL DEFAULT 1,
-            is_writeoff    INTEGER NOT NULL DEFAULT 0,
-            writeoff_label TEXT,
-            logged_at      DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_food_log_user_date ON food_log(user_id, date);
     ");
     $db->exec("
         INSERT OR IGNORE INTO nutrient_rdis

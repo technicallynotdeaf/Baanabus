@@ -93,34 +93,30 @@ try {
     }
 
     // ── Daily completion tracking + comeback callout ───────────────────
-    if ($database) {
-        try {
-            $today = date('Y-m-d');
-            $database->prepare(
-                "INSERT INTO daily_completions (date, count) VALUES (?, 1)
-                 ON CONFLICT(date) DO UPDATE SET count = count + 1"
-            )->execute([$today]);
+    try {
+        $today  = date('Y-m-d');
+        $dcfg   = getConfig() ?? [];
+        $daily  = $dcfg['daily_completions'] ?? [];
+        $daily[$today] = ($daily[$today] ?? 0) + 1;
+        $dcfg['daily_completions'] = $daily;
+        saveConfig($dcfg);
 
-            // Comeback callout: best week in a while (fire once per week)
-            $thisWeekKey = date('o-\WW');
-            if (($_SESSION['comeback_week'] ?? null) !== $thisWeekKey) {
-                $dow = (int)date('N'); // 1=Mon
-                if ($dow >= 3) { // Need Wednesday+ to have meaningful signal
-                    $thisWeekTotal = weekCompletions($database, 0);
-                    $prevBest = max(
-                        weekCompletions($database, 1),
-                        weekCompletions($database, 2),
-                        weekCompletions($database, 3)
-                    );
-                    if ($prevBest > 0 && $thisWeekTotal > $prevBest && $thisWeekTotal >= 5) {
-                        $_SESSION['comeback_week']    = $thisWeekKey;
-                        $_SESSION['comeback_callout'] = true;
-                    }
-                }
+        // Comeback callout: best week in a while (fire once per week, Wed+)
+        $thisWeekKey = date('o-\WW');
+        if (($_SESSION['comeback_week'] ?? null) !== $thisWeekKey && (int)date('N') >= 3) {
+            $thisWeekTotal = weekCompletions($daily, 0);
+            $prevBest = max(
+                weekCompletions($daily, 1),
+                weekCompletions($daily, 2),
+                weekCompletions($daily, 3)
+            );
+            if ($prevBest > 0 && $thisWeekTotal > $prevBest && $thisWeekTotal >= 5) {
+                $_SESSION['comeback_week']    = $thisWeekKey;
+                $_SESSION['comeback_callout'] = true;
             }
-        } catch (Throwable $e) {
-            error_log('daily_completions: ' . $e->getMessage());
         }
+    } catch (Throwable $e) {
+        error_log('daily_completions: ' . $e->getMessage());
     }
 
     respond_mc([
@@ -136,18 +132,18 @@ try {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);
 }
 
-function weekCompletions(PDO $db, int $weeksAgo): int {
-    $dow        = (int)date('N');
-    $monOffset  = ($weeksAgo * 7) + ($dow - 1);
-    $mon        = date('Y-m-d', strtotime("-{$monOffset} days"));
-    $sun        = date('Y-m-d', strtotime($mon . ' +6 days'));
-    $cap        = date('Y-m-d');
+function weekCompletions(array $daily, int $weeksAgo): int {
+    $dow       = (int)date('N');
+    $monOffset = ($weeksAgo * 7) + ($dow - 1);
+    $mon       = date('Y-m-d', strtotime("-{$monOffset} days"));
+    $sun       = date('Y-m-d', strtotime($mon . ' +6 days'));
+    $cap       = date('Y-m-d');
     if ($sun > $cap) $sun = $cap;
-    try {
-        $s = $db->prepare("SELECT COALESCE(SUM(count),0) FROM daily_completions WHERE date BETWEEN ? AND ?");
-        $s->execute([$mon, $sun]);
-        return (int)$s->fetchColumn();
-    } catch (Throwable $e) {
-        return 0;
+    $total = 0;
+    $cur   = $mon;
+    while ($cur <= $sun) {
+        $total += $daily[$cur] ?? 0;
+        $cur = date('Y-m-d', strtotime($cur . ' +1 day'));
     }
+    return $total;
 }

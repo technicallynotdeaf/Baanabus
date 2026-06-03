@@ -228,8 +228,14 @@ $hasQuotes = false;
 $hasTips   = false;
 try { $hasQuotes = !empty(getQuotes()['items']); } catch (Throwable $e) {}
 if ($database) {
-    try { $hasTips = (bool)$database->query("SELECT 1 FROM tips LIMIT 1")->fetchColumn(); }
-    catch (Throwable $e) {}
+    try {
+        $totalTips = (int)$database->query("SELECT COUNT(*) FROM tips")->fetchColumn();
+        if ($totalTips > 0) {
+            $tipsSeen = $cfg['tips_seen'] ?? [];
+            $expired  = count(array_filter($tipsSeen, fn($c) => $c >= 2));
+            $hasTips  = $expired < $totalTips;
+        }
+    } catch (Throwable $e) {}
 }
 
 $easySlots = ($energy <= 2) ? 2 : 1;
@@ -549,11 +555,19 @@ function pick_person_review(): ?array {
 }
 
 function pick_tip(): ?array {
-    global $database;
+    global $database, $cfg;
     if (!$database) return null;
     try {
-        $t = $database->query("SELECT tip_id, tip FROM tips ORDER BY RANDOM() LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-        return $t ? ['type' => 'tip', 'id' => (int)$t['tip_id'], 'text' => $t['tip']] : null;
+        $allTips  = $database->query("SELECT tip_id, tip FROM tips")->fetchAll(PDO::FETCH_ASSOC);
+        if (!$allTips) return null;
+        $tipsSeen = $cfg['tips_seen'] ?? [];
+        $available = array_values(array_filter($allTips, fn($t) => ($tipsSeen[(string)$t['tip_id']] ?? 0) < 2));
+        if (!$available) return null;
+        $t = $available[array_rand($available)];
+        $tipsSeen[(string)$t['tip_id']] = ($tipsSeen[(string)$t['tip_id']] ?? 0) + 1;
+        $cfg['tips_seen'] = $tipsSeen;
+        try { saveConfig($cfg); } catch (Throwable $e) {}
+        return ['type' => 'tip', 'id' => (int)$t['tip_id'], 'text' => $t['tip']];
     } catch (Throwable $e) {
         return null;
     }

@@ -148,11 +148,11 @@ if ($method === 'GET') {
         try {
             $stmt = $database->prepare(
                 "SELECT f.food_id, f.name, f.category, f.suggested_serving_g,
-                        fs.serving_id, fs.serving_description, fs.serving_weight_g
+                        fs.serving_id, fs.unit_label, fs.weight_g AS serving_weight_g, fs.is_default
                  FROM foods f
                  JOIN food_servings fs ON f.food_id = fs.food_id
                  WHERE lower(f.name) LIKE lower(:q) OR lower(f.search_name) LIKE lower(:q)
-                 ORDER BY f.name, fs.serving_weight_g
+                 ORDER BY f.name, fs.is_default DESC, fs.weight_g
                  LIMIT 40"
             );
             $stmt->execute([':q' => '%' . $q . '%']);
@@ -171,9 +171,10 @@ if ($method === 'GET') {
                     ];
                 }
                 $foods[$fid]['servings'][] = [
-                    'serving_id'         => (int)$row['serving_id'],
-                    'description'        => $row['serving_description'],
-                    'weight_g'           => (float)$row['serving_weight_g'],
+                    'serving_id' => (int)$row['serving_id'],
+                    'unit_label' => $row['unit_label'],
+                    'weight_g'   => (float)$row['serving_weight_g'],
+                    'is_default' => (bool)$row['is_default'],
                 ];
             }
             json_response(['ok' => true, 'query' => $q, 'foods' => array_values($foods)]);

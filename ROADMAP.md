@@ -182,6 +182,49 @@ Connect to services Alison already uses.
 
 ---
 
+## M8 — Relational Intelligence
+
+Build the capacity for meaningful connection through low-friction, attention-shaping prompts. Not social logging — conscious investment scaffolded over time.
+
+Design constraint: many users are neurodiverse. Prefer tappable structured options, scales, and "sit with this for a moment" interactions over blank text boxes. The pause is a valid and valuable interaction.
+
+**Event Debrief** (post-interaction reflection tied to a person + event type):
+- [ ] "Did you see [person] today?" prompt in activity pool — if yes, ask up to 5 structured questions (commit to anything? learn anything new? did they seem off? moment they wanted to say something?)
+- [ ] Commitments captured in debrief optionally convert to tasks
+- [ ] Event types (church, band, work, family) tune the question set slightly
+- [ ] All questions are tappable/selectable, not free-text
+
+**Relationship Review Prompts** (periodic, no text required unless desired):
+- [ ] Gratitude: "Think about [person] — what's one thing they've done lately that mattered?" — pause only, no output needed
+- [ ] Reframing: prompt to find a generous read on an irritating trait (pedantic → observant; blunt → honest); two-field interaction
+- [ ] Action: "Did they do something you haven't acknowledged yet?"
+- [ ] Connection thought capture: "I should introduce X to Y" → quick-capture, links to person or task
+
+**Self-Awareness Layer** (foundational — underpins all relational features):
+- [ ] Pre-interaction check: "How are you going into this?" (1–5 scale or 3-emoji, not text)
+- [ ] Post-interaction: "Did what you were carrying affect how that went?"
+- [ ] Pattern noticing over time: if user rates flat before certain event types, surface it gently
+- [ ] Emotional state data: private, never surfaced socially, framed as information not judgment
+
+**Situational Awareness** (debrief extension):
+- [ ] "Did the conversation feel easy or effortful for them?"
+- [ ] "Did you give them an out, or hold them there?"
+- [ ] "What was going on for you going in?"
+- [ ] Pre-event nudge: "Is this a good moment to approach [person]?" (surfaced before a scheduled event)
+
+**Relational Skills — Short Conversation Model** (implicit, through prompts):
+- [ ] Scaffold the model through questions: greeting → hook → question → graceful exit
+- [ ] "Did you find a natural way to wrap up?" — builds awareness over time
+- [ ] "Did you ask as many questions as you answered?" — framed as curiosity, not scorekeeping
+
+**Repair Skills**:
+- [ ] "Did anything need repair after that?" → "Have you done your part?" → "Is the ball in their court?"
+- [ ] "Olive branch extended" state on a relationship record
+- [ ] "I've done what I can — releasing this" closure action
+- [ ] Framed as fair accounting, not "be the bigger person"; user is responsible for their part only
+
+---
+
 ## Next up
 
 M0–M2, most of M3, M5 (first three stories), M6, and M4.5 are complete. Likely candidates: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), or M2.5 trivia expansion.

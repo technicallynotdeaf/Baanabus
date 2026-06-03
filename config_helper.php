@@ -658,6 +658,99 @@ function vaultUpdatePerson(int $personId, array $fields): void {
     savePeople($data);
 }
 
+// ---------- Food log vault ----------
+
+function foodLogPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/food_log.enc";
+}
+
+function getFoodLog(): array {
+    $path = foodLogPath();
+    if (!is_file($path)) return ['next_id' => 1, 'entries' => []];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Food log: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Food log decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'entries' => []];
+}
+
+function saveFoodLog(array $data): void {
+    $path = foodLogPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+// Computes nutrient totals from vault entries + SQLite reference data.
+// $log is the full getFoodLog() result; $from/$to are YYYY-MM-DD strings (inclusive).
+function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): array {
+    $keys   = ['fibre', 'fibre_soluble', 'fibre_insoluble', 'potassium', 'vitamin_k',
+               'vitamin_c', 'folate', 'calcium', 'iron', 'magnesium', 'vitamin_a', 'vitamin_d'];
+    $totals = array_fill_keys($keys, 0.0);
+
+    $allEntries = [];
+    $cur = $from;
+    while ($cur <= $to) {
+        foreach ($log['entries'][$cur] ?? [] as $e) {
+            if (!($e['is_writeoff'] ?? false)) $allEntries[] = $e;
+        }
+        $cur = date('Y-m-d', strtotime($cur . ' +1 day'));
+    }
+    if (!$allEntries) return $totals;
+
+    $servingIds   = array_values(array_unique(array_column($allEntries, 'serving_id')));
+    $placeholders = implode(',', array_fill(0, count($servingIds), '?'));
+    $stmt = $db->prepare("
+        SELECT fs.serving_id, fs.weight_g,
+               f.fibre_g, f.fibre_soluble_g, f.fibre_insoluble_g, f.potassium_mg,
+               f.vitamin_k_mcg, f.vitamin_c_mg, f.folate_mcg, f.calcium_mg,
+               f.iron_mg, f.magnesium_mg, f.vitamin_a_mcg, f.vitamin_d_mcg
+        FROM food_servings fs JOIN foods f ON fs.food_id = f.food_id
+        WHERE fs.serving_id IN ($placeholders)
+    ");
+    $stmt->execute($servingIds);
+    $sd = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $sd[(int)$row['serving_id']] = $row;
+    }
+
+    foreach ($allEntries as $e) {
+        $s = $sd[(int)$e['serving_id']] ?? null;
+        if (!$s) continue;
+        $f = (float)$e['quantity'] * ((float)$s['weight_g'] / 100.0);
+        $totals['fibre']           += $f * (float)($s['fibre_g']           ?? 0);
+        $totals['fibre_soluble']   += $f * (float)($s['fibre_soluble_g']   ?? 0);
+        $totals['fibre_insoluble'] += $f * (float)($s['fibre_insoluble_g'] ?? 0);
+        $totals['potassium']       += $f * (float)($s['potassium_mg']      ?? 0);
+        $totals['vitamin_k']       += $f * (float)($s['vitamin_k_mcg']     ?? 0);
+        $totals['vitamin_c']       += $f * (float)($s['vitamin_c_mg']      ?? 0);
+        $totals['folate']          += $f * (float)($s['folate_mcg']        ?? 0);
+        $totals['calcium']         += $f * (float)($s['calcium_mg']        ?? 0);
+        $totals['iron']            += $f * (float)($s['iron_mg']           ?? 0);
+        $totals['magnesium']       += $f * (float)($s['magnesium_mg']      ?? 0);
+        $totals['vitamin_a']       += $f * (float)($s['vitamin_a_mcg']     ?? 0);
+        $totals['vitamin_d']       += $f * (float)($s['vitamin_d_mcg']     ?? 0);
+    }
+    return $totals;
+}
+
 function vaultAddPeopleNote(int $personId, string $contents): int {
     $data   = getPeopleNotes();
     $noteId = (int)($data['next_id'] ?? 1);

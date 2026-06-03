@@ -121,7 +121,26 @@ if ($method === 'GET') {
         ]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot"], 400);
+    if ($view === 'food_log') {
+        $date = $_GET['date'] ?? date('Y-m-d');
+        try { $log = getFoodLog(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        $entries = [];
+        foreach ($log['entries'][$date] ?? [] as $e) {
+            $entries[] = [
+                'log_id'        => (int)$e['log_id'],
+                'food_id'       => $e['food_id'] ? (int)$e['food_id'] : null,
+                'serving_id'    => $e['serving_id'] ? (int)$e['serving_id'] : null,
+                'quantity'      => (float)$e['quantity'],
+                'is_writeoff'   => (bool)$e['is_writeoff'],
+                'writeoff_label'=> $e['writeoff_label'] ?? null,
+                'logged_at'     => $e['logged_at'] ?? null,
+            ];
+        }
+        $totals = $database ? foodLogNutrientTotals($database, $log, $date, $date) : [];
+        json_response(['ok' => true, 'date' => $date, 'entries' => $entries, 'totals' => $totals]);
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log"], 400);
 }
 
 // ---- POST ----
@@ -350,6 +369,104 @@ if ($method === 'POST') {
             'tasks'    => $imported,
             'skipped_detail' => $skipped,
         ]);
+    }
+
+    if ($action === 'log_food') {
+        $date = $body['date'] ?? date('Y-m-d');
+        try {
+            $log = getFoodLog();
+            $lid = $log['next_id'];
+            if (!empty($body['is_writeoff'])) {
+                $label = trim($body['label'] ?? '');
+                if (!$label) json_response(['error' => 'label required for writeoff'], 400);
+                $log['entries'][$date][] = [
+                    'log_id'        => $lid,
+                    'food_id'       => null,
+                    'serving_id'    => null,
+                    'quantity'      => 1,
+                    'is_writeoff'   => true,
+                    'writeoff_label'=> $label,
+                    'logged_at'     => date('Y-m-d H:i:s'),
+                ];
+            } else {
+                $food_id    = (int)($body['food_id']    ?? 0);
+                $serving_id = (int)($body['serving_id'] ?? 0);
+                $quantity   = max(0.1, (float)($body['quantity'] ?? 1));
+                if (!$food_id || !$serving_id) json_response(['error' => 'food_id and serving_id required'], 400);
+                $log['entries'][$date][] = [
+                    'log_id'        => $lid,
+                    'food_id'       => $food_id,
+                    'serving_id'    => $serving_id,
+                    'quantity'      => $quantity,
+                    'is_writeoff'   => false,
+                    'writeoff_label'=> null,
+                    'logged_at'     => date('Y-m-d H:i:s'),
+                ];
+            }
+            $log['next_id']++;
+            saveFoodLog($log);
+            json_response(['ok' => true, 'log_id' => $lid]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_food_entry') {
+        $log_id = (int)($body['log_id'] ?? 0);
+        if (!$log_id) json_response(['error' => 'log_id required'], 400);
+        try {
+            $log = getFoodLog();
+            foreach ($log['entries'] as $d => &$day) {
+                $log['entries'][$d] = array_values(array_filter($day, fn($e) => (int)$e['log_id'] !== $log_id));
+            }
+            unset($day);
+            saveFoodLog($log);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'migrate_food_log') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $dryRun = !empty($body['dry_run']);
+        try {
+            $rows = $database->query(
+                "SELECT user_id, date, food_id, serving_id, quantity, is_writeoff, writeoff_label, logged_at FROM food_log ORDER BY logged_at"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            json_response(['error' => 'Could not read food_log: ' . $e->getMessage()], 500);
+        }
+
+        $uid = $_SESSION['user_id'] ?? '';
+        $myRows = array_filter($rows, fn($r) => $r['user_id'] === $uid);
+
+        if ($dryRun) {
+            json_response(['ok' => true, 'dry_run' => true, 'count' => count($myRows), 'sample' => array_values(array_slice($myRows, 0, 3))]);
+        }
+
+        $log = getFoodLog();
+        $imported = 0;
+        foreach ($myRows as $r) {
+            $date = substr($r['logged_at'], 0, 10);
+            $lid  = $log['next_id'];
+            $log['entries'][$date][] = [
+                'log_id'        => $lid,
+                'food_id'       => $r['food_id'] ? (int)$r['food_id'] : null,
+                'serving_id'    => $r['serving_id'] ? (int)$r['serving_id'] : null,
+                'quantity'      => (float)$r['quantity'],
+                'is_writeoff'   => (bool)$r['is_writeoff'],
+                'writeoff_label'=> $r['writeoff_label'],
+                'logged_at'     => $r['logged_at'],
+            ];
+            $log['next_id']++;
+            $imported++;
+        }
+        if ($imported > 0) saveFoodLog($log);
+
+        try { $database->exec("DROP TABLE IF EXISTS food_log"); } catch (Throwable $e) {}
+
+        json_response(['ok' => true, 'dry_run' => false, 'imported' => $imported]);
     }
 
     if ($action === 'delete_task') {

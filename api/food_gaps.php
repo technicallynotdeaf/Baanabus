@@ -1,11 +1,11 @@
 <?php
 require_once __DIR__ . '/../init.php';
+require_once __DIR__ . '/../config_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (empty($_SESSION['is_authenticated'])) { json_response(['error' => 'Not authenticated'], 401); }
 if (!$database) { json_response(['error' => 'DB unavailable'], 500); }
 
-$uid  = $_SESSION['user_id'] ?? '';
 $date = $_GET['date'] ?? date('Y-m-d');
 
 // Load RDIs
@@ -28,12 +28,14 @@ $colMap = [
     'vitamin_d' => ['foods_col' => 'vitamin_d_mcg',  'totals_key' => 'vitamin_d'],
 ];
 
+try { $log = getFoodLog(); } catch (Throwable $e) { $log = ['next_id' => 1, 'entries' => []]; }
+
 // Get today's totals (for daily nutrients)
-$todayTotals = _gapTotals($database, $uid, $date, $date);
+$todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
 
 // Get 7-day rolling totals (for weekly nutrients — rolling average vs daily RDI)
-$weekStart   = date('Y-m-d', strtotime($date . ' -6 days'));
-$weekTotals  = _gapTotals($database, $uid, $weekStart, $date);
+$weekStart  = date('Y-m-d', strtotime($date . ' -6 days'));
+$weekTotals = foodLogNutrientTotals($database, $log, $weekStart, $date);
 
 // Calculate progress per nutrient
 $progress = [];
@@ -133,28 +135,3 @@ foreach (array_slice(array_keys($gaps), 0, 4) as $n) {
 }
 
 json_response(['progress' => $progress, 'suggestions' => $suggestions, 'date' => $date]);
-
-function _gapTotals(PDO $db, string $uid, string $from, string $to): array {
-    $stmt = $db->prepare("
-        SELECT
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_g),0)            AS fibre,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_soluble_g),0)   AS fibre_soluble,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.fibre_insoluble_g),0) AS fibre_insoluble,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.potassium_mg),0)  AS potassium,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_k_mcg),0) AS vitamin_k,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_c_mg),0)  AS vitamin_c,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.folate_mcg),0)    AS folate,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.calcium_mg),0)    AS calcium,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.iron_mg),0)       AS iron,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.magnesium_mg),0)  AS magnesium,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_a_mcg),0) AS vitamin_a,
-            COALESCE(SUM(fl.quantity*(fs.weight_g/100.0)*f.vitamin_d_mcg),0) AS vitamin_d
-        FROM food_log fl
-        JOIN food_servings fs ON fl.serving_id = fs.serving_id
-        JOIN foods f ON fl.food_id = f.food_id
-        WHERE fl.user_id = ? AND fl.date >= ? AND fl.date <= ? AND fl.is_writeoff = 0
-    ");
-    $stmt->execute([$uid, $from, $to]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    return array_map('floatval', $row ?: []);
-}

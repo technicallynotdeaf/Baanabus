@@ -257,7 +257,7 @@ function setupOverlayListeners() {
       });
 
   window.addEventListener('click', function(e) {
-      if (e.target === overlay) {
+      if (e.target === overlay && !window._gemMatchActive) {
       overlay.style.display = 'none';
       overlayContent.innerHTML = "";
       }
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // close buttons/backdrop
 overlay.addEventListener('click', e => {
-  if (e.target.matches('#overlay') || e.target.matches('.overlay-close')) hideOverlay();
+  if ((e.target.matches('#overlay') || e.target.matches('.overlay-close')) && !window._gemMatchActive) hideOverlay();
 });
 
 // Handle the create-config form submit inside the overlay (AJAX)

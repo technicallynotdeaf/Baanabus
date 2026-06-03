@@ -1124,9 +1124,15 @@ window.initLetsGo = function() {
           <span id="gm-stats" style="font-size:0.9em;color:#666;"></span>
         </div>
         <canvas id="gm-canvas" style="display:block;width:100%;border-radius:8px;touch-action:none;"></canvas>
-        <div id="gm-msg" style="text-align:center;min-height:1.5em;padding-top:8px;"></div>
-        <div id="gm-btns" style="display:flex;gap:8px;justify-content:center;padding-top:4px;"></div>`;
+        <div id="gm-msg" style="text-align:center;min-height:1.5em;padding-top:8px;font-weight:600;"></div>
+        <div id="gm-btns" style="display:flex;gap:8px;justify-content:center;padding-top:4px;"></div>
+        <div style="text-align:center;padding-top:6px;">
+          <button id="gm-giveup" onclick="window._gmGiveUp()"
+            style="font-size:0.78em;background:transparent;color:#bbb;border:none;cursor:pointer;padding:4px 8px;">
+            Give up</button>
+        </div>`;
     overlayEl.style.display = 'block';
+    window._gemMatchActive = true;
 
     const canvas = document.getElementById('gm-canvas');
     const avail  = Math.min(overlayBody.clientWidth - 8, 440);
@@ -1144,7 +1150,11 @@ window.initLetsGo = function() {
     const gemType  = v => (v == null || v < 0) ? 0  : v >> 4;
     const makeGem  = (color, type) => (type << 4) | color;
 
-    let grid = [], score = 0, moves = START_MOVES, sel = null;
+    const TARGET   = 300;
+    const SAVE_KEY = 'baan_gm_save';
+    const PB_KEY   = 'baan_gm_pb';
+
+    let grid = [], score = 0, moves = START_MOVES, sel = null, cascadeDepth = 0;
     let state = 'IDLE', rafId = null;
     let animT = 0, animDur = 0, swapA = null, matchSet = new Set(), fallData = [];
 
@@ -1152,6 +1162,12 @@ window.initLetsGo = function() {
     const rnd  = ()    => Math.floor(Math.random() * N_COLORS); // always normal (type 0)
     const eIO  = t     => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
     const eOut = t     => 1 - Math.pow(1-t, 3);
+
+    function saveState() {
+      if (state !== 'IDLE') return;
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({grid:grid.map(r=>[...r]),score,moves,savedAt:Date.now()})); } catch(e) {}
+    }
+    function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
 
     function initGrid() {
       grid = [];
@@ -1207,7 +1223,7 @@ window.initLetsGo = function() {
           if (v.c>=h.c1 && v.c<=h.c2 && h.r>=v.r1 && h.r<=v.r2) {
             for (let c=h.c1;c<=h.c2;c++) toRemove.add(`${h.r},${c}`);
             for (let r=v.r1;r<=v.r2;r++) toRemove.add(`${r},${v.c}`);
-            toRemove.delete(`${h.r},${v.c}`); // bomb cell stays
+            // intersection cell stays in toRemove so computeMatchSet() converts it to a bomb
             toCreate.push({r:h.r, c:v.c, type:4});
             usedH.add(hi); usedV.add(vi);
           }
@@ -1343,7 +1359,7 @@ window.initLetsGo = function() {
 
     function updateUI() {
       const s=document.getElementById('gm-stats');
-      if (s) s.innerHTML=`Score: <b>${score}</b>&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
+      if (s) s.innerHTML=`Score: <b>${score}</b>&nbsp;/&nbsp;${TARGET}&nbsp;|&nbsp;Moves: <b>${moves}</b>`;
     }
 
     function rrect(x,y,w,h,r) {
@@ -1447,11 +1463,11 @@ window.initLetsGo = function() {
           if (state==='SWAP') {
             [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]];
             const ms=computeMatchSet();
-            if (ms) { matchSet=ms; score+=ms.size*10; updateUI(); animT=0; animDur=350; state='MATCH'; }
+            if (ms) { cascadeDepth=0; matchSet=ms; score+=ms.size*10; updateUI(); animT=0; animDur=350; state='MATCH'; }
             else { [grid[r1][c1],grid[r2][c2]]=[grid[r2][c2],grid[r1][c1]]; animT=0; animDur=160; state='BACK'; }
           } else {
             state='IDLE';
-            if (moves<=0) endGame(); else checkNoMoves();
+            if (moves<=0) endGame(); else { checkNoMoves(); saveState(); }
           }
         }
 
@@ -1477,40 +1493,71 @@ window.initLetsGo = function() {
         if (animT>=animDur) {
           applyFall();
           const cascade=computeMatchSet();
-          if (cascade) { matchSet=cascade; score+=cascade.size*15; updateUI(); animT=0; animDur=350; state='MATCH'; }
+          if (cascade) {
+            cascadeDepth++;
+            const mult = 1 + cascadeDepth * 0.5;
+            matchSet=cascade; score+=Math.round(cascade.size*10*mult); updateUI();
+            const msgEl=document.getElementById('gm-msg');
+            if (msgEl) {
+              const lbl=['Cascade!','Double!','Triple!','Mega!'];
+              msgEl.textContent=lbl[Math.min(cascadeDepth-1,lbl.length-1)];
+              setTimeout(()=>{ if(msgEl) msgEl.textContent=''; },700);
+            }
+            animT=0; animDur=350; state='MATCH';
+          }
           else if (moves<=0) endGame();
-          else { state='IDLE'; checkNoMoves(); }
+          else { state='IDLE'; checkNoMoves(); saveState(); }
         }
       }
 
       rafId=requestAnimationFrame(loop);
     }
 
-    function endGame() {
+    function endGame(gaveUp) {
       state='GAMEOVER';
+      clearSave();
+      window._gemMatchActive = false;
+      const giveupBtn = document.getElementById('gm-giveup');
+      if (giveupBtn) giveupBtn.style.display = 'none';
       ctx.clearRect(0,0,canvas.width,canvas.height);
       for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
         drawSlot(r,c); const[x,y]=gxy(r,c); drawGem(x,y,grid[r][c],0.35,1);
       }
       const msg=document.getElementById('gm-msg'),btns=document.getElementById('gm-btns');
-      if (score>=200) { earnPip(); if(msg) msg.textContent=`Score: ${score} — nice work!`; }
-      else            { if(msg) msg.textContent=`Score: ${score} — better luck next time`; }
+      const pb    = parseInt(localStorage.getItem(PB_KEY)||'0');
+      const newPb = score > pb && !gaveUp;
+      if (newPb) localStorage.setItem(PB_KEY, score);
+      const pbText = newPb ? ' — new best!' : (pb > 0 ? ` — best: ${pb}` : '');
+      const won = score >= TARGET && !gaveUp;
+      if (won) {
+        earnPip();
+        if (msg) msg.textContent = `Level complete! ${score}${pbText}`;
+      } else if (gaveUp) {
+        if (msg) msg.textContent = `${score} / ${TARGET}${pbText}`;
+      } else if (score >= TARGET * 0.7) {
+        if (msg) msg.textContent = `${score} / ${TARGET} — so close!${pbText}`;
+      } else {
+        if (msg) msg.textContent = `${score} / ${TARGET}${pbText}`;
+      }
       if (btns) btns.innerHTML=`
           <button class="action-button" onclick="window._gmRestart()">Play again</button>
           <button class="action-button btn-secondary"
-            onclick="document.getElementById('overlay').style.display='none';document.getElementById('overlay-body').innerHTML='';loadSpeechBubble('lets-go.php');">
+            onclick="window._gemMatchActive=false;document.getElementById('overlay').style.display='none';document.getElementById('overlay-body').innerHTML='';loadSpeechBubble('lets-go.php');">
             Next task</button>`;
       window._gmRestart=function() {
-        initGrid(); score=0; moves=START_MOVES; sel=null; updateUI();
-        document.getElementById('gm-msg').textContent='';
-        document.getElementById('gm-btns').innerHTML='';
-        state='IDLE'; rafId=requestAnimationFrame(loop);
+        clearSave(); initGrid(); score=0; moves=START_MOVES; sel=null; cascadeDepth=0; updateUI();
+        const msgEl=document.getElementById('gm-msg'); if(msgEl) msgEl.textContent='';
+        const btnsEl=document.getElementById('gm-btns'); if(btnsEl) btnsEl.innerHTML='';
+        const guBtn=document.getElementById('gm-giveup'); if(guBtn) guBtn.style.display='';
+        state='IDLE'; window._gemMatchActive=true; rafId=requestAnimationFrame(loop);
       };
     }
 
+    window._gmGiveUp = function() { endGame(true); };
+
     function activateSpecial(r,c) {
       if (moves<=0||state!=='IDLE') return;
-      moves--; updateUI(); sel=null;
+      cascadeDepth=0; moves--; updateUI(); sel=null;
       const ms=new Set([`${r},${c}`]);
       expandSpecials(ms);
       matchSet=ms; score+=ms.size*10; updateUI();
@@ -1550,7 +1597,19 @@ window.initLetsGo = function() {
       swapA={r1,c1,r2,c2}; animT=0; animDur=180; state='SWAP';
     }
 
-    initGrid(); updateUI();
+    // Auto-restore saved game (max 24h old)
+    let restored = false;
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.grid && typeof s.score==='number' && s.moves>0 && (Date.now()-s.savedAt)<86400000) {
+          grid=s.grid; score=s.score; moves=s.moves; restored=true;
+        } else { clearSave(); }
+      }
+    } catch(e) { clearSave(); }
+    if (!restored) initGrid();
+    updateUI();
     rafId=requestAnimationFrame(loop);
   }
 

@@ -41,8 +41,9 @@ window.initListTasks = function() {
     if (!group) return;
     const row = document.createElement('div');
     row.className = 'task-row';
-    row.dataset.id    = t.id;
-    row.dataset.title = t.title.toLowerCase();
+    row.dataset.id      = t.id;
+    row.dataset.title   = t.title.toLowerCase();
+    row.dataset.context = t.context || '';
     row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;';
     row.innerHTML = `
       <div style="flex:1;min-width:0;"><span style="line-height:1.4;word-break:break-word;">${esc(t.title)}</span></div>
@@ -55,14 +56,33 @@ window.initListTasks = function() {
     if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
   }
 
-  document.getElementById('task-search').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
+  let activeCtx = '';
+
+  function applyFilters() {
+    const q = (document.getElementById('task-search').value || '').toLowerCase();
     document.querySelectorAll('.task-row').forEach(row => {
-      row.style.display = (!q || row.dataset.title.includes(q)) ? '' : 'none';
+      const matchSearch = !q || row.dataset.title.includes(q);
+      const matchCtx = !activeCtx || row.dataset.context === activeCtx;
+      row.style.display = (matchSearch && matchCtx) ? '' : 'none';
     });
     document.querySelectorAll('.task-group').forEach(group => {
       const visible = group.querySelectorAll('.task-row:not([style*="display: none"])').length;
       group.style.display = visible ? '' : 'none';
+    });
+  }
+
+  document.getElementById('task-search').addEventListener('input', applyFilters);
+
+  document.querySelectorAll('.context-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      activeCtx = this.dataset.ctx;
+      document.querySelectorAll('.context-chip').forEach(c => {
+        const on = c === this;
+        c.style.background = on ? '#8b7355' : 'transparent';
+        c.style.color = on ? '#fff' : '#8b7355';
+        c.classList.toggle('active', on);
+      });
+      applyFilters();
     });
   });
 

@@ -15,9 +15,10 @@ $title = trim($body['title'] ?? '');
 if ($title === '') json_response(['error' => 'Title required'], 400);
 if (mb_strlen($title) > 300) json_response(['error' => 'Title too long'], 400);
 
-$urgency  = in_array($body['urgency']   ?? '', ['low','medium','high'], true) ? $body['urgency']   : 'medium';
-$taskType = in_array($body['task_type'] ?? '', ['next_action','someday','inbox'], true) ? $body['task_type'] : 'next_action';
-$context  = trim($body['context'] ?? '') ?: null;
+$urgency   = in_array($body['urgency']   ?? '', ['low','medium','high'], true) ? $body['urgency']   : 'medium';
+$taskType  = in_array($body['task_type'] ?? '', ['next_action','someday','inbox'], true) ? $body['task_type'] : 'next_action';
+$context   = trim($body['context'] ?? '') ?: null;
+$personId  = isset($body['person_id']) && is_int($body['person_id']) ? $body['person_id'] : null;
 
 try {
     $data   = getTasks();
@@ -33,7 +34,7 @@ try {
         'created_at'   => date('c'),
         'snoozed_until'=> null,
         'parent_id'    => null,
-        'person_id'    => null,
+        'person_id'    => $personId,
         'deadline'     => null,
         'tags'         => null,
         'description'  => null,

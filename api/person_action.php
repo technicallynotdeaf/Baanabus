@@ -22,8 +22,7 @@ if (!in_array($action, $allowed, true)) {
 }
 
 // Spread reviews evenly across the interval window for people sharing the same interval.
-// Finds the day in [tomorrow, today+interval] that has the fewest reviews already booked
-// for other active people with the same review_interval.
+// Earliest reminder = 80% of interval (e.g. day 72 of a 90-day interval); latest = interval.
 function scheduleNextReview(int $excludeId, int $interval): string {
     $people = getPeople()['people'];
     $counts = [];
@@ -34,13 +33,15 @@ function scheduleNextReview(int $excludeId, int $interval): string {
         $nr = $p['next_review'] ?? null;
         if ($nr) $counts[$nr] = ($counts[$nr] ?? 0) + 1;
     }
+    $minDay = max(1, (int)floor($interval * 0.8));
+    $maxDay = (int)ceil($interval * 1.5);
     $best = null; $bestCount = PHP_INT_MAX;
-    for ($i = 1; $i <= $interval; $i++) {
+    for ($i = $minDay; $i <= $maxDay; $i++) {
         $d = date('Y-m-d', strtotime("+{$i} days"));
         $c = $counts[$d] ?? 0;
         if ($c < $bestCount) { $bestCount = $c; $best = $d; }
     }
-    return $best ?? date('Y-m-d', strtotime("+{$interval} days"));
+    return $best ?? date('Y-m-d', strtotime("+{$maxDay} days"));
 }
 
 try {

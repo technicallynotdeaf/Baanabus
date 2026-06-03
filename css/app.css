@@ -486,8 +486,27 @@ body.scene-view #scene-total-pips { display: block; }
 /* Only show on desktop scene view */
 @media (min-width: 641px) {
     body.scene-view #scene-clock  { display: block; }
-    body.scene-view #scene-energy { display: block; }
 }
+
+/* Navbar context dropdowns — desktop only */
+.nav-checkin { display: none; align-items: center; padding: 0 4px; }
+@media (min-width: 601px) {
+    .nav-checkin { display: flex; }
+}
+.nav-checkin-select {
+    background: transparent;
+    border: none;
+    color: hsl(210, 40%, 30%);
+    font-size: 0.82em;
+    padding: 4px 2px;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    max-width: 7em;
+}
+.nav-checkin-select:hover  { color: hsl(210, 100%, 45%); }
+.nav-checkin-select:focus  { color: hsl(210, 100%, 45%); }
+.night-mode .nav-checkin-select { color: #b8b8d8; }
 #scene-energy {
     display: none;
     position: fixed;

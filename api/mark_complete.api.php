@@ -78,7 +78,7 @@ try {
     $createdAt  = $result['task_created_at'] ?? null;
     $wasStuck   = !empty($result['task_stuck']);
     $taskType   = $result['task_type']       ?? null;
-    $isUrgent   = in_array($urgency, ['urgent', 'critical'], true);
+    $isUrgent   = $urgency === 'high';
     $isOld      = $createdAt && $taskType !== 'inbox'
                   && strtotime($createdAt) < strtotime('-21 days');
 

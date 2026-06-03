@@ -157,13 +157,20 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
-// After check-in: force a triage question on activities 2–4 to drain the inbox early each session
-if (($hasInbox || $hasFillTasks) && $actCount >= 2 && $actCount <= 4) {
+// While inbox has items: force triage on activities 2–6, then 2-in-3 chance thereafter
+// (fill-tasks only: force 2–4, then normal pool)
+if ($hasInbox && $actCount >= 2 && $actCount <= 6) {
     $resp = serve_triage_question($inboxTasks, $fillTasks);
-    if ($resp) {
-        $_SESSION['last_activity'] = 'triage';
-        json_response($resp);
-    }
+    if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
+}
+if ($hasFillTasks && !$hasInbox && $actCount >= 2 && $actCount <= 4) {
+    $resp = serve_triage_question($inboxTasks, $fillTasks);
+    if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
+}
+// Beyond the forced window: 2-in-3 chance of triage when inbox is non-empty (never back-to-back)
+if ($hasInbox && $actCount > 6 && ($_SESSION['last_activity'] ?? '') !== 'triage' && rand(1, 3) !== 1) {
+    $resp = serve_triage_question($inboxTasks, $fillTasks);
+    if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
 }
 
 // Bedtime mode — after 9pm Melbourne time, wind down instead of tasking
@@ -243,6 +250,12 @@ try {
     }
 } catch (Throwable $e) {}
 
+// 1-in-3 chance to surface a missing check-in question mid-session; never back-to-back
+if ($missing && $checkinOn && ($_SESSION['last_activity'] ?? '') !== 'missing_info' && rand(1, 3) === 1) {
+    $_SESSION['last_activity'] = 'missing_info';
+    json_response($missing);
+}
+
 $pool = array_merge(
     array_fill(0, $doableSlots,                        'task'),
     array_fill(0, $triageSlots,                        'triage'),
@@ -256,8 +269,7 @@ $pool = array_merge(
     array_fill(0, 1,                                   'joke'),
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
-    array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
-    ($missing && $checkinOn) ? ['missing_info'] : []
+    array_fill(0, $hasPersonReview ? 1 : 0,            'person_review')
 );
 
 if (empty($pool)) {
@@ -568,7 +580,7 @@ function pick_fun_task(): array {
         "Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.",
         "Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.",
         "Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment.",
-        "Think of something kind someone said to you recently. Write it down — even just a few words.",
+        "Think of something kind someone said to you recently. Hold it in mind for 30 seconds.",
         "Think of one person you're genuinely glad exists. Just hold that thought for a moment.",
         "Think about someone who's been quietly good to you lately. You don't need to do anything with it — just notice.",
         "Write down one thing you genuinely appreciate about someone in your life. Just for you.",

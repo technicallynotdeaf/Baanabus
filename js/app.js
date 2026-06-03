@@ -217,6 +217,21 @@ function setupOverlayListeners() {
         });
   }
 
+  // Navbar context dropdowns — energy and location
+  ['nav-energy', 'nav-daytype'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', function() {
+      const field = id === 'nav-energy' ? 'energy_level' : 'day_type';
+      const val   = parseInt(this.value);
+      fetch('api/checkin.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({field, value: val}),
+      });
+    });
+  });
+
   const resetBtn = document.getElementById('reset-btn');
   if (resetBtn) {
     if (resetBtn.dataset.tired === '1') resetBtn.classList.add('active');

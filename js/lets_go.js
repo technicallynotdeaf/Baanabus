@@ -99,14 +99,64 @@ window.initLetsGo = function() {
   }
 
   function renderFunTask(d) {
+    const is30s = d.text && d.text.includes('30 seconds');
+    const uid   = Math.random().toString(36).slice(2);
+
+    const hourglass = is30s ? `
+      <div style="display:flex;justify-content:center;margin:0.5rem 0 1rem;">
+        <svg viewBox="0 0 60 102" width="52" height="88" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="hgt${uid}"><polygon points="2,5 58,5 31,48 29,48"/></clipPath>
+            <clipPath id="hgb${uid}"><polygon points="29,54 31,54 58,97 2,97"/></clipPath>
+          </defs>
+          <!-- frame bars -->
+          <rect x="1" y="1" width="58" height="5" rx="2.5" fill="#8b7355"/>
+          <rect x="1" y="96" width="58" height="5" rx="2.5" fill="#8b7355"/>
+          <!-- glass halves -->
+          <polygon points="2,5 58,5 31,48 29,48" fill="rgba(200,180,150,0.15)" stroke="#8b7355" stroke-width="1.5" stroke-linejoin="round"/>
+          <polygon points="29,54 31,54 58,97 2,97" fill="rgba(200,180,150,0.15)" stroke="#8b7355" stroke-width="1.5" stroke-linejoin="round"/>
+          <!-- top sand (shrinks to nothing) -->
+          <rect id="hgts${uid}" x="0" y="5" width="60" height="43" fill="#c8813a" clip-path="url(#hgt${uid})">
+            <animate attributeName="height" from="43" to="0" dur="30s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="y" from="5" to="48" dur="30s" fill="freeze" calcMode="linear"/>
+          </rect>
+          <!-- bottom sand (grows from nothing) -->
+          <rect x="0" y="97" width="60" height="0" fill="#c8813a" clip-path="url(#hgb${uid})">
+            <animate attributeName="height" from="0" to="43" dur="30s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="y" from="97" to="54" dur="30s" fill="freeze" calcMode="linear"/>
+          </rect>
+          <!-- waist stream -->
+          <line id="hgst${uid}" x1="30" y1="48" x2="30" y2="54" stroke="#c8813a" stroke-width="1.5" opacity="0.5"/>
+          <!-- falling grain -->
+          <circle id="hggr${uid}" cx="30" cy="48" r="1.8" fill="#c8813a">
+            <animate attributeName="cy" from="48" to="54" dur="0.45s" repeatCount="indefinite" calcMode="linear"/>
+            <animate attributeName="opacity" from="0.9" to="0.1" dur="0.45s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>` : '';
+
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Take a moment</p>
-      <p style="line-height:1.5;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <p style="line-height:1.5;margin-bottom:0.6rem;">${esc(d.text)}</p>
+      ${hourglass}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" onclick="window._funDone()">Done</button>
+        <button class="action-button" id="fun-done-btn" ${is30s ? 'style="visibility:hidden;"' : ''} onclick="window._funDone()">Done</button>
         <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
           onclick="loadSpeechBubble('lets-go.php')">Skip</button>
       </div>`;
+
+    if (is30s) {
+      setTimeout(() => {
+        const btn = document.getElementById('fun-done-btn');
+        if (btn) btn.style.visibility = '';
+        // stop the falling grain once sand has run out
+        ['hgst','hggr'].forEach(p => {
+          const el = document.getElementById(p + uid);
+          if (el) el.style.display = 'none';
+        });
+      }, 30000);
+    }
+
     window._funDone = function() {
       earnPip();
       if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
@@ -341,9 +391,11 @@ window.initLetsGo = function() {
   function renderStudy(d) {
     const hasProgress = d.total && d.once_correct !== undefined;
     const progressBar = hasProgress ? (() => {
-      const pct = Math.round(d.once_correct / d.total * 100);
-      return `<div style="height:4px;background:#e0d8cc;border-radius:2px;margin-bottom:0.55rem;">
+      const pct     = Math.round(d.once_correct / d.total * 100);
+      const mastPct = Math.round((d.mastered || 0) / d.total * 100);
+      return `<div style="position:relative;height:4px;background:#e0d8cc;border-radius:2px;margin-bottom:0.55rem;">
         <div style="height:4px;background:#7a9e7e;border-radius:2px;width:${pct}%;transition:width 0.4s;"></div>
+        <div style="position:absolute;top:0;left:0;height:4px;background:#2d6a4f;border-radius:2px;width:${mastPct}%;transition:width 0.4s;"></div>
       </div>`;
     })() : '';
     const progressText = hasProgress
@@ -978,6 +1030,14 @@ window.initLetsGo = function() {
              padding:3px 10px;border-radius:6px;cursor:pointer;margin-top:0.4rem;">
       Archive this friendship</button>`;
 
+    const taskRow = `
+      <div style="display:flex;gap:6px;margin-bottom:0.4rem;">
+        <input id="pr-task-title" type="text" placeholder="Task for ${esc(d.name)}…" style="flex:1;font-size:0.88em;">
+        <button class="action-button" style="flex-shrink:0;padding:5px 10px;font-size:0.82em;"
+          onclick="window._prAddTask()">Add</button>
+      </div>
+      <p id="pr-task-status" class="muted" style="font-size:0.82em;min-height:1em;margin-bottom:0.3rem;"></p>`;
+
     if (hasQ) {
       c.innerHTML = `
         <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">People</p>
@@ -991,6 +1051,7 @@ window.initLetsGo = function() {
         </div>
         <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
           style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
           <button class="action-button" onclick="window._prDone()">Still true</button>
@@ -1008,6 +1069,7 @@ window.initLetsGo = function() {
         <input id="pr-char3" type="text" placeholder="Quality 3" style="margin-bottom:0.5rem;">
         <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
           style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
           <button class="action-button" onclick="window._prDone()">Save</button>
@@ -1019,9 +1081,38 @@ window.initLetsGo = function() {
       document.getElementById('pr-char1').focus();
     }
 
+    document.getElementById('pr-task-title').addEventListener('keydown', e => {
+      if (e.key === 'Enter') window._prAddTask();
+    });
+
     window._prEdit = function() {
       const form = document.getElementById('pr-edit-form');
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window._prAddTask = function() {
+      const input  = document.getElementById('pr-task-title');
+      const status = document.getElementById('pr-task-status');
+      const title  = input.value.trim();
+      if (!title) return;
+      input.disabled = true;
+      status.textContent = 'Adding…';
+      fetch('api/add_task.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, person_id: d.person_id, task_type: 'next_action', urgency: 'medium' }),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          input.value = '';
+          status.textContent = 'Added.';
+          setTimeout(() => { status.textContent = ''; }, 2000);
+        } else {
+          status.textContent = res.error || 'Could not add task.';
+        }
+        input.disabled = false;
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        input.disabled = false;
+      });
     };
 
     window._prDone = function() {
@@ -1263,28 +1354,32 @@ window.initLetsGo = function() {
       return {toRemove, toCreate};
     }
 
-    // Expand the removal set by activating any specials it contains (chain-reactive)
+    // Expand the removal set by activating any specials it contains (chain-reactive).
+    // BFS queue: every newly-added gem is immediately queued so its own special
+    // effect is also expanded — bomb→star→star's colour all cascade in one pass.
     function expandSpecials(ms) {
-      let changed=true;
-      while (changed) {
-        changed=false;
-        for (const key of [...ms]) {
-          const [r,c]=key.split(',').map(Number);
-          const type=gemType(grid[r][c]);
-          if (type===1) { // hline: blast row
-            for (let cc=0;cc<COLS;cc++) if (!ms.has(`${r},${cc}`)) { ms.add(`${r},${cc}`); changed=true; }
-          } else if (type===2) { // vline: blast column
-            for (let rr=0;rr<ROWS;rr++) if (!ms.has(`${rr},${c}`)) { ms.add(`${rr},${c}`); changed=true; }
-          } else if (type===3) { // star: blast all gems of same colour
-            const col=gemColor(grid[r][c]);
-            for (let rr=0;rr<ROWS;rr++) for (let cc=0;cc<COLS;cc++)
-              if (gemColor(grid[rr][cc])===col && !ms.has(`${rr},${cc}`)) { ms.add(`${rr},${cc}`); changed=true; }
-          } else if (type===4) { // bomb: blast 3×3 area
-            for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) {
-              if (!dr&&!dc) continue;
-              const rr=r+dr, cc=c+dc;
-              if (rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&!ms.has(`${rr},${cc}`)) { ms.add(`${rr},${cc}`); changed=true; }
-            }
+      const queue = [...ms];
+      const add = (rr, cc) => {
+        const k = `${rr},${cc}`;
+        if (!ms.has(k)) { ms.add(k); queue.push(k); }
+      };
+      while (queue.length > 0) {
+        const key = queue.shift();
+        const [r,c] = key.split(',').map(Number);
+        const type  = gemType(grid[r][c]);
+        if (type===1) { // hline: blast row
+          for (let cc=0;cc<COLS;cc++) add(r,cc);
+        } else if (type===2) { // vline: blast column
+          for (let rr=0;rr<ROWS;rr++) add(rr,c);
+        } else if (type===3) { // star: blast all gems of same colour
+          const col=gemColor(grid[r][c]);
+          for (let rr=0;rr<ROWS;rr++) for (let cc=0;cc<COLS;cc++)
+            if (gemColor(grid[rr][cc])===col) add(rr,cc);
+        } else if (type===4) { // bomb: blast 3×3 area
+          for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) {
+            if (!dr&&!dc) continue;
+            const rr=r+dr, cc=c+dc;
+            if (rr>=0&&rr<ROWS&&cc>=0&&cc<COLS) add(rr,cc);
           }
         }
       }

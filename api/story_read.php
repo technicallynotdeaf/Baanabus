@@ -117,20 +117,22 @@ $firstHistIdx = 0; // oldest history entry index
           Back to bookshelf
         </button>
       </div>
-    <?php elseif ($terminal): ?>
-      <p style="color:#888;font-size:0.9em;font-style:italic;">
-        — To be continued. Fill the pip bar to unlock the next part.
-      </p>
     <?php elseif (!$canChoose):
         $pipsNeeded = $prog['depth'] + 1 - $prog['pages_available'];
         $pipsText   = $pipsNeeded === 1 ? 'one more full pip bar' : $pipsNeeded . ' more full pip bars';
     ?>
-      <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;">
-        <p style="margin:0 0 0.3rem;font-weight:500;font-size:0.95em;">The story is waiting.</p>
-        <p style="margin:0;color:#666;font-size:0.88em;line-height:1.5;">
-          Complete enough tasks to fill the pip bar <?= htmlspecialchars($pipsText) ?> and the next choice will open up.
+      <?php if ($terminal): ?>
+        <p style="color:#888;font-size:0.9em;font-style:italic;margin-bottom:0.75rem;">
+          — To be continued. Fill the pip bar to unlock the next part.
         </p>
-      </div>
+      <?php else: ?>
+        <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;">
+          <p style="margin:0 0 0.3rem;font-weight:500;font-size:0.95em;">The story is waiting.</p>
+          <p style="margin:0;color:#666;font-size:0.88em;line-height:1.5;">
+            Complete enough tasks to fill the pip bar <?= htmlspecialchars($pipsText) ?> and the next choice will open up.
+          </p>
+        </div>
+      <?php endif; ?>
       <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
         onclick="document.getElementById('close-overlay').click()">
         Back to tasks

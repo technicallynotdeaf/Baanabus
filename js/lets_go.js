@@ -43,6 +43,7 @@ window.initLetsGo = function() {
       case 'person_review':  renderPersonReview(d);  break;
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
+      case 'inbox_milestone': renderInboxMilestone(d); break;
       case 'topic_picker':   renderTopicPicker(d);   break;
       case 'reset_msg':      renderResetMsg(d);      break;
       case 'quote':          renderQuote(d);         break;
@@ -61,13 +62,16 @@ window.initLetsGo = function() {
     if (d.subtasks && d.subtasks.length > 0) {
       renderBlockTask(d);
     } else {
+      const pagesHint = d.pages_remaining
+        ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.pages_remaining} more task${d.pages_remaining === 1 ? '' : 's'} to unlock the next story page</p>`
+        : '';
       c.innerHTML = `
         <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
           <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
           <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
-        </div>`;
+        </div>${pagesHint}`;
     }
   }
 
@@ -897,6 +901,12 @@ window.initLetsGo = function() {
       <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">...</button>`;
   }
 
+  function renderInboxMilestone(d) {
+    c.innerHTML = `
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.message)}</p>
+      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Keep going</button>`;
+  }
+
   function renderTriage(d) {
     const question  = d.question || 'actionable';
     const label     = d.source === 'fill' ? 'Quick question' : 'Inbox';
@@ -944,8 +954,9 @@ window.initLetsGo = function() {
 
     if (question === 'actionable') {
       el.append(
-        mkBtn("Yes, it's real", () => save({action:'mark_actionable'})),
-        mkBtn("Wait, I already did that!", () => {
+        mkBtn("Yes — quick win", () => save({action:'quick_win'})),
+        mkBtn("Yes — needs scheduling", () => save({action:'mark_actionable'})),
+        mkBtn("Already done!", () => {
           el.querySelectorAll('button').forEach(b => b.disabled = true);
           setStatus('Marking done…');
           fetch(`api/mark_complete.api.php?task_id=${d.id}`)
@@ -953,9 +964,9 @@ window.initLetsGo = function() {
             .then(res => { if (res.success) updateProgressBar(res.pages, res.pages_target, res.total_pages); })
             .finally(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
         }, 'background:#4caf50;'),
-        mkBtn("Maybe someday", () => save({action:'someday'}),
+        mkBtn("Someday", () => save({action:'someday'}),
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
-        mkBtn("Not relevant — bin it", () => save({action:'delete'}),
+        mkBtn("Delete it", () => save({action:'delete'}),
           'background:transparent;color:#c0392b;border:1.5px solid #c0392b;')
       );
 

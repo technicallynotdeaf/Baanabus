@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context'];
+$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'quick_win'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -44,6 +44,9 @@ try {
     } elseif ($action === 'save_context') {
         $context = isset($body['context']) ? trim((string)$body['context']) : '';
         vaultUpdateTask($taskId, ['context' => $context !== '' ? $context : ' ']);
+
+    } elseif ($action === 'quick_win') {
+        vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action']);
 
     } elseif ($action === 'mark_actionable') {
         vaultUpdateTask($taskId, ['triage_actionable' => true]);

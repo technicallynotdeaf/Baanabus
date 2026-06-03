@@ -157,9 +157,11 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
-// While inbox has items: force triage on activities 2–6, then 2-in-3 chance thereafter
+// While inbox has items: force triage window scales with pile size (larger pile = longer forced run)
 // (fill-tasks only: force 2–4, then normal pool)
-if ($hasInbox && $actCount >= 2 && $actCount <= 6) {
+$triageForceEnd   = $inboxCount > 20 ? 10 : 6;
+$triageOddsExclud = $inboxCount > 20 ? 4  : 3;   // 3/4 vs 2/3 chance of triage after forced window
+if ($hasInbox && $actCount >= 2 && $actCount <= $triageForceEnd) {
     $resp = serve_triage_question($inboxTasks, $fillTasks);
     if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
 }
@@ -167,10 +169,28 @@ if ($hasFillTasks && !$hasInbox && $actCount >= 2 && $actCount <= 4) {
     $resp = serve_triage_question($inboxTasks, $fillTasks);
     if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
 }
-// Beyond the forced window: 2-in-3 chance of triage when inbox is non-empty (never back-to-back)
-if ($hasInbox && $actCount > 6 && ($_SESSION['last_activity'] ?? '') !== 'triage' && rand(1, 3) !== 1) {
+// Beyond the forced window: probabilistic triage (never back-to-back)
+if ($hasInbox && $actCount > $triageForceEnd && ($_SESSION['last_activity'] ?? '') !== 'triage' && rand(1, $triageOddsExclud) !== 1) {
     $resp = serve_triage_question($inboxTasks, $fillTasks);
     if ($resp) { $_SESSION['last_activity'] = 'triage'; json_response($resp); }
+}
+
+// Inbox milestone — celebrate every 5 items cleared in this session
+if (!isset($_SESSION['session_inbox_start'])) {
+    $_SESSION['session_inbox_start']    = $inboxCount;
+    $_SESSION['session_inbox_notified'] = 0;
+}
+$sessionCleared = (int)$_SESSION['session_inbox_start'] - $inboxCount;
+$nextNotify     = (int)($_SESSION['session_inbox_notified'] ?? 0) + 5;
+if ($sessionCleared >= $nextNotify && $sessionCleared > 0) {
+    $_SESSION['session_inbox_notified'] = $nextNotify;
+    if ($inboxCount === 0)     $msg = "Inbox clear. That's everything.";
+    elseif ($inboxCount <= 5)  $msg = "Almost clear — just {$inboxCount} left in the inbox.";
+    elseif ($inboxCount <= 10) $msg = "Under 10 inbox items now. That pile is shrinking.";
+    elseif ($inboxCount <= 20) $msg = "Under 20 in the inbox. You're getting through it.";
+    elseif ($inboxCount <= 30) $msg = "Under 30 in the inbox. Keep going.";
+    else                       $msg = "You've cleared {$sessionCleared} items from the inbox this session.";
+    json_response(['type' => 'inbox_milestone', 'message' => $msg, 'inbox_count' => $inboxCount]);
 }
 
 // Bedtime mode — after 9pm Melbourne time, wind down instead of tasking
@@ -383,8 +403,9 @@ foreach ($tasks as $task) {
 $t = $weightedPool[array_rand($weightedPool)];
 $now = time();
 try {
-    $allTasks = getTasks()['tasks'];
-    $subtasks = array_values(array_filter($allTasks, fn($s) =>
+    $rawTaskData = getTasks();
+    $allTasks    = $rawTaskData['tasks'];
+    $subtasks    = array_values(array_filter($allTasks, fn($s) =>
         !empty($s['parent_id']) &&
         (int)$s['parent_id'] === (int)$t['id'] &&
         $s['status'] === 'active' &&
@@ -392,10 +413,17 @@ try {
     ));
     usort($subtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
     $subtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $subtasks);
+    $curPages      = (int)($rawTaskData['pages'] ?? 0);
+    $pagesLeft     = todayPagesTarget() - $curPages;
 } catch (Throwable $e) {
-    $subtasks = [];
+    $subtasks  = [];
+    $pagesLeft = null;
 }
-json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks]);
+$taskResp = ['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks];
+if ($pagesLeft !== null && $pagesLeft > 0 && $pagesLeft <= 3) {
+    $taskResp['pages_remaining'] = $pagesLeft;
+}
+json_response($taskResp);
 
 // ---------- triage helpers ----------
 

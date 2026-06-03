@@ -123,22 +123,62 @@ if ($method === 'GET') {
     }
 
     if ($view === 'food_log') {
-        $date = $_GET['date'] ?? date('Y-m-d');
-        try { $log = getFoodLog(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
-        $entries = [];
-        foreach ($log['entries'][$date] ?? [] as $e) {
-            $entries[] = [
-                'log_id'        => (int)$e['log_id'],
-                'food_id'       => $e['food_id'] ? (int)$e['food_id'] : null,
-                'serving_id'    => $e['serving_id'] ? (int)$e['serving_id'] : null,
-                'quantity'      => (float)$e['quantity'],
-                'is_writeoff'   => (bool)$e['is_writeoff'],
-                'writeoff_label'=> $e['writeoff_label'] ?? null,
-                'logged_at'     => $e['logged_at'] ?? null,
-            ];
+        $date  = $_GET['date']  ?? date('Y-m-d');
+        $from  = $_GET['from']  ?? $date;
+        $to    = $_GET['to']    ?? $date;
+        // Clamp range to 90 days
+        if ((strtotime($to) - strtotime($from)) > 90 * 86400) {
+            $from = date('Y-m-d', strtotime($to . ' -90 days'));
         }
-        $totals = $database ? foodLogNutrientTotals($database, $log, $date, $date) : [];
-        json_response(['ok' => true, 'date' => $date, 'entries' => $entries, 'totals' => $totals]);
+        try { $log = getFoodLog(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+
+        if ($from === $to) {
+            // Single-day response (original behaviour)
+            $entries = [];
+            foreach ($log['entries'][$date] ?? [] as $e) {
+                $entries[] = [
+                    'log_id'        => (int)$e['log_id'],
+                    'food_id'       => $e['food_id'] ? (int)$e['food_id'] : null,
+                    'serving_id'    => $e['serving_id'] ? (int)$e['serving_id'] : null,
+                    'quantity'      => (float)$e['quantity'],
+                    'is_writeoff'   => (bool)$e['is_writeoff'],
+                    'writeoff_label'=> $e['writeoff_label'] ?? null,
+                    'logged_at'     => $e['logged_at'] ?? null,
+                ];
+            }
+            $totals = $database ? foodLogNutrientTotals($database, $log, $date, $date) : [];
+            json_response(['ok' => true, 'date' => $date, 'entries' => $entries, 'totals' => $totals]);
+        } else {
+            // Range response: per-day totals + averages across days that have entries
+            if (!$database) json_response(['error' => 'Database unavailable'], 503);
+            $days = [];
+            $cur  = $from;
+            while ($cur <= $to) {
+                if (!empty($log['entries'][$cur])) {
+                    $days[$cur] = foodLogNutrientTotals($database, $log, $cur, $cur);
+                }
+                $cur = date('Y-m-d', strtotime($cur . ' +1 day'));
+            }
+            $dayCount = count($days);
+            $averages = [];
+            if ($dayCount > 0) {
+                foreach ($days as $d) {
+                    foreach ($d as $k => $v) {
+                        $averages[$k] = ($averages[$k] ?? 0) + (float)$v;
+                    }
+                }
+                foreach ($averages as $k => &$v) { $v = round($v / $dayCount, 2); }
+                unset($v);
+            }
+            json_response([
+                'ok'        => true,
+                'from'      => $from,
+                'to'        => $to,
+                'days_with_data' => $dayCount,
+                'per_day'   => $days,
+                'averages'  => $averages,
+            ]);
+        }
     }
 
     if ($view === 'food_search') {

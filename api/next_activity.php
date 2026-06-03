@@ -239,6 +239,7 @@ $pool = array_merge(
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),
     array_fill(0, 1,                                   'nutrition'),
+    array_fill(0, 1,                                   'bible_verse'),
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
     ($missing && $checkinOn) ? ['missing_info'] : []
 );
@@ -271,6 +272,7 @@ if ($choice === 'person_review') {
     if ($pr) json_response($pr);
     json_response(pick_fun_task()); // fallback if no people
 }
+if ($choice === 'bible_verse') json_response(pick_bible_verse());
 if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
 if ($choice === 'joke')      json_response(pick_joke());
@@ -470,6 +472,12 @@ function pick_topic_picker(): array {
         }
     }
     return ['type' => 'topic_picker', 'topics' => $available];
+}
+
+function pick_bible_verse(): array {
+    $verses = include __DIR__ . '/../content/bible_verses.php';
+    $v = $verses[array_rand($verses)];
+    return ['type' => 'bible_verse', 'text' => $v['text'], 'ref' => $v['ref']];
 }
 
 function pick_person_review(): ?array {

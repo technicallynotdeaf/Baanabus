@@ -131,22 +131,39 @@ try {
         }
     }
 
-    // Sync time tag to Habitica if applicable
-    if ($time !== null && $action !== 'delete') {
+    // Habitica: sync time tag on existing tasks + push new next_actions
+    $isPushCandidate = in_array($action, ['quick_win', 'next_action'], true)
+        || ($action === 'save_time' && $time !== null && $time <= 120);
+
+    if (($time !== null && $action !== 'delete') || $isPushCandidate) {
         try {
-            $data    = getTasks();
-            $task    = null;
+            $data = getTasks();
+            $task = null;
             foreach ($data['tasks'] as $t) {
                 if ((int)$t['id'] === $taskId) { $task = $t; break; }
             }
-            $habId = $task['habitica_id'] ?? null;
-            if ($habId) {
-                require_once __DIR__ . '/habitica_helper.php';
-                $cass    = getCassowary();
-                $habUser = $cass['habitica']['user_id'] ?? '';
-                $habKey  = $cass['habitica']['api_key']  ?? '';
-                if ($habUser && $habKey) {
-                    habiticaSyncTimeTag($habId, $time, $habUser, $habKey);
+            if ($task) {
+                $habId = $task['habitica_id'] ?? null;
+                $cfg   = getConfig() ?? [];
+                if (!empty($cfg['preferences']['uses_habitica'])) {
+                    require_once __DIR__ . '/habitica_helper.php';
+                    $cass    = getCassowary();
+                    $habUser = $cass['habitica']['user_id'] ?? '';
+                    $habKey  = $cass['habitica']['api_key']  ?? '';
+                    if ($habUser && $habKey) {
+                        if ($time !== null && $action !== 'delete' && $habId) {
+                            habiticaSyncTimeTag($habId, $time, $habUser, $habKey);
+                        }
+                        if ($isPushCandidate && !$habId && empty($task['parent_id'])) {
+                            $created = habiticaRequest('POST', '/tasks/user', $habUser, $habKey, [
+                                'type' => 'todo',
+                                'text' => $task['title'],
+                            ]);
+                            if (!empty($created['id'])) {
+                                vaultUpdateTask($taskId, ['habitica_id' => $created['id']]);
+                            }
+                        }
+                    }
                 }
             }
         } catch (Throwable $e) {

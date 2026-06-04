@@ -39,6 +39,12 @@ try {
     $data  = getTasks();
     $now   = date('c');
 
+    // Build set of all Habitica todo IDs (complete + incomplete) for deletion detection
+    $habiticaIdSet = [];
+    foreach ($todos as $todo) {
+        if (!empty($todo['id'])) $habiticaIdSet[(string)$todo['id']] = true;
+    }
+
     // Index existing Habitica tasks to avoid duplicates
     // existingParents: habitica_id => baanabus task id (parent todos)
     // existingItems:   "habitica_id:item_id" => true  (checklist subtasks)
@@ -103,13 +109,37 @@ try {
         }
     }
 
-    if ($synced > 0) saveTasks($data);
+    // Detect parent todos deleted from Habitica and soft-delete locally
+    $deleted = 0;
+    $deletedBaanabusIds = [];
+    foreach ($data['tasks'] as &$task) {
+        if (empty($task['habitica_id']) || !empty($task['habitica_item_id'])) continue;
+        if (($task['status'] ?? '') !== 'active') continue;
+        if (!isset($habiticaIdSet[(string)$task['habitica_id']])) {
+            $task['status'] = 'deleted';
+            $deletedBaanabusIds[(int)$task['id']] = true;
+            $deleted++;
+        }
+    }
+    unset($task);
+
+    // Cascade: soft-delete active children of deleted parents
+    foreach ($data['tasks'] as &$task) {
+        if (($task['status'] ?? '') !== 'active') continue;
+        if (!empty($task['parent_id']) && isset($deletedBaanabusIds[(int)$task['parent_id']])) {
+            $task['status'] = 'deleted';
+            $deleted++;
+        }
+    }
+    unset($task);
+
+    if ($synced > 0 || $deleted > 0) saveTasks($data);
 
     $cfg['habitica_sync_date'] = $today;
     $cfg['habitica_sync_last_count'] = $synced;
     saveConfig($cfg);
 
-    json_response(['synced' => $synced, 'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
+    json_response(['synced' => $synced, 'deleted' => $deleted, 'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

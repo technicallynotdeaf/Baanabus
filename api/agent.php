@@ -317,6 +317,31 @@ if ($method === 'POST') {
             ];
             $data['next_id'] = $taskId + 1;
             saveTasks($data);
+
+            // Push to Habitica if this is a next_action and Habitica is configured
+            if (($body['task_type'] ?? 'next_action') === 'next_action' && empty($body['parent_id'])) {
+                try {
+                    $cfg = getConfig() ?? [];
+                    if (!empty($cfg['preferences']['uses_habitica'])) {
+                        require_once __DIR__ . '/habitica_helper.php';
+                        $cass    = getCassowary();
+                        $habUser = $cass['habitica']['user_id'] ?? '';
+                        $habKey  = $cass['habitica']['api_key']  ?? '';
+                        if ($habUser && $habKey) {
+                            $created = habiticaRequest('POST', '/tasks/user', $habUser, $habKey, [
+                                'type' => 'todo',
+                                'text' => $title,
+                            ]);
+                            if (!empty($created['id'])) {
+                                vaultUpdateTask($taskId, ['habitica_id' => $created['id']]);
+                            }
+                        }
+                    }
+                } catch (Throwable $e) {
+                    // non-fatal
+                }
+            }
+
             json_response(['ok' => true, 'task_id' => $taskId]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

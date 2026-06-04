@@ -69,8 +69,8 @@ The daily rhythm that makes the game loop feel intentional.
 - ✅ Stuck flow: task marked stuck → snoozes until tomorrow, flagged for review
 - ✅ Energy-aware task selection: weighted pool in `next_activity.php` matches task energy to today's level
 - ✅ GTD inbox triage: full flow in speech bubble (rename, urgency, next_action+date, project+subtask, waiting, someday, delete)
-- [ ] Day type → passive context filter: home day suppresses tasks tagged work/office; work day suppresses home tasks. Happens automatically in `getDoableTasks()` based on today's diary entry — no user action needed.
-- [ ] Context chips in task list overlay = **planning mode only**: pick a context to see all tasks in that bucket at once. Not a real-time filter for "what can I do now" — that's the passive filter above.
+- ✅ Day type → passive context filter: home day suppresses tasks tagged work/office; work day suppresses home tasks. Happens automatically in `getDoableTasks()` based on today's diary entry — no user action needed.
+- ✅ Context chips in task list overlay = **planning mode only**: pick a context to see all tasks in that bucket at once. Not a real-time filter for "what can I do now" — that's the passive filter above.
 
 ---
 
@@ -89,8 +89,8 @@ Full design philosophy: `mental-health-features.md` (light patterns, duty of car
   - *Waiting on something else* → snooze until tomorrow
   - *Not sure what to do with it* → returns task to inbox for re-triage
   - *Waiting for a specific date* → date picker, snooze until chosen date
-- [ ] Effort acknowledgement — completing a high-urgency or long-deferred task earns a specific callout beyond just a pip
-- [ ] Comeback callout — "this is your best week in a while" detected when 7-day task count exceeds recent average by a meaningful margin; said once, not on repeat
+- ✅ Effort acknowledgement — completing a high-urgency task, a task older than 21 days, or a previously-stuck task shows a specific callout before the next activity loads
+- ✅ Comeback callout — "This is your best week in a while. I noticed." fires when this week's completions beat the 3-week best (checked from Wed onward); once per week; count stored in `config['daily_completions']`
 - [ ] Morning mode — before a configurable time on work days, show one sequential morning task on screen with no navigation; everything else wakes up after the sequence is done
 - [ ] Bunting daily essentials — 3–5 user-defined non-negotiable minimums visualised as flags across the scene; turns green on completion; Baanabus says something specific when all are green
 - [ ] Conversational check-ins — sparse (one every few days at most); triggered only when two passive signals align; Baanabus shares something first to make the question feel like commiseration
@@ -127,6 +127,8 @@ Log whole foods and close nutrient gaps — woven into the game loop, not bolted
 - ✅ **Kitchen chalkboard**: perspective-correct 12-row progress bars rendered on the right-wall board; clicking opens the food log overlay
 - ✅ **Pantry shelves**: food illustrations curated from today's gap suggestions (falls back to a default set when no gap data)
 - ✅ **Nutrition facts in activity pool**: 34 food facts (feijoas, broccoli, avocado, legumes, etc.) drawn from AFCD; weight 1 in `next_activity.php`; rendered as "Food fact" with a Got it button
+- [ ] **Food cost tracking**: record approximate cost per food item or serving; expose cost per meal/day in the food log overlay; use cost data to weight gap suggestions toward affordable options (e.g. "closes your iron gap for ~$0.40")
+- [ ] **Recipe storage**: store user-created recipes as a named collection of foods + quantities; compute aggregate nutrient totals from constituent AFCD values so recipes appear in the food log like a single item; recipes stored in vault (`recipes.enc`)
 
 ---
 
@@ -156,6 +158,22 @@ Connect to services Alison already uses.
 - ✅ Habitica score-up: `api/mark_complete.api.php` scores back to Habitica when task completed (checklist items + parent todos handled separately)
 - ✅ Block task system: Habitica tasks with checklists surface as parent + subtask checklist in speech bubble; children never appear standalone; subtasks check off inline
 - ✅ Imported tasks get `task_type: 'inbox'`; paper scraps on floor count inbox tasks only
+
+### M6.1 — Habitica Bidirectional Sync (next priority)
+
+Full two-way sync so Habitica and Baanabus stay in lockstep, plus Habitica tags that make Habitica itself more useful when working directly in it.
+
+**Sync correctness:**
+- [ ] Tasks deleted in Habitica should be removed from Baanabus on the next sync (currently they linger)
+- [ ] Tasks added to Baanabus as `next_action` / `someday` / etc. should be pushed up to Habitica (currently sync is one-way: Habitica → Baanabus only)
+- [ ] Task metadata (urgency, context/location, task_type, snoozed_until) should be written to Habitica — the `notes` field on the todo is the most natural place; tags are also available. Notes allow structured key:value lines that won't clutter the task title.
+
+**Habitica tags for in-app filtering:**
+- [ ] All synced tasks should be tagged in Habitica: `doable` (task is active + unsnoozed + context matches) vs `snoozed` (currently deferred). Habitica tags can only filter tasks *in* — they cannot hide tasks — so the strategy is: create a `doable` tag and use it as the "show me what I can do now" filter in Habitica directly.
+- [ ] Location tags: `location:home`, `location:work`, `location:out`, `location:any` (or `location:anywhere`) — lets Habitica be filtered by location even though it can't suppress tasks. A user filtering by `location:home` gets only home-context tasks; the absence of a location tag means "any".
+- [ ] Tag application happens at sync time (push) and should be re-evaluated on each Baanabus sync cycle.
+
+**Remaining M6 integrations (lower priority):**
 - [ ] CalDAV (Radicale): pull calendar events → show upcoming events as tasks/reminders
 - [ ] CardDAV (Radicale): sync contacts → people directory
 - [ ] Proton Mail IMAP: pull unread emails → land in inbox for triage
@@ -227,4 +245,6 @@ Design constraint: many users are neurodiverse. Prefer tappable structured optio
 
 ## Next up
 
-M0–M2, most of M3, M5 (first three stories), M6, and M4.5 are complete. Likely candidates: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), or M2.5 trivia expansion.
+**Current priority: M6.1 — Habitica bidirectional sync.** Tasks deleted in Habitica should be removed from Baanabus; tasks created in Baanabus should push to Habitica; metadata (urgency, context, snooze state) should write to Habitica notes; `doable`/`snoozed` and `location:*` tags applied at sync time.
+
+After that: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), M4.5 food cost tracking + recipe storage, or M2.5 trivia expansion.

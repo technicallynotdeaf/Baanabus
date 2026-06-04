@@ -269,7 +269,33 @@ if ($method === 'GET') {
         json_response(['ok' => true, 'person' => $person, 'notes' => $notes]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, people, person"], 400);
+    if ($view === 'habitica_task') {
+        $habId = trim($_GET['id'] ?? '');
+        if (!$habId) json_response(['error' => 'id parameter required'], 400);
+        try {
+            $cfg = getConfig() ?? [];
+            if (empty($cfg['preferences']['uses_habitica'])) json_response(['error' => 'Habitica not configured'], 400);
+            require_once __DIR__ . '/habitica_helper.php';
+            $cass    = getCassowary();
+            $habUser = $cass['habitica']['user_id'] ?? '';
+            $habKey  = $cass['habitica']['api_key']  ?? '';
+            if (!$habUser || !$habKey) json_response(['error' => 'No Habitica credentials'], 400);
+            $task = habiticaRequest('GET', '/tasks/' . urlencode($habId), $habUser, $habKey);
+            json_response([
+                'ok'        => true,
+                'id'        => $task['id']        ?? null,
+                'title'     => $task['text']       ?? null,
+                'notes'     => $task['notes']      ?? null,
+                'type'      => $task['type']       ?? null,
+                'completed' => $task['completed']  ?? null,
+                'checklist' => $task['checklist']  ?? [],
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, people, person, habitica_task"], 400);
 }
 
 // ---- POST ----

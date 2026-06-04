@@ -306,6 +306,7 @@ function getDoableTasks(): array {
         if ($dayType === 1) return !in_array($ctx, $workCtxs, true);                                      // Home: no work tasks
         if ($dayType === 2) return !in_array($ctx, array_merge($homeCtxs, $shopsCtxs), true);             // Work: no home or shops tasks
         if ($dayType === 3) return !in_array($ctx, array_merge($workCtxs, $homeCtxs), true);              // Out: no work or home tasks
+        if ($dayType === 5) return !in_array($ctx, $shopsCtxs, true);                                     // WFH: home+work ok, no shops
         return true; // Rest (4): no location suppression
     };
 

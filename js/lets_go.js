@@ -44,6 +44,8 @@ window.initLetsGo = function() {
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
+      case 'morning_daily':  renderMorningDaily(d);  break;
+      case 'morning_done':   renderMorningDone(d);   break;
       case 'topic_picker':   renderTopicPicker(d);   break;
       case 'reset_msg':      renderResetMsg(d);      break;
       case 'quote':          renderQuote(d);         break;
@@ -899,6 +901,27 @@ window.initLetsGo = function() {
     c.innerHTML = `
       <p style="font-size:1.05em;line-height:1.5;margin-bottom:0.9rem;">${esc(d.message)}</p>
       <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">...</button>`;
+  }
+
+  function renderMorningDaily(d) {
+    const notesHtml = d.notes
+      ? `<p style="font-size:0.85em;color:#888;margin:0 0 0.75rem;">${esc(d.notes)}</p>`
+      : '';
+    const countHtml = d.remaining > 1
+      ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.remaining - 1} more after this</p>`
+      : '';
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#b8860b;letter-spacing:0.05em;margin-bottom:0.4rem;">MORNING ROUTINE</p>
+      <p style="margin-bottom:0.5rem;">${esc(d.title)}</p>
+      ${notesHtml}
+      <button class="action-button" onclick="scoreMorningDaily(${d.id})">Done</button>
+      ${countHtml}`;
+  }
+
+  function renderMorningDone(d) {
+    c.innerHTML = `
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.message || 'Morning routine complete. The day is yours.')}</p>
+      <button class="action-button" onclick="window.location.reload()">Let's go</button>`;
   }
 
   function renderInboxMilestone(d) {
@@ -1807,4 +1830,25 @@ window.initLetsGo = function() {
       }).catch(() => { st.textContent = 'Could not save.'; });
     };
   }
+
+  window.scoreMorningDaily = function(id) {
+    fetch('api/score_daily.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      if (d.all_done) {
+        window.location.reload();
+      } else {
+        fetch('api/next_activity.php')
+          .then(r => r.json())
+          .then(render)
+          .catch(() => {});
+      }
+    })
+    .catch(() => {});
+  };
 };

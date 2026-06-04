@@ -139,7 +139,58 @@ try {
     $cfg['habitica_sync_last_count'] = $synced;
     saveConfig($cfg);
 
-    json_response(['synced' => $synced, 'deleted' => $deleted, 'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
+    // --- Sync daily definitions into dailies.enc ---
+    $habiticaDailies = habiticaRequest('GET', '/tasks/user?type=dailys', $userId, $apiKey);
+    $dailyData       = getDailies();
+
+    // Build lookup index: habitica_id => array index in items
+    $dailyHabIndex = [];
+    foreach ($dailyData['items'] as $k => $item) {
+        if (!empty($item['habitica_id'])) $dailyHabIndex[$item['habitica_id']] = $k;
+    }
+
+    $dailySynced = 0;
+    $habiticaDailyIds = [];
+    foreach ($habiticaDailies as $d) {
+        $habId = $d['id'] ?? null;
+        if (!$habId) continue;
+        $habiticaDailyIds[] = $habId;
+        $def = [
+            'habitica_id' => $habId,
+            'title'       => $d['text']      ?? '',
+            'notes'       => $d['notes']     ?? '',
+            'frequency'   => $d['frequency'] ?? 'daily',
+            'repeat'      => $d['repeat']    ?? [],
+            'everyX'      => (int)($d['everyX'] ?? 1),
+            'start_date'  => substr($d['startDate'] ?? $today, 0, 10),
+            'is_active'   => true,
+        ];
+        if (isset($dailyHabIndex[$habId])) {
+            $k           = $dailyHabIndex[$habId];
+            $def['id']   = $dailyData['items'][$k]['id'];
+            $def['order'] = $dailyData['items'][$k]['order'] ?? 0;
+            $dailyData['items'][$k] = $def;
+        } else {
+            $def['id']    = $dailyData['next_id']++;
+            $def['order'] = count($dailyData['items']);
+            $dailyData['items'][] = $def;
+            $dailySynced++;
+        }
+    }
+
+    // Deactivate Habitica dailies no longer returned by the API
+    foreach ($dailyData['items'] as &$item) {
+        if (!empty($item['habitica_id']) && !in_array($item['habitica_id'], $habiticaDailyIds, true)) {
+            $item['is_active'] = false;
+        }
+    }
+    unset($item);
+
+    $dailyData['sync_date'] = $today;
+    saveDailies($dailyData);
+
+    json_response(['synced' => $synced, 'deleted' => $deleted, 'daily_synced' => $dailySynced,
+                   'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

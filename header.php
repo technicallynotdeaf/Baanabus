@@ -23,19 +23,29 @@ require_once __DIR__ . '/init.php';
   <script src="js/badges.js?v=<?= filemtime(__DIR__ . '/js/badges.js') ?>" defer></script>
   <script src="js/food_log.js?v=<?= filemtime(__DIR__ . '/js/food_log.js') ?>" defer></script>
 </head>
-<body<?php if (!empty($_SESSION['regulation_mode'])) echo ' class="regulation-mode"'; ?>>
+<body<?php
+  $bodyClasses = [];
+  if (!empty($_SESSION['regulation_mode'])) $bodyClasses[] = 'regulation-mode';
+  if (!empty($morningModeActive))           $bodyClasses[] = 'morning-mode';
+  echo $bodyClasses ? ' class="' . implode(' ', $bodyClasses) . '"' : '';
+?>>
+
 
 <?php if (!empty($_SESSION['credential_id'])): ?>
   <!-- Navigation Bar (only when logged in) -->
   <?php
-    $navEnergy  = null;
-    $navDayType = null;
+    $navEnergy         = null;
+    $navDayType        = null;
+    $morningModeActive = false;
     require_once __DIR__ . '/config_helper.php';
     if (isUnlocked()) {
         try {
             $todayEntry = getDiaryEntry(date('Y-m-d'));
             $navEnergy  = !empty($todayEntry['energy_level']) ? (int)$todayEntry['energy_level'] : null;
             $navDayType = !empty($todayEntry['day_type'])     ? (int)$todayEntry['day_type']     : null;
+        } catch (Throwable $e) {}
+        try {
+            $morningModeActive = !empty(getMorningModeDailies());
         } catch (Throwable $e) {}
     }
   ?>

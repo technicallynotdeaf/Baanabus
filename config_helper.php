@@ -908,6 +908,100 @@ function saveCassowary(array $data): void {
     @chmod($path, 0600);
 }
 
+// ---------- Dailies vault ----------
+
+function dailiesPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/dailies.enc";
+}
+
+function getDailies(): array {
+    $path = dailiesPath();
+    if (!is_file($path)) return ['next_id' => 1, 'items' => [], 'completions' => [], 'sync_date' => null];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Dailies: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Dailies decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'items' => [], 'completions' => [], 'sync_date' => null];
+}
+
+function saveDailies(array $data): void {
+    $path = dailiesPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    if (file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        throw new Exception('Failed to write dailies.enc');
+    }
+    @chmod($path, 0600);
+}
+
+// Returns true if a daily definition is due on $date (YYYY-MM-DD).
+function isDailyDueToday(array $daily, string $date = null): bool {
+    if (!($daily['is_active'] ?? true)) return false;
+    $date   = $date ?? date('Y-m-d');
+    $freq   = $daily['frequency'] ?? 'daily';
+    $everyX = max(1, (int)($daily['everyX'] ?? 1));
+
+    if ($freq === 'daily') {
+        if ($everyX <= 1) return true;
+        $start    = $daily['start_date'] ?? '2026-01-01';
+        $daysDiff = (int)round((strtotime($date) - strtotime($start)) / 86400);
+        return $daysDiff >= 0 && $daysDiff % $everyX === 0;
+    }
+
+    if ($freq === 'weekly') {
+        $repeat = $daily['repeat'] ?? [];
+        // Habitica repeat keys: su m t w th f s
+        $dowMap = [1 => 'm', 2 => 't', 3 => 'w', 4 => 'th', 5 => 'f', 6 => 's', 7 => 'su'];
+        $key    = $dowMap[(int)date('N', strtotime($date))] ?? 'm';
+        return (bool)($repeat[$key] ?? false);
+    }
+
+    return false; // monthly/yearly not yet supported
+}
+
+function markDailyComplete(int $id, string $date = null): void {
+    $date = $date ?? date('Y-m-d');
+    $data = getDailies();
+    $done = array_map('intval', $data['completions'][$date] ?? []);
+    if (!in_array($id, $done, true)) {
+        $done[]                     = $id;
+        $data['completions'][$date] = $done;
+        saveDailies($data);
+    }
+}
+
+// Returns due+incomplete dailies if we are still within morning hours; empty otherwise.
+function getMorningModeDailies(): array {
+    $cfg     = getConfig() ?? [];
+    $endHour = (int)($cfg['morning_mode_end_hour'] ?? 10);
+    $melbTz  = new DateTimeZone('Australia/Melbourne');
+    $melbNow = new DateTime('now', $melbTz);
+    if ((int)$melbNow->format('H') >= $endHour) return [];
+    $today  = $melbNow->format('Y-m-d');
+    $data   = getDailies();
+    $done   = array_map('intval', $data['completions'][$today] ?? []);
+    return array_values(array_filter($data['items'], fn($d) =>
+        isDailyDueToday($d, $today) &&
+        !in_array((int)$d['id'], $done, true)
+    ));
+}
+
 // ---------- Badges ----------
 
 function getBadgeDefinitions(): array {

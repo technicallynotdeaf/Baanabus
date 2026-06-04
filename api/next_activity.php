@@ -157,6 +157,21 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
+// Morning mode: serve due+incomplete dailies before any normal activity
+try {
+    $morningDailies = getMorningModeDailies();
+    if (!empty($morningDailies)) {
+        $d = $morningDailies[0];
+        json_response([
+            'type'        => 'morning_daily',
+            'id'          => (int)$d['id'],
+            'title'       => $d['title'],
+            'notes'       => $d['notes'] ?? '',
+            'remaining'   => count($morningDailies),
+        ]);
+    }
+} catch (Throwable $e) { /* non-fatal */ }
+
 // While inbox has items: force triage window scales with pile size (larger pile = longer forced run)
 // (fill-tasks only: force 2–4, then normal pool)
 $triageForceEnd   = $inboxCount > 20 ? 10 : 6;

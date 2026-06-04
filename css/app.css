@@ -713,3 +713,14 @@ body.scene-view .scene-mode-btn { display: inline-flex; align-items: center; }
 .night-mode .close-button:hover { color: #e0e0ff; }
 
 .selected { outline: 3px solid hsl(210, 100%, 30%); }
+
+
+/* Morning mode — dim locked nav items */
+body.morning-mode #story-book-link,
+body.morning-mode #note-to-self,
+body.morning-mode #people-book,
+body.morning-mode #task-list,
+body.morning-mode .navbar a[href="scene2.php"] {
+    opacity: 0.35;
+    cursor: not-allowed;
+}

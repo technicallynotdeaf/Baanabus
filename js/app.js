@@ -357,6 +357,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadSpeechBubble('greeting.php');
     fetch('api/habitica_sync.php').catch(() => {});
+
+    // Morning mode lockout — prevent nav overlays until daily sequence is done
+    if (document.body.classList.contains('morning-mode')) {
+        const blockedIds = ['story-book-link', 'note-to-self', 'people-book', 'task-list'];
+        blockedIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                loadSpeechBubble('greeting.php');
+            }, { capture: true });
+        });
+        // Also block calendar link
+        const calLink = document.querySelector('.navbar a[href="scene2.php"]');
+        if (calLink) calLink.addEventListener('click', e => {
+            e.preventDefault();
+            loadSpeechBubble('greeting.php');
+        }, { capture: true });
+    }
     });
 
 // close buttons/backdrop

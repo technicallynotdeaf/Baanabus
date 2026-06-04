@@ -701,8 +701,16 @@ function saveFoodLog(array $data): void {
 // Computes nutrient totals from vault entries + SQLite reference data.
 // $log is the full getFoodLog() result; $from/$to are YYYY-MM-DD strings (inclusive).
 function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): array {
-    $keys   = ['fibre', 'fibre_soluble', 'fibre_insoluble', 'potassium', 'vitamin_k',
-               'vitamin_c', 'folate', 'calcium', 'iron', 'magnesium', 'vitamin_a', 'vitamin_d'];
+    $keys = [
+        'energy_kj', 'protein_g', 'fat_total_g', 'fat_saturated_g', 'fat_monounsaturated_g',
+        'fat_polyunsaturated_g', 'fat_trans_g', 'cholesterol_mg', 'carbohydrate_g', 'sugars_g',
+        'fibre', 'fibre_soluble', 'fibre_insoluble',
+        'omega3_ala', 'omega3_epa', 'omega3_dha', 'omega6_la',
+        'vitamin_a', 'vitamin_b1', 'vitamin_b2', 'vitamin_b3', 'vitamin_b5', 'vitamin_b6',
+        'vitamin_b7', 'vitamin_b12', 'vitamin_c', 'vitamin_d', 'vitamin_e', 'vitamin_k', 'vitamin_k2',
+        'choline', 'lutein_zeaxanthin',
+        'calcium', 'copper', 'iodine', 'iron', 'magnesium', 'potassium', 'selenium', 'sodium', 'zinc',
+    ];
     $totals = array_fill_keys($keys, 0.0);
 
     $allEntries = [];
@@ -719,9 +727,17 @@ function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): a
     $placeholders = implode(',', array_fill(0, count($servingIds), '?'));
     $stmt = $db->prepare("
         SELECT fs.serving_id, fs.weight_g,
-               f.fibre_g, f.fibre_soluble_g, f.fibre_insoluble_g, f.potassium_mg,
-               f.vitamin_k_mcg, f.vitamin_c_mg, f.folate_mcg, f.calcium_mg,
-               f.iron_mg, f.magnesium_mg, f.vitamin_a_mcg, f.vitamin_d_mcg
+               f.energy_kj, f.protein_g, f.fat_total_g, f.fat_saturated_g,
+               f.fat_monounsaturated_g, f.fat_polyunsaturated_g, f.fat_trans_g,
+               f.cholesterol_mg, f.carbohydrate_g, f.sugars_g,
+               f.fibre_g, f.fibre_soluble_g, f.fibre_insoluble_g,
+               f.omega3_ala_mg, f.omega3_epa_mg, f.omega3_dha_mg, f.omega6_la_mg,
+               f.vitamin_a_mcg, f.vitamin_b1_mg, f.vitamin_b2_mg, f.vitamin_b3_mg,
+               f.vitamin_b5_mg, f.vitamin_b6_mg, f.vitamin_b7_mcg, f.vitamin_b12_mcg,
+               f.vitamin_c_mg, f.vitamin_d_mcg, f.vitamin_e_mg, f.vitamin_k_mcg, f.vitamin_k2_mcg,
+               f.choline_mg, f.lutein_zeaxanthin_mcg,
+               f.calcium_mg, f.copper_mg, f.iodine_mcg, f.iron_mg,
+               f.magnesium_mg, f.potassium_mg, f.selenium_mcg, f.sodium_mg, f.zinc_mg
         FROM food_servings fs JOIN foods f ON fs.food_id = f.food_id
         WHERE fs.serving_id IN ($placeholders)
     ");
@@ -731,22 +747,57 @@ function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): a
         $sd[(int)$row['serving_id']] = $row;
     }
 
+    $map = [
+        'energy_kj'             => 'energy_kj',
+        'protein_g'             => 'protein_g',
+        'fat_total_g'           => 'fat_total_g',
+        'fat_saturated_g'       => 'fat_saturated_g',
+        'fat_monounsaturated_g' => 'fat_monounsaturated_g',
+        'fat_polyunsaturated_g' => 'fat_polyunsaturated_g',
+        'fat_trans_g'           => 'fat_trans_g',
+        'cholesterol_mg'        => 'cholesterol_mg',
+        'carbohydrate_g'        => 'carbohydrate_g',
+        'sugars_g'              => 'sugars_g',
+        'fibre'                 => 'fibre_g',
+        'fibre_soluble'         => 'fibre_soluble_g',
+        'fibre_insoluble'       => 'fibre_insoluble_g',
+        'omega3_ala'            => 'omega3_ala_mg',
+        'omega3_epa'            => 'omega3_epa_mg',
+        'omega3_dha'            => 'omega3_dha_mg',
+        'omega6_la'             => 'omega6_la_mg',
+        'vitamin_a'             => 'vitamin_a_mcg',
+        'vitamin_b1'            => 'vitamin_b1_mg',
+        'vitamin_b2'            => 'vitamin_b2_mg',
+        'vitamin_b3'            => 'vitamin_b3_mg',
+        'vitamin_b5'            => 'vitamin_b5_mg',
+        'vitamin_b6'            => 'vitamin_b6_mg',
+        'vitamin_b7'            => 'vitamin_b7_mcg',
+        'vitamin_b12'           => 'vitamin_b12_mcg',
+        'vitamin_c'             => 'vitamin_c_mg',
+        'vitamin_d'             => 'vitamin_d_mcg',
+        'vitamin_e'             => 'vitamin_e_mg',
+        'vitamin_k'             => 'vitamin_k_mcg',
+        'vitamin_k2'            => 'vitamin_k2_mcg',
+        'choline'               => 'choline_mg',
+        'lutein_zeaxanthin'     => 'lutein_zeaxanthin_mcg',
+        'calcium'               => 'calcium_mg',
+        'copper'                => 'copper_mg',
+        'iodine'                => 'iodine_mcg',
+        'iron'                  => 'iron_mg',
+        'magnesium'             => 'magnesium_mg',
+        'potassium'             => 'potassium_mg',
+        'selenium'              => 'selenium_mcg',
+        'sodium'                => 'sodium_mg',
+        'zinc'                  => 'zinc_mg',
+    ];
+
     foreach ($allEntries as $e) {
         $s = $sd[(int)$e['serving_id']] ?? null;
         if (!$s) continue;
         $f = (float)$e['quantity'] * ((float)$s['weight_g'] / 100.0);
-        $totals['fibre']           += $f * (float)($s['fibre_g']           ?? 0);
-        $totals['fibre_soluble']   += $f * (float)($s['fibre_soluble_g']   ?? 0);
-        $totals['fibre_insoluble'] += $f * (float)($s['fibre_insoluble_g'] ?? 0);
-        $totals['potassium']       += $f * (float)($s['potassium_mg']      ?? 0);
-        $totals['vitamin_k']       += $f * (float)($s['vitamin_k_mcg']     ?? 0);
-        $totals['vitamin_c']       += $f * (float)($s['vitamin_c_mg']      ?? 0);
-        $totals['folate']          += $f * (float)($s['folate_mcg']        ?? 0);
-        $totals['calcium']         += $f * (float)($s['calcium_mg']        ?? 0);
-        $totals['iron']            += $f * (float)($s['iron_mg']           ?? 0);
-        $totals['magnesium']       += $f * (float)($s['magnesium_mg']      ?? 0);
-        $totals['vitamin_a']       += $f * (float)($s['vitamin_a_mcg']     ?? 0);
-        $totals['vitamin_d']       += $f * (float)($s['vitamin_d_mcg']     ?? 0);
+        foreach ($map as $key => $col) {
+            $totals[$key] += $f * (float)($s[$col] ?? 0);
+        }
     }
     return $totals;
 }

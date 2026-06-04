@@ -9,6 +9,8 @@
  * GET ?view=config              → app config (preferences, onboarding state, story progress)
  * GET ?view=snapshot            → tasks + inbox + config + context in one call
  * GET ?view=food_search&q=term  → search foods + servings by name (for finding food_id/serving_id)
+ * GET ?view=people              → all people (id, name, circles, birthday, next_review, archived)
+ * GET ?view=person&id=N         → single person with their notes
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
  *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status
@@ -18,6 +20,12 @@
  *
  * POST {"action":"delete_task","task_id":N}
  *      → mark a task as deleted
+ *
+ * POST {"action":"add_person_note","person_id":N,"note_content":"..."}
+ *      → append a note to a person record
+ *
+ * POST {"action":"update_person","person_id":N,"fields":{...}}
+ *      → update fields on a person record (name, birthday, circles, next_review_date, etc.)
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -223,7 +231,45 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search"], 400);
+    if ($view === 'people') {
+        try {
+            $data = getPeople();
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+        $personMap = fn($p) => [
+            'person_id'        => (int)$p['person_id'],
+            'name'             => $p['name']              ?? null,
+            'circles'          => $p['circles']           ?? [],
+            'birthday'         => $p['birthday']          ?? null,
+            'next_review_date' => $p['next_review_date']  ?? null,
+            'review_interval'  => $p['review_interval']   ?? null,
+            'archived'         => $p['archived']          ?? false,
+            'qualities'        => $p['qualities']         ?? [],
+        ];
+        json_response(['ok' => true, 'people' => array_map($personMap, $data['people'])]);
+    }
+
+    if ($view === 'person') {
+        $personId = (int)($_GET['id'] ?? 0);
+        if (!$personId) json_response(['error' => 'id parameter required'], 400);
+        try {
+            $data   = getPeople();
+            $person = null;
+            foreach ($data['people'] as $p) {
+                if ((int)$p['person_id'] === $personId) { $person = $p; break; }
+            }
+            if (!$person) json_response(['error' => 'Person not found'], 404);
+            $notesData = getPeopleNotes();
+            $notes = array_values(array_filter($notesData['notes'], fn($n) => (int)$n['person_id'] === $personId));
+            usort($notes, fn($a, $b) => strcmp($b['date_added'] ?? '', $a['date_added'] ?? ''));
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+        json_response(['ok' => true, 'person' => $person, 'notes' => $notes]);
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, people, person"], 400);
 }
 
 // ---- POST ----
@@ -595,7 +641,36 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task"], 400);
+    if ($action === 'add_person_note') {
+        $personId = (int)($body['person_id'] ?? 0);
+        $contents = trim($body['note_content'] ?? '');
+        if (!$personId) json_response(['error' => 'Missing person_id'], 400);
+        if (!$contents) json_response(['error' => 'Missing note_content'], 400);
+        if (mb_strlen($contents) > 2000) json_response(['error' => 'Note too long (max 2000 chars)'], 400);
+        try {
+            $noteId = vaultAddPeopleNote($personId, $contents);
+            json_response(['ok' => true, 'note_id' => $noteId]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'update_person') {
+        $personId = (int)($body['person_id'] ?? 0);
+        if (!$personId) json_response(['error' => 'Missing person_id'], 400);
+        $allowed = ['name', 'birthday', 'circles', 'next_review_date', 'review_interval',
+                    'archived', 'qualities', 'phone', 'email'];
+        $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
+        if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
+        try {
+            vaultUpdatePerson($personId, $fields);
+            json_response(['ok' => true, 'updated' => $fields]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, add_person_note, update_person"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

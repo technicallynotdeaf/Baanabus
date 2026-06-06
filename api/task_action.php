@@ -69,13 +69,24 @@ try {
 
         case 'snooze':
             $when = $input['when'] ?? '2h';
-            $until = match ($when) {
-                '2h'      => strtotime('+2 hours'),
-                'tonight' => strtotime('today 20:00'),
-                'tomorrow' => strtotime('tomorrow 08:00'),
-                'week'    => strtotime('+7 days 08:00'),
-                default   => strtotime('+2 hours'),
-            };
+            if ($when === 'payday') {
+                $cfg = getConfig() ?? [];
+                $paydayDay = max(1, min(28, (int)($cfg['preferences']['payday_day'] ?? 1)));
+                $dt = new DateTime('first day of next month');
+                $dt->setDate((int)$dt->format('Y'), (int)$dt->format('m'), $paydayDay);
+                $dt->setTime(8, 0, 0);
+                $until = $dt->getTimestamp();
+            } elseif ($when === '2months') {
+                $until = strtotime('+2 months 08:00');
+            } else {
+                $until = match ($when) {
+                    '2h'      => strtotime('+2 hours'),
+                    'tonight' => strtotime('today 20:00'),
+                    'tomorrow' => strtotime('tomorrow 08:00'),
+                    'week'    => strtotime('+7 days 08:00'),
+                    default   => strtotime('+2 hours'),
+                };
+            }
             if ($when === 'tonight' && $until <= time()) {
                 $until = strtotime('tomorrow 08:00');
             }

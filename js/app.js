@@ -128,10 +128,12 @@ function setupOverlayListeners() {
     const c = document.getElementById('activity-container');
     if (!c) return;
     const opts = [
-      {label: '2 hours',   when: '2h'},
-      {label: 'Tonight',   when: 'tonight'},
-      {label: 'Tomorrow',  when: 'tomorrow'},
-      {label: 'Next week', when: 'week'},
+      {label: '2 hours',    when: '2h'},
+      {label: 'Tonight',    when: 'tonight'},
+      {label: 'Tomorrow',   when: 'tomorrow'},
+      {label: 'Next week',  when: 'week'},
+      {label: 'After payday', when: 'payday'},
+      {label: 'In 2 months',  when: '2months'},
     ];
     const btns = opts.map(o =>
       `<button class="action-button" data-when="${o.when}">${o.label}</button>`

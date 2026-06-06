@@ -1059,7 +1059,23 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, delete_recipe, plan_meal, clear_meal"], 400);
+    if ($action === 'set_preference') {
+        $allowed = ['payday_day'];
+        $key     = $body['key']   ?? '';
+        $value   = $body['value'] ?? null;
+        if (!in_array($key, $allowed, true)) json_response(['error' => "Unknown preference key '$key'. Allowed: " . implode(', ', $allowed)], 400);
+        if ($value === null) json_response(['error' => 'value required'], 400);
+        try {
+            $cfg = getConfig() ?? [];
+            $cfg['preferences'][$key] = $value;
+            saveConfig($cfg);
+            json_response(['ok' => true, 'key' => $key]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, delete_recipe, plan_meal, clear_meal, set_preference"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

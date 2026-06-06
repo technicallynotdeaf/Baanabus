@@ -12,6 +12,8 @@
  * GET ?view=api_keys            → list agent API keys (label, created_at, is_current)
  * GET ?view=people              → all people (id, name, circles, birthday, next_review, archived)
  * GET ?view=person&id=N         → single person with their notes
+ * GET ?view=recipes             → all saved recipes
+ * GET ?view=meal_plan&date=YYYY-MM-DD → meal plan for a date (defaults to today)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
  *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status
@@ -33,6 +35,18 @@
  *
  * POST {"action":"update_person","person_id":N,"fields":{...}}
  *      → update fields on a person record (name, birthday, circles, next_review_date, etc.)
+ *
+ * POST {"action":"add_recipe","name":"...","ingredients_text":"...","notes":"...","default_portions":N,"tags":[...]}
+ *      → add a recipe to the recipe book (ingredients_text is free text for now)
+ *
+ * POST {"action":"delete_recipe","recipe_id":N}
+ *      → delete a recipe
+ *
+ * POST {"action":"plan_meal","date":"YYYY-MM-DD","meal_type":"dinner","name":"...","recipe_id":N}
+ *      → record a planned meal for a date (meal_type: breakfast/lunch/dinner; recipe_id optional)
+ *
+ * POST {"action":"clear_meal","date":"YYYY-MM-DD","meal_type":"dinner"}
+ *      → remove a planned meal
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -127,13 +141,16 @@ if ($method === 'GET') {
             ($t['task_type'] ?? '') === 'inbox' && ($t['status'] ?? '') === 'active' && empty($t['parent_id'])
         ));
         try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
+        $todayMealPlan = null;
+        try { $todayEntry = getDiaryEntry(date('Y-m-d')); $todayMealPlan = $todayEntry['meal_plan'] ?? null; } catch (Throwable $e) {}
         json_response([
-            'ok'      => true,
-            'context' => $context,
-            'tasks'   => array_map($taskMap, $active),
-            'inbox'   => array_map($taskMap, $inbox),
-            'config'  => $cfg,
-            'pages'   => (int)($data['pages'] ?? 0),
+            'ok'            => true,
+            'context'       => $context,
+            'tasks'         => array_map($taskMap, $active),
+            'inbox'         => array_map($taskMap, $inbox),
+            'config'        => $cfg,
+            'pages'         => (int)($data['pages'] ?? 0),
+            'meal_plan_today' => $todayMealPlan,
         ]);
     }
 
@@ -435,7 +452,34 @@ if ($method === 'GET') {
         ]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task"], 400);
+    if ($view === 'recipes') {
+        try { $data = getRecipes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'recipes' => $data['recipes']]);
+    }
+
+    if ($view === 'meal_plan') {
+        $date = $_GET['date'] ?? date('Y-m-d');
+        try { $entry = getDiaryEntry($date); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        $plan = $entry['meal_plan'] ?? null;
+        $recipe = null;
+        if ($plan) {
+            $recipesToCheck = [];
+            foreach ($plan as $mealType => $meal) {
+                if (!empty($meal['recipe_id'])) $recipesToCheck[(int)$meal['recipe_id']] = true;
+            }
+            if ($recipesToCheck) {
+                try {
+                    $rdata = getRecipes();
+                    foreach ($rdata['recipes'] as $r) {
+                        if (isset($recipesToCheck[(int)$r['id']])) $recipe[$r['id']] = $r;
+                    }
+                } catch (Throwable $e) {}
+            }
+        }
+        json_response(['ok' => true, 'date' => $date, 'meal_plan' => $plan, 'recipes' => $recipe]);
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, meal_plan"], 400);
 }
 
 // ---- POST ----
@@ -940,7 +984,82 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person"], 400);
+    if ($action === 'add_recipe') {
+        $name = trim($body['name'] ?? '');
+        if (!$name) json_response(['error' => 'name required'], 400);
+        try {
+            $data   = getRecipes();
+            $id     = (int)($data['next_id'] ?? 1);
+            $data['recipes'][] = [
+                'id'               => $id,
+                'name'             => $name,
+                'ingredients_text' => trim($body['ingredients_text'] ?? ''),
+                'notes'            => trim($body['notes'] ?? ''),
+                'default_portions' => isset($body['default_portions']) ? (int)$body['default_portions'] : null,
+                'tags'             => $body['tags'] ?? [],
+                'created_at'       => date('c'),
+            ];
+            $data['next_id'] = $id + 1;
+            saveRecipes($data);
+            json_response(['ok' => true, 'recipe_id' => $id]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_recipe') {
+        $recipeId = (int)($body['recipe_id'] ?? 0);
+        if (!$recipeId) json_response(['error' => 'recipe_id required'], 400);
+        try {
+            $data = getRecipes();
+            $data['recipes'] = array_values(array_filter($data['recipes'], fn($r) => (int)$r['id'] !== $recipeId));
+            saveRecipes($data);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'plan_meal') {
+        $date     = $body['date'] ?? date('Y-m-d');
+        $mealType = $body['meal_type'] ?? 'dinner';
+        $name     = trim($body['name'] ?? '');
+        $recipeId = isset($body['recipe_id']) ? (int)$body['recipe_id'] : null;
+        if (!$name && !$recipeId) json_response(['error' => 'name or recipe_id required'], 400);
+        // Look up recipe name if only recipe_id given
+        if (!$name && $recipeId) {
+            try {
+                foreach (getRecipes()['recipes'] as $r) {
+                    if ((int)$r['id'] === $recipeId) { $name = $r['name']; break; }
+                }
+            } catch (Throwable $e) {}
+        }
+        try {
+            $existing = getDiaryEntry($date);
+            $plan = $existing['meal_plan'] ?? [];
+            $plan[$mealType] = array_filter(['name' => $name, 'recipe_id' => $recipeId], fn($v) => $v !== null);
+            saveDiaryEntry($date, ['meal_plan' => $plan]);
+            json_response(['ok' => true, 'date' => $date, 'meal_type' => $mealType, 'name' => $name]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'clear_meal') {
+        $date     = $body['date'] ?? date('Y-m-d');
+        $mealType = $body['meal_type'] ?? 'dinner';
+        try {
+            $existing = getDiaryEntry($date);
+            $plan = $existing['meal_plan'] ?? [];
+            unset($plan[$mealType]);
+            saveDiaryEntry($date, ['meal_plan' => $plan ?: null]);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, delete_recipe, plan_meal, clear_meal"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

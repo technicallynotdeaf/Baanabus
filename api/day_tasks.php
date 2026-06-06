@@ -29,9 +29,29 @@ try {
 }
 
 $canAdd = !$isPast && count($scheduled) < 3;
+
+$mealPlan = [];
+try {
+    $diaryEntry = getDiaryEntry($date);
+    $mealPlan   = $diaryEntry['meal_plan'] ?? [];
+} catch (Throwable $e) {}
 ?>
 <div data-init="initDayTasks">
   <h2 style="margin-bottom:1rem;"><?= htmlspecialchars($label) ?></h2>
+
+  <?php if (!empty($mealPlan)): ?>
+    <div style="background:#fdf6e3;border-left:3px solid #c8a84b;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:1rem;">
+      <?php
+        $mealLabels = ['breakfast' => 'Breakfast', 'lunch' => 'Lunch', 'dinner' => 'Dinner'];
+        foreach ($mealPlan as $type => $meal):
+          if (empty($meal['name'])) continue;
+          $typeLabel = $mealLabels[$type] ?? ucfirst($type);
+      ?>
+        <div style="font-size:0.82em;color:#888;margin-bottom:1px;"><?= htmlspecialchars($typeLabel) ?></div>
+        <div style="font-weight:600;color:#5a4a1e;"><?= htmlspecialchars($meal['name']) ?></div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
 
   <?php if (empty($scheduled)): ?>
     <p class="muted">Nothing scheduled for this day.</p>

@@ -62,6 +62,9 @@ if (!$token || !authenticateAgentKey($token)) {
     json_response(['error' => 'Unauthorized — provide a valid bsk_ key'], 401);
 }
 
+// One-time migration: fold per-story pages_available into global pool
+try { migrateStoryPagesToGlobal(); } catch (Throwable $e) {}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ---- GET ----

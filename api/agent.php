@@ -295,7 +295,123 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, people, person, habitica_task"], 400);
+    if ($view === 'nutrition_gaps') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+
+        $date = $_GET['date'] ?? date('Y-m-d');
+
+        // Week start: most recent Monday
+        $dow       = (int)date('N', strtotime($date)); // 1=Mon … 7=Sun
+        $weekStart = date('Y-m-d', strtotime($date . ' -' . ($dow - 1) . ' days'));
+
+        try { $log = getFoodLog(); } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+
+        // Today's totals
+        $todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
+
+        // Weekly average: sum each day that has data, divide by day count
+        $weekDays = [];
+        $cur = $weekStart;
+        while ($cur <= $date) {
+            if (!empty($log['entries'][$cur])) {
+                $weekDays[$cur] = foodLogNutrientTotals($database, $log, $cur, $cur);
+            }
+            $cur = date('Y-m-d', strtotime($cur . ' +1 day'));
+        }
+        $weekDayCount = count($weekDays);
+        $weekAvg = [];
+        foreach ($weekDays as $day) {
+            foreach ($day as $k => $v) { $weekAvg[$k] = ($weekAvg[$k] ?? 0) + (float)$v; }
+        }
+        if ($weekDayCount > 0) {
+            foreach ($weekAvg as $k => &$v) { $v = $v / $weekDayCount; }
+            unset($v);
+        }
+
+        // Mapping: nutrient_rdis.nutrient → foodLogNutrientTotals key
+        $keyMap = [
+            'energy_kj'             => 'energy_kj',
+            'protein_g'             => 'protein_g',
+            'fibre'                 => 'fibre',
+            'fibre_soluble'         => 'fibre_soluble',
+            'fibre_insoluble'       => 'fibre_insoluble',
+            'potassium'             => 'potassium',
+            'calcium'               => 'calcium',
+            'iron'                  => 'iron',
+            'magnesium'             => 'magnesium',
+            'zinc_mg'               => 'zinc',
+            'selenium_mcg'          => 'selenium',
+            'iodine_mcg'            => 'iodine',
+            'copper_mg'             => 'copper',
+            'vitamin_a'             => 'vitamin_a',
+            'vitamin_c'             => 'vitamin_c',
+            'vitamin_d'             => 'vitamin_d',
+            'vitamin_e_mg'          => 'vitamin_e',
+            'vitamin_k'             => 'vitamin_k',
+            'vitamin_k2_mcg'        => 'vitamin_k2',
+            'folate'                => 'vitamin_b9',
+            'vitamin_b1_mg'         => 'vitamin_b1',
+            'vitamin_b2_mg'         => 'vitamin_b2',
+            'vitamin_b3_mg'         => 'vitamin_b3',
+            'vitamin_b5_mg'         => 'vitamin_b5',
+            'vitamin_b6_mg'         => 'vitamin_b6',
+            'vitamin_b7_mcg'        => 'vitamin_b7',
+            'vitamin_b12_mcg'       => 'vitamin_b12',
+            'choline_mg'            => 'choline',
+            'lutein_zeaxanthin_mcg' => 'lutein_zeaxanthin',
+            'omega3_ala_mg'         => 'omega3_ala',
+            'omega3_epa_mg'         => 'omega3_epa',
+            'omega3_dha_mg'         => 'omega3_dha',
+            'omega6_la_mg'          => 'omega6_la',
+            'fat_saturated_g'       => 'fat_saturated_g',
+            'fat_trans_g'           => 'fat_trans_g',
+            'sugars_g'              => 'sugars_g',
+        ];
+
+        // Load RDIs; skip upper-limit-only rows (display_order = 99)
+        $rdis = $database->query(
+            "SELECT * FROM nutrient_rdis WHERE display_order < 99 ORDER BY display_order"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        $gaps = [];
+        foreach ($rdis as $rdi) {
+            $rdiKey    = $rdi['nutrient'];
+            $totalsKey = $keyMap[$rdiKey] ?? $rdiKey;
+            $period    = $rdi['period'] ?? 'daily';
+            $dailyRdi  = (float)($rdi['daily_rdi'] ?? 0);
+            if (!$dailyRdi) continue;
+
+            $logged = $period === 'weekly'
+                ? ($weekAvg[$totalsKey] ?? 0)
+                : ($todayTotals[$totalsKey] ?? 0);
+
+            $gaps[] = [
+                'nutrient'   => $rdiKey,
+                'label'      => $rdi['label'],
+                'unit'       => $rdi['unit'],
+                'period'     => $period,
+                'logged'     => round((float)$logged, 2),
+                'daily_rdi'  => $dailyRdi,
+                'pct'        => $dailyRdi > 0 ? round($logged / $dailyRdi * 100, 1) : null,
+                'shortfall'  => round(max(0, $dailyRdi - $logged), 2),
+                'upper_limit'=> isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] : null,
+            ];
+        }
+
+        usort($gaps, fn($a, $b) => ($a['pct'] ?? 999) <=> ($b['pct'] ?? 999));
+
+        json_response([
+            'ok'                  => true,
+            'date'                => $date,
+            'week_start'          => $weekStart,
+            'week_days_with_data' => $weekDayCount,
+            'gaps'                => $gaps,
+        ]);
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, people, person, habitica_task"], 400);
 }
 
 // ---- POST ----

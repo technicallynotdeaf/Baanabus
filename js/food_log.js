@@ -143,7 +143,7 @@ window.initFoodLog = function () {
     fibre_insoluble: {label:'Fibre — insoluble', unit:'g',   daily:18,    period:'daily',  min:null, upper:null},
     potassium:       {label:'Potassium',          unit:'mg',  daily:2800,  period:'daily',  min:2000, upper:null},
     vitamin_c:       {label:'Vitamin C',          unit:'mg',  daily:45,    period:'daily',  min:10,   upper:2000},
-    folate:          {label:'Folate',             unit:'mcg', daily:400,   period:'daily',  min:200,  upper:1000},
+    vitamin_b9:      {label:'Folate',             unit:'mcg', daily:400,   period:'daily',  min:200,  upper:1000},
     calcium:         {label:'Calcium',            unit:'mg',  daily:1000,  period:'daily',  min:500,  upper:2500},
     iron:            {label:'Iron',               unit:'mg',  daily:18,    period:'weekly', weekly:126, min:8, upper:45},
     magnesium:       {label:'Magnesium',          unit:'mg',  daily:320,   period:'daily',  min:200,  upper:350},
@@ -152,7 +152,7 @@ window.initFoodLog = function () {
     vitamin_d:       {label:'Vitamin D',          unit:'mcg', daily:5,     period:'weekly', weekly:35,  min:1.5,upper:100},
   };
   const KEYS_ORDER = ['fibre','fibre_soluble','fibre_insoluble','potassium','vitamin_c',
-                      'folate','calcium','iron','magnesium','vitamin_k','vitamin_a','vitamin_d'];
+                      'vitamin_b9','calcium','iron','magnesium','vitamin_k','vitamin_a','vitamin_d'];
 
   function renderNutrients(todayTotals, weekTotals) {
     const el = document.getElementById('fl-nutrients');

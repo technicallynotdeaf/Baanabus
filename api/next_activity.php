@@ -135,9 +135,11 @@ try {
             ],
         ];
     } else {
-        $energy = max(1, min(5, (int)$row['energy_level']));
+        $energy  = max(1, min(5, (int)$row['energy_level']));
+        $dayType = (int)($row['day_type'] ?? 0);
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
+$dayType = $dayType ?? 0;
 
 // Comeback callout (set in mark_complete when best week detected) — fires once
 if (!empty($_SESSION['comeback_callout'])) {
@@ -161,13 +163,19 @@ if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 try {
     $morningDailies = getMorningModeDailies();
     if (!empty($morningDailies)) {
-        $d = $morningDailies[0];
+        $skip      = array_filter(array_map('intval', explode(',', $_GET['skip'] ?? '')));
+        $available = empty($skip)
+            ? $morningDailies
+            : array_values(array_filter($morningDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
+        $looped    = empty($available);
+        $d         = $looped ? $morningDailies[0] : $available[0];
         json_response([
-            'type'        => 'morning_daily',
-            'id'          => (int)$d['id'],
-            'title'       => $d['title'],
-            'notes'       => $d['notes'] ?? '',
-            'remaining'   => count($morningDailies),
+            'type'      => 'morning_daily',
+            'id'        => (int)$d['id'],
+            'title'     => $d['title'],
+            'notes'     => $d['notes'] ?? '',
+            'remaining' => count($morningDailies),
+            'looped'    => $looped,
         ]);
     }
 } catch (Throwable $e) { /* non-fatal */ }
@@ -275,6 +283,21 @@ if ($database) {
 
 $easySlots = ($energy <= 2) ? 2 : 1;
 
+// House tasks: only at home (day types Home=1, Rest=4, WFH=5); each shown once per day
+$hasHouseTasks = false;
+if (in_array($dayType, [1, 4, 5], true)) {
+    $houseDefs = include __DIR__ . '/../content/house_tasks.php';
+    $now       = time();
+    $houseSeen = ($cfg['house_tasks_seen'] ?? [])[date('Y-m-d')] ?? [];
+    foreach ($houseDefs as $ht) {
+        $times = $houseSeen[$ht['id']] ?? [];
+        if (count($times) >= ($ht['max'] ?? 1)) continue;
+        if (!empty($times) && isset($ht['gap_hours']) && ($now - max($times)) < $ht['gap_hours'] * 3600) continue;
+        $hasHouseTasks = true;
+        break;
+    }
+}
+
 $hasPersonReview = false;
 try {
     $peopleData = getPeople();
@@ -310,7 +333,8 @@ $pool = array_merge(
     array_fill(0, 1,                                   'joke'),
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
-    array_fill(0, $hasPersonReview ? 1 : 0,            'person_review')
+    array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
+    array_fill(0, $hasHouseTasks  ? 1 : 0,            'house_task')
 );
 
 if (empty($pool)) {
@@ -335,6 +359,11 @@ if ($choice === 'tip') {
     $t = pick_tip();
     if ($t) json_response($t);
     json_response(pick_trivia());
+}
+if ($choice === 'house_task') {
+    $ht = pick_house_task();
+    if ($ht) json_response($ht);
+    json_response(pick_fun_task());
 }
 if ($choice === 'person_review') {
     $pr = pick_person_review();
@@ -777,6 +806,23 @@ function pick_joke(): array {
     ];
     $j = $jokes[array_rand($jokes)];
     return ['type' => 'joke', 'setup' => $j['setup'], 'punchline' => $j['punchline']];
+}
+
+function pick_house_task(): ?array {
+    global $cfg;
+    $tasks  = include __DIR__ . '/../content/house_tasks.php';
+    $today  = date('Y-m-d');
+    $now    = time();
+    $seen   = ($cfg['house_tasks_seen'] ?? [])[$today] ?? [];
+    $avail  = array_values(array_filter($tasks, function($t) use ($seen, $now) {
+        $times = $seen[$t['id']] ?? [];
+        if (count($times) >= ($t['max'] ?? 1)) return false;
+        if (!empty($times) && isset($t['gap_hours']) && ($now - max($times)) < $t['gap_hours'] * 3600) return false;
+        return true;
+    }));
+    if (empty($avail)) return null;
+    $t = $avail[array_rand($avail)];
+    return ['type' => 'house_task', 'task_id' => $t['id'], 'title' => $t['title']];
 }
 
 function pick_easy_task(): array {

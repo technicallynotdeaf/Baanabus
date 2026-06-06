@@ -4,6 +4,8 @@ window.initLetsGo = function() {
   const c = document.getElementById('activity-container');
   if (!c) return;
 
+  let skippedDailyIds = [];
+
   function esc(s) {
     return String(s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -44,6 +46,7 @@ window.initLetsGo = function() {
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
+      case 'house_task':     renderHouseTask(d);     break;
       case 'morning_daily':  renderMorningDaily(d);  break;
       case 'morning_done':   renderMorningDone(d);   break;
       case 'topic_picker':   renderTopicPicker(d);   break;
@@ -903,7 +906,16 @@ window.initLetsGo = function() {
       <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">...</button>`;
   }
 
+  function renderHouseTask(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#7a9e7a;letter-spacing:0.05em;margin-bottom:0.4rem;">HOUSE RESET</p>
+      <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
+      <button class="action-button" onclick="houseTaskDone(${JSON.stringify(d.task_id)})">Done</button>
+      <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="loadSpeechBubble('lets-go.php')">Not now</button>`;
+  }
+
   function renderMorningDaily(d) {
+    if (d.looped) skippedDailyIds = [];
     const notesHtml = d.notes
       ? `<p style="font-size:0.85em;color:#888;margin:0 0 0.75rem;">${esc(d.notes)}</p>`
       : '';
@@ -915,6 +927,7 @@ window.initLetsGo = function() {
       <p style="margin-bottom:0.5rem;">${esc(d.title)}</p>
       ${notesHtml}
       <button class="action-button" onclick="scoreMorningDaily(${d.id})">Done</button>
+      <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="skipMorningDaily(${d.id})">Skip for now</button>
       ${countHtml}`;
   }
 
@@ -1832,6 +1845,7 @@ window.initLetsGo = function() {
   }
 
   window.scoreMorningDaily = function(id) {
+    skippedDailyIds = skippedDailyIds.filter(s => s !== id);
     fetch('api/score_daily.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1843,12 +1857,32 @@ window.initLetsGo = function() {
       if (d.all_done) {
         window.location.reload();
       } else {
-        fetch('api/next_activity.php')
+        const skipParam = skippedDailyIds.length ? '?skip=' + skippedDailyIds.join(',') : '';
+        fetch('api/next_activity.php' + skipParam)
           .then(r => r.json())
           .then(render)
           .catch(() => {});
       }
     })
     .catch(() => {});
+  };
+
+  window.houseTaskDone = function(taskId) {
+    fetch('api/house_task_done.php', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ task_id: taskId }),
+    })
+    .then(() => loadSpeechBubble('lets-go.php'))
+    .catch(() => loadSpeechBubble('lets-go.php'));
+  };
+
+  window.skipMorningDaily = function(id) {
+    if (!skippedDailyIds.includes(id)) skippedDailyIds.push(id);
+    const skipParam = '?skip=' + skippedDailyIds.join(',');
+    fetch('api/next_activity.php' + skipParam)
+      .then(r => r.json())
+      .then(render)
+      .catch(() => {});
   };
 };

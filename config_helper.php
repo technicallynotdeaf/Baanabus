@@ -877,35 +877,38 @@ function saveStoryProgress(int $storyId, array $progress): void {
     saveConfig($cfg);
 }
 
-function incrementStoryPages(int $storyId): int {
-    $p = getStoryProgress($storyId);
-    $p['pages_available']++;
-    saveStoryProgress($storyId, $p);
-    return $p['pages_available'];
-}
+// ---------- Global story page pool ----------
 
-function getActiveStoryId(): ?int {
+function getGlobalStoryPages(): int {
     $cfg = getConfig() ?? [];
-    return isset($cfg['active_story_id']) ? (int)$cfg['active_story_id'] : null;
+    return (int)($cfg['story_pages'] ?? 1);
 }
 
-function setActiveStoryId(int $storyId): void {
+function incrementGlobalStoryPages(): int {
     $cfg = getConfig() ?? [];
-    $cfg['active_story_id'] = $storyId;
+    $cfg['story_pages'] = (int)($cfg['story_pages'] ?? 1) + 1;
     saveConfig($cfg);
+    return $cfg['story_pages'];
 }
 
-function consumePendingStoryPages(int $storyId): void {
-    $cfg     = getConfig() ?? [];
-    $pending = (int)($cfg['pending_story_pages'] ?? 0);
-    if ($pending <= 0) return;
-    $cfg['pending_story_pages'] = 0;
-    $cfg['active_story_id']     = $storyId;
-    saveConfig($cfg);
-    for ($i = 0; $i < $pending; $i++) {
-        incrementStoryPages($storyId);
+// One-time migration: fold all per-story pages_available + pending into the global pool.
+function migrateStoryPagesToGlobal(): void {
+    $cfg = getConfig() ?? [];
+    if (isset($cfg['story_pages'])) return;
+    $max = (int)($cfg['pending_story_pages'] ?? 0);
+    foreach (($cfg['stories'] ?? []) as $s) {
+        $pa = (int)($s['pages_available'] ?? 1);
+        if ($pa > $max) $max = $pa;
     }
+    $cfg['story_pages'] = max(1, $max);
+    saveConfig($cfg);
 }
+
+// Legacy stubs kept so nothing crashes if called during transition
+function incrementStoryPages(int $storyId): int { return incrementGlobalStoryPages(); }
+function getActiveStoryId(): ?int { $cfg = getConfig() ?? []; return isset($cfg['active_story_id']) ? (int)$cfg['active_story_id'] : null; }
+function setActiveStoryId(int $storyId): void {}
+function consumePendingStoryPages(int $storyId): void { migrateStoryPagesToGlobal(); }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------
 
@@ -1030,7 +1033,7 @@ function markDailyComplete(int $id, string $date = null): void {
 // Returns due+incomplete dailies if we are still within morning hours; empty otherwise.
 function getMorningModeDailies(): array {
     $cfg     = getConfig() ?? [];
-    $endHour = (int)($cfg['morning_mode_end_hour'] ?? 10);
+    $endHour = (int)($cfg['morning_mode_end_hour'] ?? 12);
     $melbTz  = new DateTimeZone('Australia/Melbourne');
     $melbNow = new DateTime('now', $melbTz);
     if ((int)$melbNow->format('H') >= $endHour) return [];

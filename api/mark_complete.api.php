@@ -19,37 +19,8 @@ try {
     $target = todayPagesTarget();
     $result = vaultMarkComplete($taskId, $target);
 
-    $bookUnlocked = false;
     if ($result['newStoryPage']) {
-        $activeStory  = getActiveStoryId();
-        $storyFileMap = [1 => 'chai_meridian.php', 2 => 'the_platform.php', 3 => 'below_the_alcyon.php', 4 => 'green_correspondence.php'];
-        $storyEnded   = false;
-        if ($activeStory !== null && isset($storyFileMap[$activeStory])) {
-            $activeProg = getStoryProgress($activeStory);
-            if (!empty($activeProg['ended'])) {
-                $storyEnded = true;
-            } else {
-                // Fallback: check page directly in case ended flag not yet stamped
-                $sf = __DIR__ . '/../content/stories/' . $storyFileMap[$activeStory];
-                if (file_exists($sf)) {
-                    $sd  = require $sf;
-                    $cur = $sd['pages'][$activeProg['current_key'] ?? ''] ?? null;
-                    if ($cur && !empty($cur['ending'])) $storyEnded = true;
-                }
-            }
-        }
-
-        if ($activeStory !== null && !$storyEnded) {
-            try { incrementStoryPages($activeStory); } catch (Throwable $e) { error_log('mark_complete: incrementStoryPages failed: ' . $e->getMessage()); }
-        } else {
-            // No active book, or active book is finished — bank the page
-            try {
-                $cfg = getConfig() ?? [];
-                $cfg['pending_story_pages'] = ($cfg['pending_story_pages'] ?? 0) + 1;
-                saveConfig($cfg);
-            } catch (Throwable $e) {}
-            $bookUnlocked = true;
-        }
+        try { incrementGlobalStoryPages(); } catch (Throwable $e) { error_log('mark_complete: incrementGlobalStoryPages failed: ' . $e->getMessage()); }
     }
 
     if (!empty($result['habitica_id'])) {
@@ -124,8 +95,8 @@ try {
         'pages'        => $result['pages'],
         'pages_target' => $result['pages_target'],
         'total_pages'  => $result['total_pages'],
-        'newStoryPage' => $result['newStoryPage'] && !$bookUnlocked,
-        'bookUnlocked' => $bookUnlocked,
+        'newStoryPage' => $result['newStoryPage'],
+        'bookUnlocked' => false,
         'callout'      => $callout,
     ]);
 } catch (Throwable $e) {

@@ -33,8 +33,8 @@ foreach (($currentPage['choices'] ?? []) as $choice) {
 }
 if (!$valid) json_response(['error' => 'Invalid choice'], 400);
 
-// Can only choose if pages_available > depth
-if ($prog['pages_available'] <= $prog['depth']) {
+// Can only choose if global page pool > depth
+if (getGlobalStoryPages() <= $prog['depth']) {
     json_response(['error' => 'Not unlocked yet'], 403);
 }
 

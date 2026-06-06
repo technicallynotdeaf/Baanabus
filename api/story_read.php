@@ -61,11 +61,9 @@ if ($prevIdx >= 0 && isset($history[$prevIdx])) {
     exit;
 }
 
-// Apply any pages banked before a book was chosen, then mark as active
-try { consumePendingStoryPages($storyId); } catch (Throwable $e) {}
-try { setActiveStoryId($storyId); } catch (Throwable $e) {}
+// Run one-time migration to global pool if not yet done
+try { migrateStoryPagesToGlobal(); } catch (Throwable $e) {}
 
-// Reload progress in case pending pages just changed pages_available
 $prog = getStoryProgress($storyId);
 
 $pageKey  = $prog['current_key'];
@@ -78,12 +76,13 @@ if (!empty($page['ending']) && empty($prog['ended'])) {
     try { saveStoryProgress($storyId, $prog); } catch (Throwable $e) {}
 }
 
-$prose     = base64_decode($page['prose']);
-$canChoose = $prog['pages_available'] > $prog['depth'];
-$choices   = $page['choices'] ?? [];
-$terminal  = !empty($page['terminal']);
-$ending    = !empty($page['ending']);
-$firstHistIdx = 0; // oldest history entry index
+$prose        = base64_decode($page['prose']);
+$globalPages  = getGlobalStoryPages();
+$canChoose    = $globalPages > $prog['depth'];
+$choices      = $page['choices'] ?? [];
+$terminal     = !empty($page['terminal']);
+$ending       = !empty($page['ending']);
+$firstHistIdx = 0;
 ?>
 <div id="story-content" data-init="initStoryRead" data-story-id="<?= $storyId ?>" style="max-width:520px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.25rem;">
@@ -118,7 +117,7 @@ $firstHistIdx = 0; // oldest history entry index
         </button>
       </div>
     <?php elseif (!$canChoose):
-        $pipsNeeded = $prog['depth'] + 1 - $prog['pages_available'];
+        $pipsNeeded = $prog['depth'] + 1 - $globalPages;
         $pipsText   = $pipsNeeded === 1 ? 'one more full pip bar' : $pipsNeeded . ' more full pip bars';
     ?>
       <?php if ($terminal): ?>

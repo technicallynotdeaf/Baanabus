@@ -406,6 +406,22 @@
     }
 
     // ── Chalkboard nutrition board (right wall) ───────────────────────────────
+    function nutrientSquareColor(pct) {
+        const p = Math.max(0, Math.min(1, pct));
+        let r, g, b;
+        if (p < 0.5) {
+            const t = p / 0.5;
+            r = Math.round(180 + t * 20); g = Math.round(40 + t * 60); b = 40;
+        } else if (p < 0.85) {
+            const t = (p - 0.5) / 0.35;
+            r = Math.round(200 - t * 80); g = Math.round(100 + t * 90); b = Math.round(40 - t * 10);
+        } else {
+            const t = Math.min(1, (p - 0.85) / 0.15);
+            r = Math.round(120 - t * 80); g = Math.round(190 + t * 10); b = Math.round(30 + t * 30);
+        }
+        return `rgba(${r},${g},${b},0.82)`;
+    }
+
     function drawChalkboard(W, H, iL, iW, iT, flY, progress) {
         const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, H, W);
         const t1=0.16, t2=0.74, v1=0.07, v2=0.82, pad=0.022;
@@ -426,56 +442,51 @@
         const fs = Math.max(6, Math.min(12, Math.floor(boardW * 0.1)));
 
         // Title
-        const titlePt = bp(0.5, 0.055);
+        const titlePt = bp(0.5, 0.042);
         ctx.fillStyle='rgba(220,218,195,0.72)'; ctx.font=`italic ${fs}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('what to eat today', titlePt[0], titlePt[1]);
+        ctx.fillText('nutrients', titlePt[0], titlePt[1]);
 
         // Divider
-        const div1=bp(0.05,0.10), div2=bp(0.95,0.10);
+        const div1=bp(0.05,0.082), div2=bp(0.95,0.082);
         ctx.strokeStyle='rgba(220,218,195,0.25)'; ctx.lineWidth=0.8;
         ctx.beginPath(); ctx.moveTo(...div1); ctx.lineTo(...div2); ctx.stroke();
 
-        // One row per nutrient
-        const ROWS = [
-            ['fibre',          'Fibre'],  ['fibre_soluble',  'Sol. fibre'],
-            ['fibre_insoluble','Insol.'], ['potassium',      'Potassium'],
-            ['vitamin_c',      'Vit C'],  ['folate',         'Folate'],
-            ['calcium',        'Calcium'],['iron',           'Iron'],
-            ['magnesium',      'Mg'],     ['vitamin_k',      'Vit K'],
-            ['vitamin_a',      'Vit A'],  ['vitamin_d',      'Vit D'],
-        ];
-        const startV=0.13, rowH=0.068, labelEnd=0.30, barStart=0.32, barEnd=0.95;
+        // Grid of colored squares — one per tracked nutrient
+        const entries = Object.entries(progress);
+        if (!entries.length) return;
 
-        ROWS.forEach(([key, label], i) => {
-            const p   = progress[key];
+        const COLS     = 6;
+        const ROWS_N   = Math.ceil(entries.length / COLS);
+        const gridTop  = 0.09, gridBot = 0.98;
+        const gridL    = 0.04, gridR   = 0.96;
+        const cellW    = (gridR - gridL) / COLS;
+        const cellH    = (gridBot - gridTop) / ROWS_N;
+        const sqPad    = 0.010;
+
+        entries.forEach(([key, p], i) => {
+            const col = i % COLS;
+            const row = Math.floor(i / COLS);
+            const s0 = gridL + col * cellW + sqPad;
+            const s1 = gridL + (col + 1) * cellW - sqPad;
+            const t0 = gridTop + row * cellH + sqPad;
+            const t1 = gridTop + (row + 1) * cellH - sqPad;
+
             const pct = p ? Math.min(1, p.pct || 0) : 0;
-            const v   = startV + i * rowH;
-            if (v + rowH > 0.98) return;
 
-            const mid = v + rowH * 0.5;
-            const barV1 = v + rowH * 0.25, barV2 = v + rowH * 0.75;
+            const qTL=bp(s0,t0), qTR=bp(s1,t0), qBL=bp(s0,t1), qBR=bp(s1,t1);
 
-            // Label
-            const lPos = bp(labelEnd, mid);
-            ctx.fillStyle='rgba(200,198,175,0.75)';
-            ctx.font=`${Math.max(5,fs-1)}px sans-serif`; ctx.textAlign='right'; ctx.textBaseline='middle';
-            ctx.fillText(label, lPos[0], lPos[1]);
+            // Dim background
+            ctx.fillStyle='rgba(255,255,255,0.06)';
+            quadPath(qTL,qTR,qBL,qBR); ctx.fill();
 
-            // Bar background
-            const bg1=bp(barStart,barV1), bg2=bp(barEnd,barV1), bg3=bp(barStart,barV2), bg4=bp(barEnd,barV2);
-            ctx.fillStyle='rgba(255,255,255,0.07)'; quadPath(bg1,bg2,bg3,bg4); ctx.fill();
+            // Colored fill
+            ctx.fillStyle = nutrientSquareColor(pct);
+            quadPath(qTL,qTR,qBL,qBR); ctx.fill();
 
-            // Bar fill
-            const fillEnd = barStart + pct * (barEnd - barStart);
-            const f1=bp(barStart,barV1), f2=bp(fillEnd,barV1), f3=bp(barStart,barV2), f4=bp(fillEnd,barV2);
-            const colour = pct>=0.9?'#58e878aa':pct>=0.6?'#e8c050aa':'#e85858aa';
-            ctx.fillStyle=colour; quadPath(f1,f2,f3,f4); ctx.fill();
-
-            // Chalk-dust highlights on the filled bar
-            if (pct > 0.05) {
-                ctx.fillStyle='rgba(255,255,255,0.12)'; quadPath(f1,f2,[f1[0],f1[1]+2],[f2[0],f2[1]+2]); ctx.fill();
-            }
+            // Chalk-dust top highlight
+            ctx.fillStyle='rgba(255,255,255,0.14)';
+            quadPath(qTL, qTR, [qTL[0],qTL[1]+2], [qTR[0],qTR[1]+2]); ctx.fill();
         });
     }
 
@@ -486,7 +497,7 @@
         img.onload = function () {
             const scale = W <= 640 ? 0.15 : 0.25;
             const aw = img.width * scale, ah = img.height * scale;
-            ctx.drawImage(img, Math.floor(W * 0.62 - aw / 2), Math.floor(flY) - ah, aw, ah);
+            ctx.drawImage(img, Math.floor(W * 0.28 - aw / 2), Math.floor(flY) - ah, aw, ah);
         };
     }
 

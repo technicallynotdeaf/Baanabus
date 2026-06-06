@@ -9,6 +9,7 @@
  * GET ?view=config              → app config (preferences, onboarding state, story progress)
  * GET ?view=snapshot            → tasks + inbox + config + context in one call
  * GET ?view=food_search&q=term  → search foods + servings by name (for finding food_id/serving_id)
+ * GET ?view=api_keys            → list agent API keys (label, created_at, is_current)
  * GET ?view=people              → all people (id, name, circles, birthday, next_review, archived)
  * GET ?view=person&id=N         → single person with their notes
  *
@@ -20,6 +21,12 @@
  *
  * POST {"action":"delete_task","task_id":N}
  *      → mark a task as deleted
+ *
+ * POST {"action":"rotate_api_key"}
+ *      → generate new bsk_ key (label: claude-MON-DD), return new_token + old_key_id; old key stays live until revoked
+ *
+ * POST {"action":"revoke_api_key","key_id":"..."}
+ *      → delete a key by key_id; refuses to revoke the key currently in use
  *
  * POST {"action":"add_person_note","person_id":N,"note_content":"..."}
  *      → append a note to a person record
@@ -295,6 +302,23 @@ if ($method === 'GET') {
         }
     }
 
+    if ($view === 'api_keys') {
+        $indexPath = __DIR__ . '/../data/apikeys.json';
+        $index     = file_exists($indexPath) ? (json_decode(file_get_contents($indexPath), true) ?? []) : [];
+        $currentKeyId = $index[hash('sha256', $token)]['key_id'] ?? null;
+        try { $cass = getCassowary(); } catch (Throwable $e) { $cass = []; }
+        $keys = [];
+        foreach ($cass['api_keys'] ?? [] as $keyId => $meta) {
+            $keys[] = [
+                'key_id'     => $keyId,
+                'label'      => $meta['label']      ?? '',
+                'created_at' => $meta['created_at'] ?? null,
+                'is_current' => $keyId === $currentKeyId,
+            ];
+        }
+        json_response(['ok' => true, 'keys' => $keys]);
+    }
+
     if ($view === 'nutrition_gaps') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
 
@@ -411,7 +435,7 @@ if ($method === 'GET') {
         ]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, people, person, habitica_task"], 400);
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task"], 400);
 }
 
 // ---- POST ----
@@ -808,6 +832,85 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'rotate_api_key') {
+        if (!extension_loaded('sodium')) json_response(['error' => 'libsodium missing'], 500);
+
+        $newToken = 'bsk_' . bin2hex(random_bytes(32));
+        $label    = 'claude-' . strtolower(date('M-d')); // e.g. claude-jun-06
+        $kek      = substr(hash('sha256', $newToken, true), 0, 32);
+        $dek      = b64u_dec($_SESSION['DEK']);
+        $nonce    = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+        $ct       = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt($dek, '', $nonce, $kek);
+        $newKeyId = bin2hex(random_bytes(8));
+        $uid      = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+
+        // Store wrapped DEK for new key
+        $wrapDir = __DIR__ . "/../config/$uid/apikeys";
+        @mkdir($wrapDir, 0700, true);
+        file_put_contents("$wrapDir/$newKeyId.json", json_encode([
+            'nonce' => base64_encode($nonce),
+            'ct'    => base64_encode($ct),
+        ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+
+        // Update global index; also find old key_id from current token
+        $indexPath = __DIR__ . '/../data/apikeys.json';
+        $index = file_exists($indexPath) ? (json_decode(file_get_contents($indexPath), true) ?? []) : [];
+        $oldKeyId = $index[hash('sha256', $token)]['key_id'] ?? null;
+        $index[hash('sha256', $newToken)] = ['user_id' => $_SESSION['user_id'] ?? 'default', 'key_id' => $newKeyId];
+        file_put_contents($indexPath, json_encode($index, JSON_UNESCAPED_SLASHES), LOCK_EX);
+
+        // Metadata in cassowary
+        try {
+            $cass = getCassowary();
+            $cass['api_keys'][$newKeyId] = ['label' => $label, 'created_at' => date('c')];
+            saveCassowary($cass);
+        } catch (Throwable $e) { /* non-fatal */ }
+
+        json_response([
+            'ok'         => true,
+            'new_token'  => $newToken,
+            'new_key_id' => $newKeyId,
+            'old_key_id' => $oldKeyId,
+            'label'      => $label,
+            'note'       => 'Save new_token to disk, verify it works, then call revoke_api_key with old_key_id.',
+        ]);
+    }
+
+    if ($action === 'revoke_api_key') {
+        $keyId = preg_replace('/[^A-Za-z0-9]/', '', $body['key_id'] ?? '');
+        if (!$keyId) json_response(['error' => 'key_id required'], 400);
+
+        $indexPath = __DIR__ . '/../data/apikeys.json';
+        $index = file_exists($indexPath) ? (json_decode(file_get_contents($indexPath), true) ?? []) : [];
+
+        // Refuse to revoke the key currently in use
+        $currentKeyId = $index[hash('sha256', $token)]['key_id'] ?? null;
+        if ($keyId === $currentKeyId) json_response(['error' => 'Cannot revoke the key currently in use — rotate first'], 400);
+
+        // Verify the key belongs to this user
+        $belongs = false;
+        foreach ($index as $entry) {
+            if ($entry['key_id'] === $keyId && $entry['user_id'] === ($_SESSION['user_id'] ?? 'default')) {
+                $belongs = true; break;
+            }
+        }
+        if (!$belongs) json_response(['error' => 'Key not found or not yours'], 404);
+
+        $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+        @unlink(__DIR__ . "/../config/$uid/apikeys/$keyId.json");
+
+        $index = array_filter($index, fn($v) => $v['key_id'] !== $keyId);
+        file_put_contents($indexPath, json_encode($index, JSON_UNESCAPED_SLASHES), LOCK_EX);
+
+        try {
+            $cass = getCassowary();
+            unset($cass['api_keys'][$keyId]);
+            saveCassowary($cass);
+        } catch (Throwable $e) { /* non-fatal */ }
+
+        json_response(['ok' => true, 'revoked' => $keyId]);
+    }
+
     if ($action === 'add_person_note') {
         $personId = (int)($body['person_id'] ?? 0);
         $contents = trim($body['note_content'] ?? '');
@@ -837,7 +940,7 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, add_person_note, update_person"], 400);
+    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

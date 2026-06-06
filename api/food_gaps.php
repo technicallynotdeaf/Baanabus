@@ -81,15 +81,17 @@ foreach ($rdis as $rdi) {
 
     $pct = $target > 0 ? round($actual / $target, 3) : 0;
     $progress[$n] = [
-        'label'      => $rdi['label'],
-        'unit'       => $rdi['unit'],
-        'actual'     => round($actual, 1),
-        'target'     => $target,
-        'pct'        => $pct,
-        'good_enough'=> (float)$rdi['good_enough'],
-        'period'     => $rdi['period'],
-        'note'       => $note,
-        'covered'    => $pct >= (float)$rdi['good_enough'],
+        'label'       => $rdi['label'],
+        'unit'        => $rdi['unit'],
+        'actual'      => round($actual, 2),
+        'target'      => $target,
+        'pct'         => $pct,
+        'good_enough' => (float)$rdi['good_enough'],
+        'period'      => $rdi['period'],
+        'note'        => $note,
+        'covered'     => $pct >= (float)$rdi['good_enough'],
+        'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] : null,
+        'is_limit'    => !empty($rdi['is_limit']),
     ];
 }
 
@@ -99,7 +101,8 @@ uasort($gaps, fn($a, $b) => $a['pct'] <=> $b['pct']);
 
 // Build suggestions for each gap nutrient (up to 4 gaps, 4 foods each)
 $suggestions = [];
-foreach (array_slice(array_keys($gaps), 0, 4) as $n) {
+$maxSuggestions = min(12, (int)($_GET['limit'] ?? 4));
+foreach (array_slice(array_keys($gaps), 0, $maxSuggestions) as $n) {
     $foodsCol = $colMap[$n]['foods_col'] ?? null;
     if (!$foodsCol) continue;
 

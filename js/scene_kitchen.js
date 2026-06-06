@@ -562,7 +562,7 @@
             return;
         }
         if (ptInQuad(cx, cy, chalkboardBounds) && typeof loadOverlay === 'function') {
-            loadOverlay('api/food_log_overlay.php');
+            loadOverlay('api/nutrition_progress.php');
         }
     });
     canvas.addEventListener('mousemove', function (e) {

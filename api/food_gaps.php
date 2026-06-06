@@ -79,24 +79,29 @@ foreach ($rdis as $rdi) {
         $note   = 'today';
     }
 
-    $pct = $target > 0 ? round($actual / $target, 3) : 0;
+    $pct      = $target > 0 ? round($actual / $target, 3) : 0;
+    $isLimit  = !empty($rdi['is_limit']);
+    $goodEnough = (float)$rdi['good_enough'];
+    // Limit nutrients: covered when intake is LOW (pct <= good_enough threshold)
+    // Regular nutrients: covered when intake is HIGH (pct >= good_enough threshold)
+    $covered  = $isLimit ? ($pct <= $goodEnough) : ($pct >= $goodEnough);
     $progress[$n] = [
         'label'       => $rdi['label'],
         'unit'        => $rdi['unit'],
         'actual'      => round($actual, 2),
         'target'      => $target,
         'pct'         => $pct,
-        'good_enough' => (float)$rdi['good_enough'],
+        'good_enough' => $goodEnough,
         'period'      => $rdi['period'],
         'note'        => $note,
-        'covered'     => $pct >= (float)$rdi['good_enough'],
+        'covered'     => $covered,
         'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] : null,
-        'is_limit'    => !empty($rdi['is_limit']),
+        'is_limit'    => $isLimit,
     ];
 }
 
-// Find gaps (sorted by how deficient, worst first)
-$gaps = array_filter($progress, fn($p) => !$p['covered']);
+// Find gaps: uncovered nutrients that need MORE intake (exclude limit nutrients)
+$gaps = array_filter($progress, fn($p) => !$p['covered'] && !$p['is_limit']);
 uasort($gaps, fn($a, $b) => $a['pct'] <=> $b['pct']);
 
 // Build suggestions for each gap nutrient (up to 4 gaps, 4 foods each)

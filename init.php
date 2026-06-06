@@ -43,6 +43,7 @@ function _ensureMigrations(PDO $db): void {
         "ALTER TABLE nutrient_rdis   ADD COLUMN min_rdi           REAL",
         "ALTER TABLE nutrient_rdis   ADD COLUMN upper_limit       REAL",
         "ALTER TABLE nutrient_rdis   ADD COLUMN notes             TEXT",
+        "ALTER TABLE nutrient_rdis   ADD COLUMN is_limit          INTEGER DEFAULT 0",
     ];
     foreach ($alters as $sql) {
         try { $db->exec($sql); }
@@ -50,6 +51,11 @@ function _ensureMigrations(PDO $db): void {
             if (strpos($e->getMessage(), 'duplicate column') === false) throw $e;
         }
     }
+
+    // Mark limit nutrients (upper-bound only — lower intake is always better)
+    try {
+        $db->exec("UPDATE nutrient_rdis SET is_limit=1 WHERE nutrient IN ('fat_trans_g','fat_saturated_g','sugars_g')");
+    } catch (PDOException $e) {}
 }
 
 function _ensureSchema(PDO $db): void {

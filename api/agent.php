@@ -1020,6 +1020,36 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'update_recipe') {
+        $recipeId = (int)($body['recipe_id'] ?? 0);
+        if (!$recipeId) json_response(['error' => 'recipe_id required'], 400);
+        try {
+            $data  = getRecipes();
+            $found = false;
+            foreach ($data['recipes'] as &$r) {
+                if ((int)$r['id'] !== $recipeId) continue;
+                $found = true;
+                if (isset($body['name']))             $r['name']             = trim($body['name']);
+                if (isset($body['ingredients_text'])) $r['ingredients_text'] = trim($body['ingredients_text']);
+                if (isset($body['notes']))            $r['notes']            = trim($body['notes']);
+                if (isset($body['default_portions'])) $r['default_portions'] = (int)$body['default_portions'];
+                if (isset($body['tags']))             $r['tags']             = $body['tags'];
+                if (isset($body['ingredient_matches'])) {
+                    $r['ingredient_matches'] = $body['ingredient_matches'];
+                    unset($r['batch_nutrition'], $r['portion_nutrition'], $r['nutrition_notes']);
+                }
+                $r['updated_at'] = date('c');
+                break;
+            }
+            unset($r);
+            if (!$found) json_response(['error' => 'Recipe not found'], 404);
+            saveRecipes($data);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'plan_meal') {
         $date     = $body['date'] ?? date('Y-m-d');
         $mealType = $body['meal_type'] ?? 'dinner';
@@ -1063,7 +1093,14 @@ if ($method === 'POST') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
         $recipeId = (int)($body['recipe_id'] ?? 0);
         if (!$recipeId) json_response(['error' => 'recipe_id required'], 400);
-        $ingredients = $body['ingredients'] ?? [];
+        // If no ingredients in body, fall back to stored ingredient_matches on the recipe
+        try { $allRecipes = getRecipes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        $storedRecipe = null;
+        foreach ($allRecipes['recipes'] as $r) {
+            if ((int)$r['id'] === $recipeId) { $storedRecipe = $r; break; }
+        }
+        if (!$storedRecipe) json_response(['error' => 'Recipe not found'], 404);
+        $ingredients = $body['ingredients'] ?? $storedRecipe['ingredient_matches'] ?? [];
         $manual      = $body['manual_nutrients'] ?? [];
         $notes       = $body['nutrition_notes'] ?? '';
 
@@ -1103,13 +1140,9 @@ if ($method === 'POST') {
             }
         }
 
-        // Determine portions
-        try { $recipes = getRecipes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
-        $recipe = null;
-        foreach ($recipes['recipes'] as $r) {
-            if ((int)$r['id'] === $recipeId) { $recipe = $r; break; }
-        }
-        if (!$recipe) json_response(['error' => 'Recipe not found'], 404);
+        // Determine portions (reuse $allRecipes/$storedRecipe already fetched above)
+        $recipes = $allRecipes;
+        $recipe  = $storedRecipe;
         $portions = (int)($body['portions'] ?? $recipe['default_portions'] ?? 1);
         if ($portions < 1) $portions = 1;
 
@@ -1139,6 +1172,58 @@ if ($method === 'POST') {
         ]);
     }
 
+    if ($action === 'log_recipe_portion') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $recipeId = (int)($body['recipe_id'] ?? 0);
+        $fraction = (float)($body['fraction'] ?? 1.0);
+        if (!$recipeId) json_response(['error' => 'recipe_id required'], 400);
+        if ($fraction <= 0 || $fraction > 20) json_response(['error' => 'fraction out of range'], 400);
+        try {
+            $recipes = getRecipes();
+            $recipe  = null;
+            foreach ($recipes['recipes'] as $r) {
+                if ((int)$r['id'] === $recipeId) { $recipe = $r; break; }
+            }
+            if (!$recipe) json_response(['error' => 'Recipe not found'], 404);
+            $ingredients = $recipe['ingredient_matches'] ?? [];
+            if (empty($ingredients)) json_response(['error' => 'No ingredient_matches — run precalculate_recipe first'], 400);
+
+            $foodLog = getFoodLog();
+            $today   = date('Y-m-d');
+            $entries = $foodLog['entries'][$today] ?? [];
+            $nextId  = (int)($foodLog['next_id'] ?? 1);
+            $logged  = [];
+
+            foreach ($ingredients as $ing) {
+                $foodId  = (int)($ing['food_id'] ?? 0);
+                $weightG = round((float)($ing['weight_g'] ?? 0) * $fraction, 1);
+                if (!$foodId || $weightG <= 0) continue;
+                $stmt = $database->prepare("SELECT serving_id FROM food_servings WHERE food_id = ? AND weight_g = 1 ORDER BY serving_id LIMIT 1");
+                $stmt->execute([$foodId]);
+                $servingId = (int)($stmt->fetchColumn() ?: 0);
+                if (!$servingId) continue;
+                $entry = [
+                    'log_id'         => $nextId++,
+                    'food_id'        => $foodId,
+                    'serving_id'     => $servingId,
+                    'quantity'       => $weightG,
+                    'is_writeoff'    => false,
+                    'writeoff_label' => null,
+                    'logged_at'      => date('Y-m-d H:i:s'),
+                ];
+                $entries[] = $entry;
+                $logged[]  = $entry;
+            }
+
+            $foodLog['entries'][$today] = $entries;
+            $foodLog['next_id'] = $nextId;
+            saveFoodLog($foodLog);
+            json_response(['ok' => true, 'recipe' => $recipe['name'], 'fraction' => $fraction, 'logged_items' => count($logged)]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'set_preference') {
         $allowed = ['payday_day'];
         $key     = $body['key']   ?? '';
@@ -1155,7 +1240,7 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, delete_recipe, plan_meal, clear_meal, set_preference"], 400);
+    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, update_recipe, delete_recipe, log_recipe_portion, plan_meal, clear_meal, set_preference"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

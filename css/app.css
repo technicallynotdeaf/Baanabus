@@ -469,8 +469,8 @@ body.scene-view #scene-total-pips { display: block; }
 /* Clock on right wall (desktop scene only) */
 #scene-clock {
     position: fixed;
-    right: 3vw;
-    top: 38%;
+    left: calc(83% + 15px);
+    top: 28%;
     transform: translateY(-50%);
     font-size: clamp(0.85rem, 2vw, 2rem);
     font-weight: 200;

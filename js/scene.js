@@ -331,7 +331,7 @@
     function drawNoticeBoard(ctx, iL, iW, iT, flY, h, w, earnedIds) {
         const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const t1  = 0.20, t2 = 0.58;
-        const v1  = 0.46, v2 = 0.88;
+        const v1  = 0.46, v2 = 0.67;
         const pad = 0.025;
 
         // Frame

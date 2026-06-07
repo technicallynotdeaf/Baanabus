@@ -472,11 +472,11 @@ body.scene-view #scene-total-pips { display: block; }
     left: calc(83% + 15px);
     top: 28%;
     transform: translateY(-50%);
-    font-size: clamp(0.85rem, 2vw, 2rem);
+    font-size: clamp(1rem, 2.6vw, 2.6rem);
     font-weight: 200;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.92);
-    text-shadow: 0 1px 4px rgba(0,0,0,1), 0 2px 14px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.7);
+    text-shadow: 0 1px 6px rgba(0,0,0,1), 0 3px 18px rgba(0,0,0,1), 0 0 60px rgba(0,0,0,0.85);
     pointer-events: none;
     display: none;
     z-index: 50;

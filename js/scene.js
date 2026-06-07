@@ -420,7 +420,9 @@
 
         ctx.strokeStyle = '#5D4037';
         ctx.lineWidth   = 2;
-        ctx.fillStyle   = '#8B5A2B';
+        ctx.strokeRect(innerLeft, innerTop, innerWidth, clearance);
+
+        ctx.fillStyle = '#8B5A2B';
         ctx.fillRect  (innerLeft, innerTop + clearance, innerWidth, innerHeight - clearance);
         ctx.strokeRect(innerLeft, innerTop + clearance, innerWidth, innerHeight - clearance);
 

@@ -472,7 +472,7 @@ body.scene-view #scene-total-pips { display: block; }
     right: 3vw;
     top: 38%;
     transform: translateY(-50%);
-    font-size: clamp(2rem, 4vw, 3.8rem);
+    font-size: clamp(0.85rem, 2vw, 2rem);
     font-weight: 200;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.92);

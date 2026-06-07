@@ -868,6 +868,7 @@ function getStoryProgress(int $storyId): array {
         'depth'           => (int)($progress['depth']           ?? 0),
         'current_key'     => $progress['current_key']            ?? '1_start',
         'history'         => $progress['history']                ?? [],
+        'ended'           => !empty($progress['ended']),
     ];
 }
 

@@ -60,8 +60,8 @@
 
         const sidePad = 3;
         const gap     = 2;
-        const n       = STORY_BOOKS.length;
-        const bookW   = Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n);
+        const refBkH  = Math.floor(shelfH * 0.75);          // typical book height
+        const bookW   = Math.max(10, Math.floor(refBkH / 6)); // ~1:6 spine ratio
 
         STORY_BOOKS.forEach((book, i) => {
             const unlocked = STORY_BOOKS_AVAIL.includes(book.id);

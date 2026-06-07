@@ -472,7 +472,8 @@
             const t0 = gridTop + row * cellH + sqPad;
             const t1 = gridTop + (row + 1) * cellH - sqPad;
 
-            const pct = p ? Math.min(1, p.pct || 0) : 0;
+            const rawPct = p ? (p.pct || 0) : 0;
+            const pct = p && p.is_limit ? Math.max(0, 1 - Math.min(1, rawPct)) : Math.min(1, rawPct);
 
             const qTL=bp(s0,t0), qTR=bp(s1,t0), qBL=bp(s0,t1), qBR=bp(s1,t1);
 

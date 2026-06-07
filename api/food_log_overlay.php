@@ -45,14 +45,6 @@ $today = date('Y-m-d');
     </div>
   </div>
 
-  <!-- Nutrient progress -->
-  <div class="card" style="margin-bottom:1rem;">
-    <h3 style="margin-bottom:0.75rem;">Nutrients</h3>
-    <div id="fl-nutrients">
-      <p class="muted" style="font-size:0.85em;">Loading…</p>
-    </div>
-  </div>
-
   <!-- Gap suggestions -->
   <div id="fl-gaps-card" class="card" style="display:none;">
     <h3 style="margin-bottom:0.75rem;">What else today?</h3>

@@ -35,6 +35,7 @@ $colMap = [
     'iodine_mcg'            => ['foods_col' => 'iodine_mcg',            'totals_key' => 'iodine'],
     'copper_mg'             => ['foods_col' => 'copper_mg',             'totals_key' => 'copper'],
     'vitamin_a'             => ['foods_col' => 'vitamin_a_mcg',         'totals_key' => 'vitamin_a'],
+    'retinol'               => ['foods_col' => 'retinol_mcg',           'totals_key' => 'retinol'],
     'vitamin_c'             => ['foods_col' => 'vitamin_c_mg',          'totals_key' => 'vitamin_c'],
     'vitamin_d'             => ['foods_col' => 'vitamin_d_mcg',         'totals_key' => 'vitamin_d'],
     'vitamin_e_mg'          => ['foods_col' => 'vitamin_e_mg',          'totals_key' => 'vitamin_e'],

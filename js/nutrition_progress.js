@@ -6,22 +6,19 @@ window.initNutritionProgress = function () {
   // Nutrient keys grouped by display section, in order
   const SECTIONS = [
     { label: 'Fibre',             keys: ['fibre', 'fibre_soluble', 'fibre_insoluble'] },
+    { label: 'Energy & protein',  keys: ['energy_kj', 'protein_g'] },
     { label: 'Fatty acids',       keys: ['omega3_ala_mg', 'omega3_epa_mg', 'omega3_dha_mg', 'omega6_la_mg'] },
     { label: 'Fat & sugar limits',keys: ['fat_saturated_g', 'fat_trans_g', 'sugars_g'] },
-    { label: 'Vitamins A & D',    keys: ['vitamin_a', 'vitamin_d', 'vitamin_k', 'vitamin_k2_mcg', 'vitamin_e_mg'] },
+    { label: 'Vitamins A & D',    keys: ['vitamin_a', 'retinol', 'vitamin_d', 'vitamin_k', 'vitamin_k2_mcg', 'vitamin_e_mg'] },
     { label: 'B vitamins',        keys: ['vitamin_b1_mg', 'vitamin_b2_mg', 'vitamin_b3_mg', 'vitamin_b5_mg',
-                                         'vitamin_b6_mg', 'vitamin_b7_mcg', 'folate', 'vitamin_b12_mg',
-                                         'vitamin_b12_mcg', 'choline_mg'] },
+                                         'vitamin_b6_mg', 'vitamin_b7_mcg', 'folate', 'vitamin_b12_mcg', 'choline_mg'] },
     { label: 'Vitamin C & carotenoids', keys: ['vitamin_c', 'lutein_zeaxanthin_mcg'] },
     { label: 'Minerals',          keys: ['calcium', 'iron', 'magnesium', 'potassium',
                                          'zinc_mg', 'selenium_mcg', 'iodine_mcg', 'copper_mg'] },
-    { label: 'Energy & protein',  keys: ['energy_kj', 'protein_g'] },
   ];
 
-  // These nutrients count as "limits" — lower is better; bar fills toward upper threshold
-  const LIMIT_KEYS = new Set(['fat_saturated_g', 'fat_trans_g', 'sugars_g']);
   // Informational only — neutral colour, no green/red
-  const INFO_KEYS  = new Set(['energy_kj', 'protein_g']);
+  const INFO_KEYS = new Set(['energy_kj', 'protein_g']);
 
   function fmt(v) {
     if (v == null) return '—';
@@ -44,7 +41,7 @@ window.initNutritionProgress = function () {
   }
 
   function renderBar(key, p) {
-    const isLimit = LIMIT_KEYS.has(key);
+    const isLimit = !!p.is_limit;
     const isInfo  = INFO_KEYS.has(key);
     const pct     = Math.min(1, p.pct || 0);
     const colour  = barColour(pct, isLimit, isInfo);

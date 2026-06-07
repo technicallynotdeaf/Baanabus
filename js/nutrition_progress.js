@@ -14,7 +14,7 @@ window.initNutritionProgress = function () {
                                          'vitamin_b6_mg', 'vitamin_b7_mcg', 'folate', 'vitamin_b12_mcg', 'choline_mg'] },
     { label: 'Vitamin C & carotenoids', keys: ['vitamin_c', 'lutein_zeaxanthin_mcg'] },
     { label: 'Minerals',          keys: ['calcium', 'iron', 'magnesium', 'potassium',
-                                         'zinc_mg', 'selenium_mcg', 'iodine_mcg', 'copper_mg'] },
+                                         'zinc_mg', 'selenium_mcg', 'iodine_mcg', 'copper_mg', 'sodium'] },
   ];
 
   // Informational only — neutral colour, no green/red

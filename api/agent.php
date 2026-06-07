@@ -47,6 +47,9 @@
  *
  * POST {"action":"clear_meal","date":"YYYY-MM-DD","meal_type":"dinner"}
  *      → remove a planned meal
+ *
+ * POST {"action":"add_context","context":"...","description":"..."}
+ *      → add a new context option to the lookup table (INSERT OR IGNORE)
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -482,7 +485,17 @@ if ($method === 'GET') {
         json_response(['ok' => true, 'date' => $date, 'meal_plan' => $plan, 'recipes' => $recipe]);
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, meal_plan"], 400);
+    if ($view === 'contexts') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        try {
+            $rows = $database->query("SELECT context, description FROM contexts ORDER BY context")->fetchAll(PDO::FETCH_ASSOC);
+            json_response(['ok' => true, 'contexts' => $rows]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, meal_plan, contexts"], 400);
 }
 
 // ---- POST ----
@@ -500,6 +513,21 @@ if ($method === 'POST') {
         try {
             vaultUpdateTask($taskId, $fields);
             json_response(['ok' => true, 'updated' => $fields]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'add_context') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $ctx = trim($body['context'] ?? '');
+        if (!$ctx) json_response(['error' => 'Missing context'], 400);
+        $desc = trim($body['description'] ?? '') ?: null;
+        try {
+            $stmt = $database->prepare("INSERT OR IGNORE INTO contexts (context, description) VALUES (?, ?)");
+            $stmt->execute([$ctx, $desc]);
+            $inserted = $database->lastInsertId() > 0;
+            json_response(['ok' => true, 'context' => $ctx, 'inserted' => $inserted]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

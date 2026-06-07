@@ -53,56 +53,71 @@
 
     function drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
         bookBounds = [];
-        const secW  = Math.floor(innerWidth / 3);
-        const cfgs  = [8, 6, 7];
+        const secW   = Math.floor(innerWidth / 3);
+        // Left section has 6 shelves; top shelf is the first bay
+        const shelfH = Math.floor((innerHeight - clearance) / 7);
+        const bayBot = innerTop + clearance + shelfH; // bottom of top-left shelf
 
-        cfgs.forEach((numShelves, si) => {
-            const secX   = innerLeft + secW * si;
-            const shelfH = Math.floor((innerHeight - clearance) / (numShelves + 1));
-            const bayBottom = innerTop + innerHeight;
-            const bayHeight = shelfH;
-            const bookW     = Math.floor((secW - 8) / 2);
-            const book1Idx  = si * 2;
-            const book2Idx  = si * 2 + 1;
+        const sidePad = 3;
+        const gap     = 2;
+        const n       = STORY_BOOKS.length;
+        const bookW   = Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n);
 
-            [book1Idx, book2Idx].forEach((bookIdx, bi) => {
-                if (bookIdx >= STORY_BOOKS.length) return;
-                const book     = STORY_BOOKS[bookIdx];
-                const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
-                const bkH      = Math.floor(bayHeight * book.h);
-                const bx       = secX + 4 + bi * (bookW + 2);
-                const by       = bayBottom - bkH;
-                const color    = unlocked ? book.color : desaturate(book.color);
+        STORY_BOOKS.forEach((book, i) => {
+            const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
+            const bkH      = Math.floor(shelfH * book.h);
+            const bx       = innerLeft + sidePad + i * (bookW + gap);
+            const by       = bayBot - bkH;
+            const color    = unlocked ? book.color : desaturate(book.color);
+            const spineW   = Math.max(3, Math.floor(bookW * 0.20));
 
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.fillRect(bx + 2, by + 2, bookW, bkH);
+            // Drop shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 2, by + 2, bookW, bkH);
 
-                ctx.fillStyle = color;
-                ctx.fillRect(bx, by, bookW, bkH);
+            // Cover face
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
 
-                ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                ctx.fillRect(bx, by, 4, bkH);
+            // Binding strip (left ~20%, darkened by overlay)
+            ctx.fillStyle = 'rgba(0,0,0,0.28)';
+            ctx.fillRect(bx, by, spineW, bkH);
 
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.fillRect(bx, by, bookW, 3);
+            // Binding-to-cover highlight seam
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(bx + spineW, by, 2, bkH);
 
-                ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-                ctx.lineWidth   = 0.5;
-                for (let l = 1; l < 5; l++) {
-                    const ly = by + Math.floor(bkH * l / 5);
-                    ctx.beginPath();
-                    ctx.moveTo(bx, ly);
-                    ctx.lineTo(bx + bookW, ly);
-                    ctx.stroke();
-                }
+            // Page edges at top (cream strip)
+            ctx.fillStyle = 'rgba(255,250,235,0.9)';
+            ctx.fillRect(bx + spineW + 2, by, bookW - spineW - 2, 3);
 
-                if (unlocked) {
-                    ctx.fillStyle = 'rgba(245,166,35,0.6)';
-                    ctx.fillRect(bx, by, bookW, 3);
-                }
+            // Top shadow (3-D top edge)
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.fillRect(bx, by, bookW, 2);
 
-                bookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, unlocked });
-            });
+            // Right-edge catch-light
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.fillRect(bx + bookW - 2, by + 3, 2, bkH - 5);
+
+            // Horizontal rule lines across cover face
+            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+            ctx.lineWidth   = 0.5;
+            for (let l = 1; l < 5; l++) {
+                const ly = by + Math.floor(bkH * l / 5);
+                ctx.beginPath();
+                ctx.moveTo(bx + spineW + 2, ly);
+                ctx.lineTo(bx + bookW - 2,  ly);
+                ctx.stroke();
+            }
+
+            // Unlocked: gold accent bands
+            if (unlocked) {
+                ctx.fillStyle = 'rgba(245,166,35,0.75)';
+                ctx.fillRect(bx + spineW + 2, by + Math.max(4, Math.floor(bkH * 0.07)),  bookW - spineW - 3, 3);
+                ctx.fillRect(bx + spineW + 2, by + bkH - Math.max(6, Math.floor(bkH * 0.13)), bookW - spineW - 3, 3);
+            }
+
+            bookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, unlocked });
         });
     }
 
@@ -434,7 +449,7 @@
             ctx.stroke();
         });
 
-        [8, 6, 7].forEach((numShelves, idx) => {
+        [6, 6, 7].forEach((numShelves, idx) => {
             const sx     = innerLeft + secW * idx;
             const shelfH = Math.floor((innerHeight - clearance) / (numShelves + 1));
             for (let i = 1; i <= numShelves; i++) {

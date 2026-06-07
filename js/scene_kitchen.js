@@ -5,10 +5,11 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    let gapFoods          = [];   // [{name}] from food_gaps API
-    let nutrientProgress  = {};  // keyed by nutrient name
-    let doorBounds        = null; // click zone → library
-    let chalkboardBounds  = null; // click zone → food log overlay
+    let gapFoods             = [];   // [{name}] from food_gaps API
+    let nutrientProgress     = {};  // keyed by nutrient name
+    let doorBounds           = null; // click zone → library
+    let chalkboardBounds     = null; // click zone → food log overlay
+    let nutrientSquareBounds = [];   // [{corners, label}] for tooltips
 
     // ── Geometry helpers (same system as scene.js) ────────────────────────────
     function wallPt(side, t, v, iL, iW, iT, flY, H, W) {
@@ -423,6 +424,7 @@
     }
 
     function drawChalkboard(W, H, iL, iW, iT, flY, progress) {
+        nutrientSquareBounds = [];
         const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, H, W);
         const t1=0.16, t2=0.74, v1=0.07, v2=0.82, pad=0.022;
 
@@ -476,6 +478,11 @@
             const pct = p && p.is_limit ? Math.max(0, 1 - Math.min(1, rawPct)) : Math.min(1, rawPct);
 
             const qTL=bp(s0,t0), qTR=bp(s1,t0), qBL=bp(s0,t1), qBR=bp(s1,t1);
+
+            nutrientSquareBounds.push({
+                corners: [qTL, qTR, qBR, qBL],
+                label: (p && p.label) ? p.label : key,
+            });
 
             // Dim background
             ctx.fillStyle='rgba(255,255,255,0.06)';
@@ -554,6 +561,17 @@
     window.addEventListener('resize', draw);
     draw();
 
+    // ── Nutrient tooltip ──────────────────────────────────────────────────────
+    const tooltip = document.createElement('div');
+    tooltip.style.cssText = [
+        'position:fixed', 'pointer-events:none', 'display:none',
+        'background:rgba(20,40,16,0.92)', 'color:rgba(220,218,195,0.95)',
+        'border:1px solid rgba(220,218,195,0.3)', 'border-radius:4px',
+        'padding:3px 8px', 'font:12px serif', 'white-space:nowrap',
+        'z-index:9999', 'box-shadow:0 2px 6px rgba(0,0,0,0.4)',
+    ].join(';');
+    document.body.appendChild(tooltip);
+
     // ── Click handling ────────────────────────────────────────────────────────
     canvas.addEventListener('click', function (e) {
         const rect = canvas.getBoundingClientRect();
@@ -569,6 +587,23 @@
     canvas.addEventListener('mousemove', function (e) {
         const rect = canvas.getBoundingClientRect();
         const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-        canvas.style.cursor = (ptInQuad(cx, cy, doorBounds) || ptInQuad(cx, cy, chalkboardBounds)) ? 'pointer' : 'default';
+        const isPointer = ptInQuad(cx, cy, doorBounds) || ptInQuad(cx, cy, chalkboardBounds);
+        canvas.style.cursor = isPointer ? 'pointer' : 'default';
+
+        let hit = null;
+        for (const sq of nutrientSquareBounds) {
+            if (ptInQuad(cx, cy, sq.corners)) { hit = sq; break; }
+        }
+        if (hit) {
+            tooltip.textContent = hit.label;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 12) + 'px';
+            tooltip.style.top  = (e.clientY - 24) + 'px';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    });
+    canvas.addEventListener('mouseleave', function () {
+        tooltip.style.display = 'none';
     });
 })();

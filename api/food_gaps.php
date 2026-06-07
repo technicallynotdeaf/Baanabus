@@ -51,6 +51,7 @@ $colMap = [
     'vitamin_b12_mcg'       => ['foods_col' => 'vitamin_b12_mcg',       'totals_key' => 'vitamin_b12'],
     'choline_mg'            => ['foods_col' => 'choline_mg',            'totals_key' => 'choline'],
     'lutein_zeaxanthin_mcg' => ['foods_col' => 'lutein_zeaxanthin_mcg', 'totals_key' => 'lutein_zeaxanthin'],
+    'sodium'               => ['foods_col' => 'sodium_mg',             'totals_key' => 'sodium'],
 ];
 
 try { $log = getFoodLog(); } catch (Throwable $e) { $log = ['next_id' => 1, 'entries' => []]; }

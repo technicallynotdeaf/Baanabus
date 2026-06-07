@@ -472,6 +472,7 @@ body.scene-view #scene-total-pips { display: block; }
     left: calc(83% + 15px);
     top: 28%;
     transform: translateY(-50%);
+    font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: clamp(1rem, 2.9vw, 2.9rem);
     font-weight: 500;
     letter-spacing: 0.04em;

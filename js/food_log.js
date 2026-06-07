@@ -148,18 +148,41 @@ window.initFoodLog = function () {
     iron:            {label:'Iron',               unit:'mg',  daily:18,    period:'weekly', weekly:126, min:8, upper:45},
     magnesium:       {label:'Magnesium',          unit:'mg',  daily:320,   period:'daily',  min:200,  upper:350},
     vitamin_k:       {label:'Vitamin K',          unit:'mcg', daily:60,    period:'weekly', weekly:420, min:30, upper:1000},
-    vitamin_a:       {label:'Vitamin A',          unit:'mcg', daily:700,   period:'weekly', weekly:4900,min:200,upper:3000},
+    vitamin_a:       {label:'Vitamin A',          unit:'mcg', daily:700,   period:'weekly', weekly:4900,min:200,upper:null},
+    retinol:         {label:'Retinol (preformed)', unit:'mcg', daily:null,  period:'daily',  min:null, upper:3000, ulOnly:true},
     vitamin_d:       {label:'Vitamin D',          unit:'mcg', daily:5,     period:'weekly', weekly:35,  min:1.5,upper:100},
   };
   const KEYS_ORDER = ['fibre','fibre_soluble','fibre_insoluble','potassium','vitamin_c',
-                      'vitamin_b9','calcium','iron','magnesium','vitamin_k','vitamin_a','vitamin_d'];
+                      'vitamin_b9','calcium','iron','magnesium','vitamin_k','vitamin_a','retinol','vitamin_d'];
 
   function renderNutrients(todayTotals, weekTotals) {
     const el = document.getElementById('fl-nutrients');
     el.innerHTML = KEYS_ORDER.map(k => {
-      const rdi      = RDIS[k];
+      const rdi    = RDIS[k];
+      const actual = rdi.period === 'weekly' ? (weekTotals[k] ?? 0) : (todayTotals[k] ?? 0);
+
+      if (rdi.ulOnly) {
+        if (!actual) return '';
+        const ulPct   = Math.min(1, actual / rdi.upper) * 100;
+        const colour  = actual > rdi.upper ? '#c0392b' : actual >= rdi.upper * 0.8 ? '#e67e22' : '#f39c12';
+        const warn    = actual > rdi.upper
+          ? `<span style="color:#c0392b;font-size:0.78em;margin-left:6px;">above UL (${rdi.upper}${rdi.unit})</span>`
+          : actual >= rdi.upper * 0.8
+            ? `<span style="color:#e67e22;font-size:0.78em;margin-left:6px;">approaching UL</span>`
+            : '';
+        return `
+          <div style="margin-bottom:0.6rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82em;margin-bottom:2px;flex-wrap:wrap;gap:2px;">
+              <span>${esc(rdi.label)} <span style="color:#aaa;font-size:0.85em;">today</span>${warn}</span>
+              <span style="color:${colour};">${actual.toFixed(1)} / ${rdi.upper}${rdi.unit} UL</span>
+            </div>
+            <div style="background:#eee;border-radius:4px;height:7px;overflow:hidden;">
+              <div style="height:100%;width:${ulPct}%;background:${colour};border-radius:4px;transition:width 0.4s;"></div>
+            </div>
+          </div>`;
+      }
+
       const isWeekly = rdi.period === 'weekly';
-      const actual   = isWeekly ? (weekTotals[k] ?? 0) : (todayTotals[k] ?? 0);
       const target   = isWeekly ? (rdi.weekly ?? rdi.daily * 7) : rdi.daily;
       const pct      = Math.min(1, actual / target);
       const pctDisp  = Math.round(pct * 100);

@@ -54,8 +54,8 @@
     function drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
         bookBounds = [];
         const secW   = Math.floor(innerWidth / 3);
-        // Left section has 6 shelves; top shelf is the first bay
-        const shelfH = Math.floor((innerHeight - clearance) / 7);
+        // Left section: 5 shelf lines = 6 bays; books sit in the top bay
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
         const bayBot = innerTop + clearance + shelfH; // bottom of top-left shelf
 
         const sidePad = 3;
@@ -449,7 +449,7 @@
             ctx.stroke();
         });
 
-        [6, 6, 7].forEach((numShelves, idx) => {
+        [5, 6, 7].forEach((numShelves, idx) => {
             const sx     = innerLeft + secW * idx;
             const shelfH = Math.floor((innerHeight - clearance) / (numShelves + 1));
             for (let i = 1; i <= numShelves; i++) {

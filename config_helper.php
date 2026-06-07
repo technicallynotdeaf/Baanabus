@@ -891,6 +891,13 @@ function incrementGlobalStoryPages(): int {
     return $cfg['story_pages'];
 }
 
+function decrementGlobalStoryPages(): int {
+    $cfg = getConfig() ?? [];
+    $cfg['story_pages'] = max(0, (int)($cfg['story_pages'] ?? 0) - 1);
+    saveConfig($cfg);
+    return $cfg['story_pages'];
+}
+
 // One-time migration: fold all per-story pages_available + pending into the global pool.
 function migrateStoryPagesToGlobal(): void {
     $cfg = getConfig() ?? [];

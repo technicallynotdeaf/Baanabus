@@ -25,10 +25,7 @@ foreach ($books as $id => $book) {
     if (!file_exists($path)) { $bookEnded[$id] = false; continue; }
     $prog = getStoryProgress($id);
     if (!$prog) { $bookEnded[$id] = false; continue; }
-    $story = require $path;
-    $key   = $prog['current_key'] ?? '1_start';
-    $page  = $story['pages'][$key] ?? null;
-    $bookEnded[$id] = !empty($page['ending']);
+    $bookEnded[$id] = !empty($prog['ended']);
 }
 ?>
 <div data-init="initStoryBooks" style="max-width:520px;margin:0 auto;">

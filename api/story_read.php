@@ -78,7 +78,7 @@ if (!empty($page['ending']) && empty($prog['ended'])) {
 
 $prose        = base64_decode($page['prose']);
 $globalPages  = getGlobalStoryPages();
-$canChoose    = $globalPages > $prog['depth'];
+$canChoose    = $globalPages > 0;
 $choices      = $page['choices'] ?? [];
 $terminal     = !empty($page['terminal']);
 $ending       = !empty($page['ending']);
@@ -116,10 +116,7 @@ $firstHistIdx = 0;
           Back to bookshelf
         </button>
       </div>
-    <?php elseif (!$canChoose):
-        $pipsNeeded = $prog['depth'] + 1 - $globalPages;
-        $pipsText   = $pipsNeeded === 1 ? 'one more full pip bar' : $pipsNeeded . ' more full pip bars';
-    ?>
+    <?php elseif (!$canChoose): ?>
       <?php if ($terminal): ?>
         <p style="color:#888;font-size:0.9em;font-style:italic;margin-bottom:0.75rem;">
           — To be continued. Fill the pip bar to unlock the next part.
@@ -128,7 +125,7 @@ $firstHistIdx = 0;
         <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;">
           <p style="margin:0 0 0.3rem;font-weight:500;font-size:0.95em;">The story is waiting.</p>
           <p style="margin:0;color:#666;font-size:0.88em;line-height:1.5;">
-            Complete enough tasks to fill the pip bar <?= htmlspecialchars($pipsText) ?> and the next choice will open up.
+            Fill the pip bar once more and the next choice will open up.
           </p>
         </div>
       <?php endif; ?>

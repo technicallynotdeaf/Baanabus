@@ -18,13 +18,8 @@ if (isUnlocked()) {
             // Determine if this book is ended so the next one can check
             $prevEnded = false;
             if ($fileOk) {
-                $prog = getStoryProgress($sid);
-                if ($prog) {
-                    $story     = require __DIR__ . '/content/stories/' . $file;
-                    $key       = $prog['current_key'] ?? '1_start';
-                    $page      = $story['pages'][$key] ?? null;
-                    $prevEnded = !empty($page['ending']);
-                }
+                $prog      = getStoryProgress($sid);
+                $prevEnded = !empty($prog['ended']);
             }
         }
     } catch (Throwable $e) {}

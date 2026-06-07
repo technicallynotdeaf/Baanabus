@@ -33,8 +33,8 @@ foreach (($currentPage['choices'] ?? []) as $choice) {
 }
 if (!$valid) json_response(['error' => 'Invalid choice'], 400);
 
-// Can only choose if global page pool > depth
-if (getGlobalStoryPages() <= $prog['depth']) {
+// Can only choose if there is at least one page in the global pool
+if (getGlobalStoryPages() <= 0) {
     json_response(['error' => 'Not unlocked yet'], 403);
 }
 
@@ -57,5 +57,6 @@ if ($nextPage && !empty($nextPage['ending'])) {
     $prog['ended'] = true;
 }
 saveStoryProgress($storyId, $prog);
+decrementGlobalStoryPages();
 
 json_response(['ok' => true]);

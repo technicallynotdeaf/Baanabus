@@ -458,8 +458,8 @@
         const entries = Object.entries(progress);
         if (!entries.length) return;
 
-        const COLS     = 7;
-        const ROWS_N   = Math.ceil(entries.length / COLS);
+        const COLS     = 6;
+        const ROWS_N   = Math.max(7, Math.ceil(entries.length / COLS));
         const gridTop  = 0.09, gridBot = 0.98;
         const gridL    = 0.04, gridR   = 0.96;
         const cellW    = (gridR - gridL) / COLS;

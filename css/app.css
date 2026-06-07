@@ -473,7 +473,7 @@ body.scene-view #scene-total-pips { display: block; }
     top: 28%;
     transform: translateY(-50%);
     font-size: clamp(1rem, 2.9vw, 2.9rem);
-    font-weight: 200;
+    font-weight: 500;
     letter-spacing: 0.04em;
     color: #2c1a08;
     text-shadow: 0 1px 3px rgba(255,255,255,0.4);

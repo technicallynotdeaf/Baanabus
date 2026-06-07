@@ -44,6 +44,7 @@ foreach ($books as $id => $book) {
         $started        = $depth > 0 || $pagesAvailable > 1;
         $isEnded        = $bookEnded[$id] ?? false;
         $isActive       = ($activeStory === $id);
+        /* debug <?= "book=$id bookEnded=" . var_export($bookEnded[$id] ?? 'NOT SET', true) . " isEnded=" . var_export($isEnded, true) . " progEnded=" . var_export($prog['ended'] ?? 'NOT SET', true) ?> */
         $readyChoices   = $available && !$isEnded ? max(0, $pagesAvailable - $depth) : 0;
       ?>
       <div style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:8px;

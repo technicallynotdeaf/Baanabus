@@ -15,7 +15,7 @@ body {
 }
 
 /* Canvas scene pages lock scroll via JS adding this class */
-body.scene-view { overflow: hidden; background: #d4b898; }
+body.scene-view { overflow: hidden; background: #ece0c8; }
 
 /* === Time-of-day tint overlay === */
 #scene-tint {

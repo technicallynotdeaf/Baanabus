@@ -119,18 +119,18 @@ window.initListTasks = function() {
 
     document.querySelectorAll('.snooze-picker').forEach(p => p.remove());
 
-    const now       = new Date();
-    const fmt       = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const tonight   = fmt(now) + 'T21:00:00';
-    const tom       = new Date(now); tom.setDate(now.getDate() + 1);
-    const tomorrow  = fmt(tom) + 'T08:00:00';
-    const nextWeek  = new Date(now); nextWeek.setDate(now.getDate() + 7);
-    const nwStr     = fmt(nextWeek) + 'T08:00:00';
-
+    const opts = [
+      ['2 hours',       '2h'],
+      ['Tonight',       'tonight'],
+      ['Tomorrow',      'tomorrow'],
+      ['Next week',     'week'],
+      ['After payday',  'payday'],
+      ['In 2 months',   '2months'],
+    ];
     const picker = document.createElement('div');
     picker.className = 'snooze-picker';
     picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;padding:4px 0;';
-    [['Tonight', tonight], ['Tomorrow', tomorrow], ['Next week', nwStr]].forEach(([label, when]) => {
+    opts.forEach(([label, when]) => {
       const b = document.createElement('button');
       b.className = 'action-button';
       b.style.cssText = 'padding:3px 8px;font-size:0.75em;min-height:28px;';

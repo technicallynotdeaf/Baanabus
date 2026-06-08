@@ -1042,7 +1042,7 @@ if ($method === 'POST') {
         $personId = (int)($body['person_id'] ?? 0);
         if (!$personId) json_response(['error' => 'Missing person_id'], 400);
         $allowed = ['name', 'birthday', 'circles', 'next_review_date', 'review_interval',
-                    'archived', 'qualities', 'phone', 'email'];
+                    'is_active', 'archived', 'qualities', 'phone', 'email'];
         $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
         try {

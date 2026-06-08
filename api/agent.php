@@ -270,12 +270,14 @@ if ($method === 'GET') {
         $personMap = fn($p) => [
             'person_id'        => (int)$p['person_id'],
             'name'             => $p['name']              ?? null,
+            'context'          => $p['context']           ?? null,
             'circles'          => $p['circles']           ?? [],
             'birthday'         => $p['birthday']          ?? null,
             'next_review_date' => $p['next_review_date']  ?? null,
             'review_interval'  => $p['review_interval']   ?? null,
             'archived'         => $p['archived']          ?? false,
             'qualities'        => $p['qualities']         ?? [],
+            'is_active'        => $p['is_active']         ?? 1,
         ];
         json_response(['ok' => true, 'people' => array_map($personMap, $data['people'])]);
     }

@@ -293,12 +293,14 @@ function getDoableTasks(): array {
         $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
     } catch (Throwable $e) {}
 
-    // Context sets — case-insensitive. 'work' = requires being at work; 'home' = requires being home.
-    // 'shops' is suppressed on work days (can't pop out) but fine on home/out/rest.
-    // Out day suppresses both work and home contexts — you're mobile, only portable tasks.
-    $workCtxs  = ['work'];
-    $homeCtxs  = ['home', 'housework', 'home improvement', 'decluttering', 'garden'];
-    $shopsCtxs = ['shops'];
+    // Context sets — case-insensitive.
+    // 'home' = home mindset (call the chemist, plan meals etc.) — requires being at home OR in transit.
+    // 'home_physical' = tasks that literally require being at home (housework, garden, etc.).
+    // 'work' = requires being at work. 'shops' = requires being at shops.
+    $workCtxs      = ['work'];
+    $homePhysCtxs  = ['housework', 'home improvement', 'decluttering', 'garden'];
+    $homeCtxs      = array_merge(['home'], $homePhysCtxs);
+    $shopsCtxs     = ['shops'];
 
     $contextOk = function(array $t) use ($dayType, $workCtxs, $homeCtxs, $shopsCtxs): bool {
         $ctx = strtolower(trim($t['context'] ?? ''));
@@ -307,7 +309,7 @@ function getDoableTasks(): array {
         if ($dayType === 2) return !in_array($ctx, array_merge($homeCtxs, $shopsCtxs), true);             // Work: no home or shops tasks
         if ($dayType === 3) return !in_array($ctx, array_merge($workCtxs, $homeCtxs), true);              // Out: no work or home tasks
         if ($dayType === 5) return !in_array($ctx, $shopsCtxs, true);                                     // WFH: home+work ok, no shops
-        if ($dayType === 6) return !in_array($ctx, array_merge($workCtxs, $shopsCtxs), true);             // Transit: home mindset ok, no work or shops
+        if ($dayType === 6) return !in_array($ctx, array_merge($workCtxs, $homePhysCtxs, $shopsCtxs), true); // Transit: 'home' mindset ok, suppress work/physical-home/shops
         return true; // Rest (4): no location suppression
     };
 

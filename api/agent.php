@@ -1309,6 +1309,30 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'add_person') {
+        $name    = trim($body['name'] ?? '');
+        if (!$name) json_response(['error' => 'name required'], 400);
+        $circles = isset($body['circles']) ? (array)$body['circles'] : [];
+        try {
+            $data     = getPeople();
+            $personId = (int)($data['next_id'] ?? 1);
+            $data['people'][] = [
+                'person_id'       => $personId,
+                'name'            => $name,
+                'circles'         => $circles,
+                'next_review'     => null,
+                'review_interval' => 30,
+                'is_active'       => 1,
+                'created_at'      => date('c'),
+            ];
+            $data['next_id'] = $personId + 1;
+            savePeople($data);
+            json_response(['ok' => true, 'person_id' => $personId, 'name' => $name]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'archive_context') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
         $ctx = trim($body['context'] ?? '');

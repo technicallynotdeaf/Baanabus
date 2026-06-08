@@ -1,7 +1,7 @@
 <?php
 /**
  * api/add_task.php — add a task to the vault
- * POST { title, urgency?: 'low'|'medium'|'high', context?: string, task_type?: string }
+ * POST { title, urgency?: 'low'|'medium'|'high', context?: string, location?: string, task_type?: string }
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -17,7 +17,8 @@ if (mb_strlen($title) > 300) json_response(['error' => 'Title too long'], 400);
 
 $urgency   = in_array($body['urgency']   ?? '', ['low','medium','high'], true) ? $body['urgency']   : 'medium';
 $taskType  = in_array($body['task_type'] ?? '', ['next_action','someday','inbox'], true) ? $body['task_type'] : 'next_action';
-$context   = trim($body['context'] ?? '') ?: null;
+$context   = trim($body['context']  ?? '') ?: null;
+$location  = trim($body['location'] ?? '') ?: null;
 $personId  = isset($body['person_id']) && is_int($body['person_id']) ? $body['person_id'] : null;
 
 try {
@@ -31,6 +32,7 @@ try {
         'energy'       => 'medium',
         'status'       => 'active',
         'context'      => $context,
+        'location'     => $location,
         'created_at'   => date('c'),
         'snoozed_until'=> null,
         'parent_id'    => null,

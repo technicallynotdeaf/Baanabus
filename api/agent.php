@@ -537,7 +537,7 @@ if ($method === 'POST') {
     if ($action === 'update_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
-        $allowed = ['urgency', 'snoozed_until', 'deadline', 'context', 'task_type',
+        $allowed = ['urgency', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
                     'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags'];
         $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);

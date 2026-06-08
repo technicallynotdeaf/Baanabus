@@ -293,24 +293,18 @@ function getDoableTasks(): array {
         $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
     } catch (Throwable $e) {}
 
-    // Context sets — case-insensitive.
-    // 'home' = home mindset (call the chemist, plan meals etc.) — requires being at home OR in transit.
-    // 'home_physical' = tasks that literally require being at home (housework, garden, etc.).
-    // 'work' = requires being at work. 'shops' = requires being at shops.
-    $workCtxs      = ['work'];
-    $homePhysCtxs  = ['housework', 'home improvement', 'decluttering', 'garden'];
-    $homeCtxs      = array_merge(['home'], $homePhysCtxs);
-    $shopsCtxs     = ['shops'];
-
-    $contextOk = function(array $t) use ($dayType, $workCtxs, $homeCtxs, $shopsCtxs): bool {
-        $ctx = strtolower(trim($t['context'] ?? ''));
-        if (!$ctx || !$dayType) return true;
-        if ($dayType === 1) return !in_array($ctx, $workCtxs, true);                                      // Home: no work tasks
-        if ($dayType === 2) return !in_array($ctx, array_merge($homeCtxs, $shopsCtxs), true);             // Work: no home or shops tasks
-        if ($dayType === 3) return !in_array($ctx, array_merge($workCtxs, $homeCtxs), true);              // Out: no work or home tasks
-        if ($dayType === 5) return !in_array($ctx, $shopsCtxs, true);                                     // WFH: home+work ok, no shops
-        if ($dayType === 6) return !in_array($ctx, array_merge($workCtxs, $homePhysCtxs, $shopsCtxs), true); // Transit: 'home' mindset ok, suppress work/physical-home/shops
-        return true; // Rest (4): no location suppression
+    // Location filtering: task 'location' field = where/how the task can be done.
+    // Values: home, work, shops, phone, online, or null (anywhere).
+    // 'context' is a planning tag (area of life) and is NOT used for filtering.
+    $locationOk = function(array $t) use ($dayType): bool {
+        $loc = strtolower(trim($t['location'] ?? ''));
+        if (!$loc || !$dayType) return true;
+        if ($dayType === 1) return $loc !== 'work';                                            // Home: no work tasks
+        if ($dayType === 2) return !in_array($loc, ['home', 'shops'], true);                  // Work: no home or shops
+        if ($dayType === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true); // Out: portable only
+        if ($dayType === 5) return $loc !== 'shops';                                           // WFH: home+work ok, no shops
+        if ($dayType === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true); // Transit: online/null only
+        return true; // Rest (4): no suppression
     };
 
     return array_values(array_filter($data['tasks'], fn($t) =>
@@ -319,7 +313,7 @@ function getDoableTasks(): array {
         ($t['task_type'] ?? '') !== 'inbox' &&
         (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now) &&
         $prereqsMet($t) &&
-        $contextOk($t)
+        $locationOk($t)
     ));
 }
 

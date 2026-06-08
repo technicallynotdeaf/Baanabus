@@ -15,16 +15,17 @@ window.initListTasks = function() {
     titleIn.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
     function addTask() {
-      const title   = titleIn.value.trim();
-      const urgency = document.getElementById('new-task-urgency').value;
-      const context = document.getElementById('new-task-context').value;
-      const status  = document.getElementById('add-task-status');
+      const title    = titleIn.value.trim();
+      const urgency  = document.getElementById('new-task-urgency').value;
+      const context  = document.getElementById('new-task-context').value.trim();
+      const location = document.getElementById('new-task-location').value;
+      const status   = document.getElementById('add-task-status');
       if (!title) { status.textContent = 'Enter a title first.'; return; }
       status.textContent = 'Saving…';
       fetch('api/add_task.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, urgency, context: context || null }),
+        body: JSON.stringify({ title, urgency, context: context || null, location: location || null }),
       })
       .then(r => r.json())
       .then(d => {

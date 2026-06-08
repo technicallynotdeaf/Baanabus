@@ -181,15 +181,19 @@ $typeLabels = [
         </select>
       </div>
       <div style="flex:1;min-width:120px;">
-        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Context</label>
-        <select id="new-task-context">
-          <option value="">Any</option>
+        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Location</label>
+        <select id="new-task-location">
+          <option value="">Anywhere</option>
           <option value="home">Home</option>
           <option value="work">Work</option>
           <option value="shops">Shops</option>
           <option value="online">Online</option>
-          <option value="phone">Phone</option>
+          <option value="phone">Phone call</option>
         </select>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Context</label>
+        <input type="text" id="new-task-context" placeholder="e.g. Health, Family" style="margin-bottom:0;">
       </div>
       <button class="btn" id="btn-add-task" style="flex-shrink:0;padding:8px 14px;font-size:0.88em;min-height:44px;">Save</button>
     </div>

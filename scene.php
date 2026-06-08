@@ -36,6 +36,7 @@ $pageCount    = 0;
 $pageTarget   = 15;
 $totalPages   = 0;
 $snoozedCount = 0;
+$buckets      = ['inbox' => 0, 'ready' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
 if (isUnlocked()) {
     try {
         $t = getTasks();
@@ -44,13 +45,33 @@ if (isUnlocked()) {
         $pageTarget = todayPagesTarget();
         $nowTs = time();
         foreach ($t['tasks'] ?? [] as $task) {
-            if (($task['status'] ?? '') === 'active' &&
-                !empty($task['snoozed_until']) &&
-                strtotime($task['snoozed_until']) > $nowTs) {
-                $snoozedCount++;
-            }
+            if (($task['status'] ?? '') !== 'active') continue;
+            if (!empty($task['parent_id'])) continue;
+            $type      = $task['task_type'] ?? 'next_action';
+            $isSnoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
+            if ($type === 'inbox')            { $buckets['inbox']++; }
+            elseif ($isSnoozed)               { $buckets['snoozed']++; }
+            elseif ($type === 'next_action')  { $buckets['ready']++; }
+            elseif ($type === 'someday')      { $buckets['someday']++; }
+            elseif ($type === 'waiting')      { $buckets['waiting']++; }
+            elseif ($type === 'project')      { $buckets['project']++; }
         }
+        $snoozedCount = $buckets['snoozed'];
     } catch (Throwable $e) {}
+}
+
+$bucketDefs = [
+    'inbox'   => ['label' => 'inbox',        'color' => '#9a6200', 'filter' => 'inbox'],
+    'ready'   => ['label' => 'ready',        'color' => '#1a6b3a', 'filter' => 'ready'],
+    'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
+    'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
+    'waiting' => ['label' => 'waiting',      'color' => '#553c87', 'filter' => 'waiting'],
+    'project' => ['label' => 'needs a step', 'color' => '#8b3a00', 'filter' => 'project'],
+];
+$scoreboardSegs = [];
+foreach ($bucketDefs as $key => $def) {
+    if ($buckets[$key] === 0) continue;
+    $scoreboardSegs[] = $def + ['count' => $buckets[$key], 'flex' => max($buckets[$key], 3)];
 }
 $fillPct     = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0;
 $energyLevel = 3;
@@ -72,6 +93,19 @@ $energyLabels = [1 => 'Exhausted', 2 => 'Low energy', 3 => 'Okay', 4 => 'Good', 
 $energyLabel  = $energyLabels[$energyLevel] ?? '';
 ?>
 <div id="scene-energy"><?= htmlspecialchars($energyLabel) ?></div>
+<?php if ($scoreboardSegs): ?>
+<div id="scene-scoreboard">
+  <?php foreach ($scoreboardSegs as $seg): ?>
+  <button class="scb-seg" style="flex:<?= $seg['flex'] ?>;background:<?= $seg['color'] ?>;"
+          onclick="loadOverlay('list_tasks.php?filter=<?= $seg['filter'] ?>')"
+          title="<?= htmlspecialchars($seg['label']) ?>: <?= $seg['count'] ?>">
+    <span class="scb-label"><?= htmlspecialchars($seg['label']) ?></span>
+    <span class="scb-count"><?= $seg['count'] ?></span>
+  </button>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
 <button id="scene-snoozed" data-count="<?= $snoozedCount ?>"
         onclick="loadOverlay('list_tasks.php?filter=snoozed')">

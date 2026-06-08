@@ -49,6 +49,68 @@ if (($_GET['filter'] ?? '') === 'snoozed') {
     exit;
 }
 
+$filter = $_GET['filter'] ?? '';
+
+// Bucket filter views (non-snoozed)
+$bucketFilters = [
+    'inbox'   => ['title' => 'Inbox',          'note' => 'Unprocessed — work through these in the Let\'s Go bubble.', 'type' => 'inbox'],
+    'ready'   => ['title' => 'Ready',           'note' => 'Active next actions you can do now.',                       'type' => 'next_action'],
+    'someday' => ['title' => 'Someday',         'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
+    'waiting' => ['title' => 'Waiting',         'note' => 'Delegated or blocked on someone else.',                    'type' => 'waiting'],
+    'project' => ['title' => 'Needs a next step','note' => 'Multi-step tasks. Each one needs a concrete first action before it\'s doable.', 'type' => 'project'],
+];
+if (isset($bucketFilters[$filter])) {
+    $def      = $bucketFilters[$filter];
+    $filtered = [];
+    foreach ($all as $t) {
+        if (($t['status'] ?? '') !== 'active') continue;
+        if (!empty($t['parent_id'])) continue;
+        if (($t['task_type'] ?? '') !== $def['type']) continue;
+        if ($filter === 'ready' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        $filtered[] = $t;
+    }
+    if ($filter === 'ready') {
+        $uOrd = ['high' => 0, 'medium' => 1, 'low' => 2];
+        usort($filtered, fn($a, $b) => ($uOrd[$a['urgency'] ?? 'low'] ?? 2) <=> ($uOrd[$b['urgency'] ?? 'low'] ?? 2));
+    }
+    ?>
+<div data-init="initListTasks" style="padding-bottom:1rem;">
+  <h2 style="margin:0 0 0.25rem;"><?= htmlspecialchars($def['title']) ?> <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($filtered) ?></span></h2>
+  <p class="muted" style="font-size:0.85em;margin-bottom:1rem;"><?= htmlspecialchars($def['note']) ?></p>
+  <?php if (empty($filtered)): ?>
+    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing here.</p>
+  <?php else: ?>
+    <?php foreach ($filtered as $t):
+        $isSnoozed = !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now;
+        $isStuck   = !empty($t['stuck']);
+        $notDoable = $isSnoozed || $isStuck;
+        $ctx       = trim($t['context'] ?? '');
+        $type      = $t['task_type'] ?? '';
+    ?>
+    <div class="task-row" data-id="<?= (int)$t['id'] ?>"
+         data-title="<?= htmlspecialchars(strtolower($t['title'])) ?>"
+         data-context="<?= htmlspecialchars($ctx) ?>"
+         style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
+      <div style="flex:1;min-width:0;">
+        <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
+        <?php if ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif; ?>
+      </div>
+      <?php if ($filter !== 'inbox'): ?>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="task-done-btn action-button" data-id="<?= (int)$t['id'] ?>"
+                style="padding:3px 8px;font-size:0.75em;min-height:28px;">Done</button>
+        <button class="task-snooze-btn action-button" data-id="<?= (int)$t['id'] ?>"
+                style="padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:hsl(210,100%,30%);border:1px solid hsl(210,100%,30%);">Snooze</button>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+</div>
+    <?php
+    exit;
+}
+
 $completedIds = [];
 foreach ($all as $t) {
     if (($t['status'] ?? '') === 'complete') $completedIds[(int)$t['id']] = true;

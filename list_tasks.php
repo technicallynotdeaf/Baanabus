@@ -9,6 +9,46 @@ $data    = getTasks();
 $all     = $data['tasks'];
 $now     = time();
 
+if (($_GET['filter'] ?? '') === 'snoozed') {
+    $snoozed = [];
+    foreach ($all as $t) {
+        if (($t['status'] ?? '') !== 'active') continue;
+        if (empty($t['snoozed_until'])) continue;
+        if (strtotime($t['snoozed_until']) <= $now) continue;
+        $snoozed[] = $t;
+    }
+    usort($snoozed, fn($a, $b) => strtotime($a['snoozed_until']) <=> strtotime($b['snoozed_until']));
+    ?>
+<div data-init="initSnoozedTasks" style="padding-bottom:1rem;">
+  <h2 style="margin:0 0 0.25rem;">Snoozed <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($snoozed) ?></span></h2>
+  <p class="muted" style="font-size:0.85em;margin-bottom:1rem;">Parked until a specific date. Wake anything that's ready now.</p>
+  <?php if (empty($snoozed)): ?>
+    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing snoozed.</p>
+  <?php else: ?>
+    <?php foreach ($snoozed as $t):
+        $wakeTs   = strtotime($t['snoozed_until']);
+        $wakeDate = date('D j M', $wakeTs);
+        $isToday  = date('Y-m-d', $wakeTs) === date('Y-m-d');
+        $isTomorrow = date('Y-m-d', $wakeTs) === date('Y-m-d', strtotime('+1 day'));
+        $wakeLabel = $isToday ? 'today' : ($isTomorrow ? 'tomorrow' : $wakeDate);
+    ?>
+    <div class="task-row snooze-task-row" data-id="<?= (int)$t['id'] ?>"
+         style="display:flex;align-items:flex-start;gap:8px;padding:0.6rem 0;border-bottom:1px solid #f0f0f0;">
+      <div style="flex:1;min-width:0;">
+        <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
+        <div style="font-size:0.78em;color:#aaa;margin-top:2px;">wakes <?= htmlspecialchars($wakeLabel) ?></div>
+      </div>
+      <button class="task-wake-btn action-button"
+              data-id="<?= (int)$t['id'] ?>"
+              style="padding:3px 10px;font-size:0.75em;min-height:28px;flex-shrink:0;background:transparent;color:hsl(210,100%,30%);border:1px solid hsl(210,100%,30%);">Wake now</button>
+    </div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+</div>
+    <?php
+    exit;
+}
+
 $completedIds = [];
 foreach ($all as $t) {
     if (($t['status'] ?? '') === 'complete') $completedIds[(int)$t['id']] = true;

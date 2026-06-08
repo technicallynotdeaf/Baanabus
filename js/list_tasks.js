@@ -160,3 +160,49 @@ window.initListTasks = function() {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 };
+
+window.initSnoozedTasks = function() {
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.task-wake-btn');
+    if (!btn) return;
+    const taskId = parseInt(btn.dataset.id);
+    const row    = btn.closest('.snooze-task-row');
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('api/task_action.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ task_id: taskId, action: 'wake' }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        row.style.transition = 'opacity 0.2s';
+        row.style.opacity = '0';
+        setTimeout(() => {
+          row.remove();
+          decrementSnoozedBadge();
+          const remaining = document.querySelectorAll('.snooze-task-row').length;
+          if (remaining === 0) {
+            const list = document.querySelector('[data-init="initSnoozedTasks"]');
+            if (list) list.innerHTML += '<p class="muted" style="text-align:center;padding:2rem 0;">Nothing snoozed.</p>';
+          }
+        }, 220);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Wake now';
+      }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Wake now'; });
+  });
+
+  function decrementSnoozedBadge() {
+    const badge = document.getElementById('scene-snoozed');
+    const countEl = document.getElementById('scene-snoozed-count');
+    if (!badge || !countEl) return;
+    const current = parseInt(badge.dataset.count || '0');
+    const next = Math.max(0, current - 1);
+    badge.dataset.count = next;
+    countEl.textContent = next;
+  }
+};

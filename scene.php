@@ -32,15 +32,24 @@ if (isUnlocked()) {
   data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"></canvas>
 
 <?php
-$pageCount   = 0;
-$pageTarget  = 15;
-$totalPages  = 0;
+$pageCount    = 0;
+$pageTarget   = 15;
+$totalPages   = 0;
+$snoozedCount = 0;
 if (isUnlocked()) {
     try {
         $t = getTasks();
         $pageCount  = (int)($t['pages']       ?? 0);
         $totalPages = (int)($t['total_pages'] ?? 0);
         $pageTarget = todayPagesTarget();
+        $nowTs = time();
+        foreach ($t['tasks'] ?? [] as $task) {
+            if (($task['status'] ?? '') === 'active' &&
+                !empty($task['snoozed_until']) &&
+                strtotime($task['snoozed_until']) > $nowTs) {
+                $snoozedCount++;
+            }
+        }
     } catch (Throwable $e) {}
 }
 $fillPct     = $pageTarget > 0 ? min(100, round($pageCount / $pageTarget * 100)) : 0;
@@ -64,5 +73,9 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 ?>
 <div id="scene-energy"><?= htmlspecialchars($energyLabel) ?></div>
 <button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
+<button id="scene-snoozed" data-count="<?= $snoozedCount ?>"
+        onclick="loadOverlay('list_tasks.php?filter=snoozed')">
+  <span id="scene-snoozed-count"><?= $snoozedCount ?></span> snoozed
+</button>
 
 <script src="js/scene.js"></script>

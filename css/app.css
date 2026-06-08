@@ -548,6 +548,29 @@ body.scene-view .scene-mode-btn { display: inline-flex; align-items: center; }
 .scene-mode-btn:hover { background: rgba(80, 60, 100, 0.75); }
 #reset-btn { left: 50%; transform: translateX(-50%); }
 #reset-btn.active { background: rgba(80,60,20,0.82); border-color: rgba(255,200,100,0.4); }
+
+#scene-snoozed {
+    display: none;
+    position: fixed;
+    right: 3vw;
+    bottom: 3.2rem;
+    background: rgba(30, 35, 65, 0.55);
+    color: rgba(180, 195, 255, 0.88);
+    border: 1px solid rgba(120, 140, 220, 0.3);
+    border-radius: 20px;
+    padding: 6px 13px;
+    font-size: 0.76em;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    z-index: 50;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background 0.2s;
+    white-space: nowrap;
+    font-family: inherit;
+}
+#scene-snoozed:hover { background: rgba(50, 55, 100, 0.75); }
+body.scene-view #scene-snoozed:not([data-count="0"]) { display: inline-flex; align-items: center; gap: 4px; }
 .scene-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #f5a623, #f7c96a);

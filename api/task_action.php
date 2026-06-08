@@ -93,6 +93,10 @@ try {
             vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until)]);
             json_response(['ok' => true]);
 
+        case 'wake':
+            vaultUpdateTask($taskId, ['snoozed_until' => null, 'stuck' => false]);
+            json_response(['ok' => true]);
+
         default:
             json_response(['error' => 'Unknown action'], 400);
     }

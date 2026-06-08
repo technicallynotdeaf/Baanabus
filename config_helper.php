@@ -1039,7 +1039,8 @@ function markDailyComplete(int $id, string $date = null): void {
     }
 }
 
-// Returns due+incomplete dailies for today (no end-time cutoff — stays active until done).
+// Returns due+incomplete morning dailies for today (no end-time cutoff — stays active until done).
+// Only items with morning === true (or unset, for backward compat) are included.
 function getMorningModeDailies(): array {
     $melbTz  = new DateTimeZone('Australia/Melbourne');
     $melbNow = new DateTime('now', $melbTz);
@@ -1047,6 +1048,7 @@ function getMorningModeDailies(): array {
     $data    = getDailies();
     $done    = array_map('intval', $data['completions'][$today] ?? []);
     return array_values(array_filter($data['items'], fn($d) =>
+        ($d['morning'] ?? true) === true &&
         isDailyDueToday($d, $today) &&
         !in_array((int)$d['id'], $done, true)
     ));

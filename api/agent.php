@@ -458,6 +458,11 @@ if ($method === 'GET') {
         ]);
     }
 
+    if ($view === 'dailies') {
+        try { $data = getDailies(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'dailies' => $data]);
+    }
+
     if ($view === 'recipes') {
         try { $data = getRecipes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
         json_response(['ok' => true, 'recipes' => $data['recipes']]);
@@ -502,6 +507,32 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $body   = json_decode(file_get_contents('php://input'), true) ?? [];
     $action = $body['action'] ?? '';
+
+    if ($action === 'update_daily') {
+        $id     = (int)($body['daily_id'] ?? 0);
+        $fields = $body['fields'] ?? [];
+        if (!$id || !$fields) json_response(['error' => 'Missing daily_id or fields'], 400);
+        $allowed = ['title', 'notes', 'morning', 'is_active', 'frequency', 'everyX', 'repeat', 'start_date'];
+        try {
+            $data = getDailies();
+            $found = false;
+            foreach ($data['items'] as &$d) {
+                if ((int)$d['id'] === $id) {
+                    foreach ($fields as $k => $v) {
+                        if (in_array($k, $allowed, true)) $d[$k] = $v;
+                    }
+                    $found = true;
+                    break;
+                }
+            }
+            unset($d);
+            if (!$found) json_response(['error' => 'Daily not found'], 404);
+            saveDailies($data);
+            json_response(['ok' => true, 'daily_id' => $id, 'updated' => array_intersect_key($fields, array_flip($allowed))]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
 
     if ($action === 'update_task') {
         $taskId = (int)($body['task_id'] ?? 0);

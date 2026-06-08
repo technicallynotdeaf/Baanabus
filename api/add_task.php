@@ -29,7 +29,7 @@ try {
         'title'        => $title,
         'task_type'    => $taskType,
         'urgency'      => $urgency,
-        'energy'       => 'medium',
+        'energy'       => null,
         'status'       => 'active',
         'context'      => $context,
         'location'     => $location,

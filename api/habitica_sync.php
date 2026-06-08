@@ -72,7 +72,7 @@ try {
                 'title'         => $todo['text'],
                 'task_type'     => 'inbox',
                 'urgency'       => 'low',
-                'energy'        => 'low',
+                'energy'        => null,
                 'status'        => 'active',
                 'snoozed_until' => null,
                 'created_at'    => $now,

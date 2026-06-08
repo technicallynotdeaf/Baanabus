@@ -328,7 +328,7 @@ if ($method === 'GET') {
 
     if ($view === 'contexts') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
-        $rows = $database->query("SELECT context, description, archived FROM contexts ORDER BY archived, context")->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $database->query("SELECT context, description, is_active FROM contexts ORDER BY is_active DESC, context")->fetchAll(PDO::FETCH_ASSOC);
         json_response(['ok' => true, 'contexts' => $rows]);
     }
 
@@ -1314,8 +1314,8 @@ if ($method === 'POST') {
         $ctx = trim($body['context'] ?? '');
         if (!$ctx) json_response(['error' => 'context required'], 400);
         try {
-            // Mark context archived in SQLite
-            $stmt = $database->prepare("UPDATE contexts SET archived=1 WHERE context=?");
+            // Mark context inactive in SQLite
+            $stmt = $database->prepare("UPDATE contexts SET is_active=0 WHERE context=?");
             $stmt->execute([$ctx]);
             // Archive all people whose circles contain this context
             $data = getPeople();

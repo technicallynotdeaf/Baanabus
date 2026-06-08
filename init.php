@@ -39,6 +39,7 @@ function _ensureMigrations(PDO $db): void {
     $alters = [
         "ALTER TABLE contexts        ADD COLUMN description       TEXT",
         "ALTER TABLE contexts        ADD COLUMN archived          INTEGER DEFAULT 0",
+        "ALTER TABLE contexts        ADD COLUMN is_active         INTEGER DEFAULT 1",
         "ALTER TABLE foods           ADD COLUMN fibre_soluble_g   REAL",
         "ALTER TABLE foods           ADD COLUMN fibre_insoluble_g REAL",
         "ALTER TABLE nutrient_rdis   ADD COLUMN min_rdi           REAL",

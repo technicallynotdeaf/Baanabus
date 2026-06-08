@@ -270,8 +270,7 @@ if ($method === 'GET') {
         $personMap = fn($p) => [
             'person_id'        => (int)$p['person_id'],
             'name'             => $p['name']              ?? null,
-            'context'          => $p['context']           ?? null,
-            'circles'          => $p['circles']           ?? [],
+            'circles'          => is_array($p['circles'] ?? null) ? $p['circles'] : [],
             'birthday'         => $p['birthday']          ?? null,
             'next_review_date' => $p['next_review_date']  ?? null,
             'review_interval'  => $p['review_interval']   ?? null,
@@ -1304,7 +1303,32 @@ if ($method === 'POST') {
         }
     }
 
-    json_response(['error' => "Unknown action '$action'. Valid: update_task, add_task, delete_task, rotate_api_key, revoke_api_key, add_person_note, update_person, add_recipe, update_recipe, delete_recipe, log_recipe_portion, plan_meal, clear_meal, set_preference"], 400);
+    if ($action === 'migrate_circles') {
+        // One-shot: fold people.context (string) into people.circles (array), then remove context field.
+        try {
+            $data = getPeople();
+            $migrated = 0;
+            foreach ($data['people'] as &$p) {
+                $existing = $p['circles'] ?? null;
+                $ctx      = $p['context'] ?? null;
+                if (is_string($existing) && $existing !== '') $existing = [$existing];
+                elseif (!is_array($existing)) $existing = [];
+                if ($ctx && !in_array($ctx, $existing, true)) {
+                    $existing[] = $ctx;
+                    $migrated++;
+                }
+                $p['circles'] = $existing;
+                unset($p['context']);
+            }
+            unset($p);
+            savePeople($data);
+            json_response(['ok' => true, 'migrated' => $migrated]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    json_response(['error' => "Unknown action '$action'"], 400);
 }
 
 json_response(['error' => 'Method not allowed'], 405);

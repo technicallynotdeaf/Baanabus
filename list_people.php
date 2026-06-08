@@ -197,13 +197,10 @@ function renderPersonPanel(int $personId): void {
       </div>
 
       <!-- Meta -->
-      <?php if (!empty($person['circles']) || !empty($person['context']) || $dob || !empty($person['is_org'])): ?>
+      <?php if (!empty($person['circles']) || $dob || !empty($person['is_org'])): ?>
         <div style="margin-bottom:1rem;font-size:0.88em;color:#555;display:flex;flex-direction:column;gap:3px;">
           <?php if (!empty($person['circles'])): ?>
-            <span><?= htmlspecialchars($person['circles']) ?></span>
-          <?php endif; ?>
-          <?php if (!empty($person['context'])): ?>
-            <span class="muted"><?= htmlspecialchars($person['context']) ?></span>
+            <span><?= htmlspecialchars(implode(', ', (array)$person['circles'])) ?></span>
           <?php endif; ?>
           <?php if ($dob): ?>
             <span class="muted">Birthday: <?= htmlspecialchars($dob) ?></span>

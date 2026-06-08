@@ -159,22 +159,23 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
-// Morning mode: serve due+incomplete dailies before any normal activity
+// Serve due+incomplete dailies before any normal activity (morning → day → evening).
 try {
-    $morningDailies = getMorningModeDailies();
-    if (!empty($morningDailies)) {
+    $activeDailies = getActiveDailies();
+    if (!empty($activeDailies)) {
         $skip      = array_filter(array_map('intval', explode(',', $_GET['skip'] ?? '')));
         $available = empty($skip)
-            ? $morningDailies
-            : array_values(array_filter($morningDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
+            ? $activeDailies
+            : array_values(array_filter($activeDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
         $looped    = empty($available);
-        $d         = $looped ? $morningDailies[0] : $available[0];
+        $d         = $looped ? $activeDailies[0] : $available[0];
         json_response([
             'type'      => 'morning_daily',
             'id'        => (int)$d['id'],
             'title'     => $d['title'],
             'notes'     => $d['notes'] ?? '',
-            'remaining' => count($morningDailies),
+            'horizon'   => getDailyHorizon($d),
+            'remaining' => count($activeDailies),
             'looped'    => $looped,
         ]);
     }

@@ -916,6 +916,8 @@ window.initLetsGo = function() {
 
   function renderMorningDaily(d) {
     if (d.looped) skippedDailyIds = [];
+    const labels = { morning: 'MORNING ROUTINE', day: 'TODAY', evening: 'EVENING ROUTINE' };
+    const label  = labels[d.horizon] || 'MORNING ROUTINE';
     const notesHtml = d.notes
       ? `<p style="font-size:0.85em;color:#888;margin:0 0 0.75rem;">${esc(d.notes)}</p>`
       : '';
@@ -923,7 +925,7 @@ window.initLetsGo = function() {
       ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.remaining - 1} more after this</p>`
       : '';
     c.innerHTML = `
-      <p style="font-size:0.75em;color:#b8860b;letter-spacing:0.05em;margin-bottom:0.4rem;">MORNING ROUTINE</p>
+      <p style="font-size:0.75em;color:#b8860b;letter-spacing:0.05em;margin-bottom:0.4rem;">${label}</p>
       <p style="margin-bottom:0.5rem;">${esc(d.title)}</p>
       ${notesHtml}
       <button class="action-button" onclick="scoreMorningDaily(${d.id})">Done</button>

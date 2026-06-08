@@ -40,7 +40,7 @@ try {
         }
     }
 
-    $remaining = getMorningModeDailies();
+    $remaining = getActiveDailies();
     json_response(['ok' => true, 'all_done' => empty($remaining), 'remaining' => count($remaining)]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);

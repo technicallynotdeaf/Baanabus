@@ -1039,8 +1039,15 @@ function markDailyComplete(int $id, string $date = null): void {
     }
 }
 
-// Returns due+incomplete morning dailies for today (no end-time cutoff — stays active until done).
-// Only items with morning === true (or unset, for backward compat) are included.
+// Returns the horizon for a daily item. Checks 'horizon' field first, then falls back to
+// legacy 'morning' bool (true → morning, false → day). Default is 'day'.
+function getDailyHorizon(array $d): string {
+    if (isset($d['horizon'])) return $d['horizon'];
+    if (isset($d['morning'])) return $d['morning'] ? 'morning' : 'day';
+    return 'day';
+}
+
+// Returns incomplete morning-horizon dailies for today (used for the morning-mode CSS flag).
 function getMorningModeDailies(): array {
     $melbTz  = new DateTimeZone('Australia/Melbourne');
     $melbNow = new DateTime('now', $melbTz);
@@ -1048,10 +1055,45 @@ function getMorningModeDailies(): array {
     $data    = getDailies();
     $done    = array_map('intval', $data['completions'][$today] ?? []);
     return array_values(array_filter($data['items'], fn($d) =>
-        ($d['morning'] ?? true) === true &&
+        getDailyHorizon($d) === 'morning' &&
         isDailyDueToday($d, $today) &&
         !in_array((int)$d['id'], $done, true)
     ));
+}
+
+// Returns all currently-unlocked incomplete dailies across horizons, ordered morning → day → evening.
+// Day items unlock when morning is done, or after a 10am fallback (so a skipped morning
+// doesn't block the whole day). Evening items unlock after show_after hour (default 19).
+function getActiveDailies(): array {
+    $melbTz  = new DateTimeZone('Australia/Melbourne');
+    $melbNow = new DateTime('now', $melbTz);
+    $today   = $melbNow->format('Y-m-d');
+    $hour    = (int)$melbNow->format('H');
+    $data    = getDailies();
+    $done    = array_map('intval', $data['completions'][$today] ?? []);
+
+    $morningLeft = array_filter($data['items'], fn($d) =>
+        getDailyHorizon($d) === 'morning' &&
+        isDailyDueToday($d, $today) &&
+        !in_array((int)$d['id'], $done, true)
+    );
+    $morningDone = empty($morningLeft);
+
+    $hOrder  = ['morning' => 0, 'day' => 1, 'evening' => 2];
+    $active  = array_values(array_filter($data['items'], function($d) use ($today, $done, $morningDone, $hour) {
+        if (!isDailyDueToday($d, $today)) return false;
+        if (in_array((int)$d['id'], $done, true)) return false;
+        $h = getDailyHorizon($d);
+        if ($h === 'morning') return true;
+        if ($h === 'day')     return $morningDone || $hour >= 10;
+        if ($h === 'evening') return $hour >= (int)($d['show_after'] ?? 19);
+        return false;
+    }));
+
+    usort($active, fn($a, $b) =>
+        ($hOrder[getDailyHorizon($a)] ?? 1) <=> ($hOrder[getDailyHorizon($b)] ?? 1)
+    );
+    return $active;
 }
 
 // ---------- Badges ----------

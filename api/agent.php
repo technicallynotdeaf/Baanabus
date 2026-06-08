@@ -326,6 +326,12 @@ if ($method === 'GET') {
         }
     }
 
+    if ($view === 'contexts') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $rows = $database->query("SELECT context, description, archived FROM contexts ORDER BY archived, context")->fetchAll(PDO::FETCH_ASSOC);
+        json_response(['ok' => true, 'contexts' => $rows]);
+    }
+
     if ($view === 'api_keys') {
         $indexPath = __DIR__ . '/../data/apikeys.json';
         $index     = file_exists($indexPath) ? (json_decode(file_get_contents($indexPath), true) ?? []) : [];
@@ -1298,6 +1304,32 @@ if ($method === 'POST') {
             $cfg['preferences'][$key] = $value;
             saveConfig($cfg);
             json_response(['ok' => true, 'key' => $key]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'archive_context') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $ctx = trim($body['context'] ?? '');
+        if (!$ctx) json_response(['error' => 'context required'], 400);
+        try {
+            // Mark context archived in SQLite
+            $stmt = $database->prepare("UPDATE contexts SET archived=1 WHERE context=?");
+            $stmt->execute([$ctx]);
+            // Archive all people whose circles contain this context
+            $data = getPeople();
+            $archivedPeople = 0;
+            foreach ($data['people'] as &$p) {
+                $circles = is_array($p['circles'] ?? null) ? $p['circles'] : [];
+                if (in_array($ctx, $circles, true) && ($p['is_active'] ?? 1) != 0) {
+                    $p['is_active'] = 0;
+                    $archivedPeople++;
+                }
+            }
+            unset($p);
+            if ($archivedPeople) savePeople($data);
+            json_response(['ok' => true, 'context' => $ctx, 'people_archived' => $archivedPeople]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

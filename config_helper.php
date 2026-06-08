@@ -1039,16 +1039,13 @@ function markDailyComplete(int $id, string $date = null): void {
     }
 }
 
-// Returns due+incomplete dailies if we are still within morning hours; empty otherwise.
+// Returns due+incomplete dailies for today (no end-time cutoff — stays active until done).
 function getMorningModeDailies(): array {
-    $cfg     = getConfig() ?? [];
-    $endHour = (int)($cfg['morning_mode_end_hour'] ?? 12);
     $melbTz  = new DateTimeZone('Australia/Melbourne');
     $melbNow = new DateTime('now', $melbTz);
-    if ((int)$melbNow->format('H') >= $endHour) return [];
-    $today  = $melbNow->format('Y-m-d');
-    $data   = getDailies();
-    $done   = array_map('intval', $data['completions'][$today] ?? []);
+    $today   = $melbNow->format('Y-m-d');
+    $data    = getDailies();
+    $done    = array_map('intval', $data['completions'][$today] ?? []);
     return array_values(array_filter($data['items'], fn($d) =>
         isDailyDueToday($d, $today) &&
         !in_array((int)$d['id'], $done, true)

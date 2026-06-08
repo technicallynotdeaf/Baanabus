@@ -60,6 +60,13 @@ $bucketFilters = [
     'project' => ['title' => 'Needs a next step','note' => 'Multi-step tasks. Each one needs a concrete first action before it\'s doable.', 'type' => 'project'],
 ];
 if (isset($bucketFilters[$filter])) {
+    $completedIds = [];
+    foreach ($all as $t) {
+        if (($t['status'] ?? '') === 'complete') $completedIds[(int)$t['id']] = true;
+    }
+    $prereqsMet = fn($t) => empty($t['prereq_tasks']) ||
+        !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
+
     $def      = $bucketFilters[$filter];
     $filtered = [];
     foreach ($all as $t) {
@@ -67,6 +74,7 @@ if (isset($bucketFilters[$filter])) {
         if (!empty($t['parent_id'])) continue;
         if (($t['task_type'] ?? '') !== $def['type']) continue;
         if ($filter === 'ready' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        if ($filter === 'ready' && !$prereqsMet($t)) continue;
         $filtered[] = $t;
     }
     if ($filter === 'ready') {

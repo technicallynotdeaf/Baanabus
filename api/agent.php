@@ -512,7 +512,7 @@ if ($method === 'POST') {
         $id     = (int)($body['daily_id'] ?? 0);
         $fields = $body['fields'] ?? [];
         if (!$id || !$fields) json_response(['error' => 'Missing daily_id or fields'], 400);
-        $allowed = ['title', 'notes', 'morning', 'is_active', 'frequency', 'everyX', 'repeat', 'start_date'];
+        $allowed = ['title', 'notes', 'morning', 'horizon', 'show_after', 'is_active', 'frequency', 'everyX', 'repeat', 'start_date'];
         try {
             $data = getDailies();
             $found = false;

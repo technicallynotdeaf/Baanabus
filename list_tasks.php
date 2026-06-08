@@ -9,6 +9,12 @@ $data    = getTasks();
 $all     = $data['tasks'];
 $now     = time();
 
+$activeContexts = [];
+if ($database) {
+    $rows = $database->query("SELECT context FROM contexts WHERE is_active=1 ORDER BY context")->fetchAll(PDO::FETCH_COLUMN);
+    $activeContexts = $rows;
+}
+
 if (($_GET['filter'] ?? '') === 'snoozed') {
     $snoozed = [];
     foreach ($all as $t) {
@@ -193,7 +199,12 @@ $typeLabels = [
       </div>
       <div style="flex:1;min-width:120px;">
         <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Context</label>
-        <input type="text" id="new-task-context" placeholder="e.g. Health, Family" style="margin-bottom:0;">
+        <select id="new-task-context">
+          <option value="">None</option>
+          <?php foreach ($activeContexts as $ctx): ?>
+          <option value="<?= htmlspecialchars($ctx) ?>"><?= htmlspecialchars($ctx) ?></option>
+          <?php endforeach; ?>
+        </select>
       </div>
       <button class="btn" id="btn-add-task" style="flex-shrink:0;padding:8px 14px;font-size:0.88em;min-height:44px;">Save</button>
     </div>

@@ -157,7 +157,8 @@ function _ensureSchema(PDO $db): void {
             (1,'🏠 Home','Home-based day'),
             (2,'💼 Work','Work day'),
             (3,'🛍️ Out','Out and about'),
-            (4,'🌿 Rest','Rest and recovery');
+            (4,'🌿 Rest','Rest and recovery'),
+            (6,'🚌 Transit','Commuting or travelling');
 
         INSERT OR IGNORE INTO contexts (context) VALUES
             ('home'),('work'),('shops'),('online'),('phone'),('anywhere');

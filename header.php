@@ -80,6 +80,7 @@ require_once __DIR__ . '/init.php';
         <option value="2"<?= $navDayType === 2 ? ' selected' : '' ?>>Work</option>
         <option value="3"<?= $navDayType === 3 ? ' selected' : '' ?>>Out</option>
         <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
+        <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
       </select>
     </li>
     <li><a href="logout.php" id="logout-link">🚪<span class="nav-text"> Logout</span></a></li>

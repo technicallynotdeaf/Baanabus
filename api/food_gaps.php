@@ -97,7 +97,7 @@ foreach ($rdis as $rdi) {
         'period'      => $rdi['period'],
         'note'        => $note,
         'covered'     => $covered,
-        'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] : null,
+        'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] * ($rdi['period'] === 'weekly' ? 7 : 1) : null,
         'is_limit'    => $isLimit,
     ];
 }

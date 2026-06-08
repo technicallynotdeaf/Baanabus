@@ -119,31 +119,38 @@ window.initListTasks = function() {
 
     document.querySelectorAll('.snooze-picker').forEach(p => p.remove());
 
-    const opts = [
-      ['2 hours',       '2h'],
-      ['Tonight',       'tonight'],
-      ['Tomorrow',      'tomorrow'],
-      ['Next week',     'week'],
-      ['After payday',  'payday'],
-      ['In 2 months',   '2months'],
-    ];
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const fmtISO   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const fmtShort = d => `${dayNames[d.getDay()]} ${d.getDate()}`;
+    const opts = [];
+    for (let i = 1; i <= 4; i++) {
+      const d = new Date(today); d.setDate(today.getDate() + i);
+      opts.push([fmtShort(d), fmtISO(d)]);
+    }
+    const nextMon = new Date(today); nextMon.setDate(today.getDate() + 5);
+    while (nextMon.getDay() !== 1) nextMon.setDate(nextMon.getDate() + 1);
+    opts.push([`Mon ${nextMon.getDate()}`, fmtISO(nextMon)]);
+    opts.push(['In a month',   '1month']);
+    opts.push(['After payday', 'payday']);
+    opts.push(['In 2 months',  '2months']);
+    opts.push(['Someday/maybe', 'someday']);
+
     const picker = document.createElement('div');
     picker.className = 'snooze-picker';
     picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;padding:4px 0;';
     opts.forEach(([label, when]) => {
       const b = document.createElement('button');
       b.className = 'action-button';
-      b.style.cssText = 'padding:3px 8px;font-size:0.75em;min-height:28px;';
+      b.style.cssText = when === 'someday'
+        ? 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;'
+        : 'padding:3px 8px;font-size:0.75em;min-height:28px;';
       b.textContent = label;
-      b.addEventListener('click', () => snooze(taskId, when, row, picker));
+      b.addEventListener('click', () => when === 'someday'
+        ? moveToSomeday(taskId, row, picker)
+        : snooze(taskId, when, row, picker));
       picker.appendChild(b);
     });
-    const somedayBtn = document.createElement('button');
-    somedayBtn.className = 'action-button';
-    somedayBtn.style.cssText = 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;';
-    somedayBtn.textContent = 'Someday/maybe';
-    somedayBtn.addEventListener('click', () => moveToSomeday(taskId, row, picker));
-    picker.appendChild(somedayBtn);
     row.after(picker);
   });
 

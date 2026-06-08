@@ -68,7 +68,7 @@ try {
             json_response(['ok' => true]);
 
         case 'snooze':
-            $when = $input['when'] ?? '2h';
+            $when = $input['when'] ?? 'tomorrow';
             if ($when === 'payday') {
                 $cfg = getConfig() ?? [];
                 $paydayDay = max(1, min(28, (int)($cfg['preferences']['payday_day'] ?? 1)));
@@ -78,17 +78,21 @@ try {
                 $until = $dt->getTimestamp();
             } elseif ($when === '2months') {
                 $until = strtotime('+2 months 08:00');
+            } elseif ($when === '1month') {
+                $until = strtotime('+1 month 08:00');
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $when)) {
+                $until = strtotime($when . ' 08:00');
             } else {
                 $until = match ($when) {
-                    '2h'      => strtotime('+2 hours'),
-                    'tonight' => strtotime('today 20:00'),
+                    'tonight'  => strtotime('today 20:00'),
                     'tomorrow' => strtotime('tomorrow 08:00'),
-                    'week'    => strtotime('+7 days 08:00'),
-                    default   => strtotime('+2 hours'),
+                    'week'     => strtotime('+7 days 08:00'),
+                    '2h'       => strtotime('+2 hours'),
+                    default    => strtotime('tomorrow 08:00'),
                 };
-            }
-            if ($when === 'tonight' && $until <= time()) {
-                $until = strtotime('tomorrow 08:00');
+                if ($when === 'tonight' && $until <= time()) {
+                    $until = strtotime('tomorrow 08:00');
+                }
             }
             vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until)]);
             json_response(['ok' => true]);

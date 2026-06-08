@@ -127,30 +127,42 @@ function setupOverlayListeners() {
   function snoozeTask(taskId) {
     const c = document.getElementById('activity-container');
     if (!c) return;
-    const opts = [
-      {label: '2 hours',    when: '2h'},
-      {label: 'Tonight',    when: 'tonight'},
-      {label: 'Tomorrow',   when: 'tomorrow'},
-      {label: 'Next week',  when: 'week'},
-      {label: 'After payday', when: 'payday'},
-      {label: 'In 2 months',  when: '2months'},
-    ];
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const fmtISO   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const fmtShort = d => `${dayNames[d.getDay()]} ${d.getDate()}`;
+    const opts = [];
+    for (let i = 1; i <= 4; i++) {
+      const d = new Date(today); d.setDate(today.getDate() + i);
+      opts.push({label: fmtShort(d), when: fmtISO(d)});
+    }
+    const nextMon = new Date(today); nextMon.setDate(today.getDate() + 5);
+    while (nextMon.getDay() !== 1) nextMon.setDate(nextMon.getDate() + 1);
+    opts.push({label: `Mon ${nextMon.getDate()}`, when: fmtISO(nextMon)});
+    opts.push({label: 'In a month',   when: '1month'});
+    opts.push({label: 'After payday', when: 'payday'});
+    opts.push({label: 'In 2 months',  when: '2months'});
     const btns = opts.map(o =>
       `<button class="action-button" data-when="${o.when}">${o.label}</button>`
     ).join('');
     c.innerHTML = `
       <p style="margin-bottom:0.75rem;">Snooze until?</p>
       <div id="snooze-opts" style="display:flex;gap:8px;flex-wrap:wrap;">${btns}
+        <button class="action-button" data-when="someday" style="background:transparent;color:#888;border:1px solid #ccc;">Someday/maybe</button>
         <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Cancel</button>
       </div>`;
     document.getElementById('snooze-opts').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-when]');
       if (!btn) return;
       document.querySelectorAll('#snooze-opts button').forEach(b => b.disabled = true);
+      const when = btn.dataset.when;
+      const body = when === 'someday'
+        ? {task_id: taskId, action: 'someday'}
+        : {task_id: taskId, action: 'snooze', when};
       fetch('api/task_action.php', {
         method:  'POST',
         headers: {'Content-Type': 'application/json'},
-        body:    JSON.stringify({task_id: taskId, action: 'snooze', when: btn.dataset.when}),
+        body:    JSON.stringify(body),
       }).then(() => loadSpeechBubble('lets-go.php'))
         .catch(() => loadSpeechBubble('lets-go.php'));
     });

@@ -93,8 +93,30 @@ try {
             vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until)]);
             json_response(['ok' => true]);
 
+        case 'someday':
+            vaultUpdateTask($taskId, [
+                'task_type'     => 'someday',
+                'snoozed_until' => null,
+                'stuck'         => false,
+            ]);
+            json_response(['ok' => true]);
+
         case 'wake':
             vaultUpdateTask($taskId, ['snoozed_until' => null, 'stuck' => false]);
+            json_response(['ok' => true]);
+
+        case 'rate_importance':
+            $importance = $input['importance'] ?? null;
+            if (!in_array($importance, ['low', 'medium', 'high'], true))
+                json_response(['error' => 'Invalid importance value'], 400);
+            vaultUpdateTask($taskId, ['importance' => $importance]);
+            json_response(['ok' => true]);
+
+        case 'rate_urgency':
+            $urgency = $input['urgency'] ?? null;
+            if (!in_array($urgency, ['low', 'medium', 'high'], true))
+                json_response(['error' => 'Invalid urgency value'], 400);
+            vaultUpdateTask($taskId, ['urgency' => $urgency, 'urgency_set' => true]);
             json_response(['ok' => true]);
 
         default:

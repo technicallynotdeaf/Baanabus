@@ -138,6 +138,12 @@ window.initListTasks = function() {
       b.addEventListener('click', () => snooze(taskId, when, row, picker));
       picker.appendChild(b);
     });
+    const somedayBtn = document.createElement('button');
+    somedayBtn.className = 'action-button';
+    somedayBtn.style.cssText = 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;';
+    somedayBtn.textContent = 'Someday/maybe';
+    somedayBtn.addEventListener('click', () => moveToSomeday(taskId, row, picker));
+    picker.appendChild(somedayBtn);
     row.after(picker);
   });
 
@@ -147,6 +153,25 @@ window.initListTasks = function() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ task_id: taskId, action: 'snooze', when }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        picker.remove();
+        row.style.transition = 'opacity 0.2s';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 220);
+      }
+    })
+    .catch(() => { picker.querySelectorAll('button').forEach(b => b.disabled = false); });
+  }
+
+  function moveToSomeday(taskId, row, picker) {
+    picker.querySelectorAll('button').forEach(b => b.disabled = true);
+    fetch('api/task_action.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ task_id: taskId, action: 'someday' }),
     })
     .then(r => r.json())
     .then(d => {

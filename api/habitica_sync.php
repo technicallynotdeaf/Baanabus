@@ -159,6 +159,10 @@ try {
             'habitica_id' => $habId,
             'title'       => $d['text']      ?? '',
             'notes'       => $d['notes']     ?? '',
+            'checklist'   => array_values(array_map(fn($ci) => [
+                'id'   => $ci['id']   ?? '',
+                'text' => $ci['text'] ?? '',
+            ], $d['checklist'] ?? [])),
             'frequency'   => $d['frequency'] ?? 'daily',
             'repeat'      => $d['repeat']    ?? [],
             'everyX'      => (int)($d['everyX'] ?? 1),
@@ -166,9 +170,12 @@ try {
             'is_active'   => true,
         ];
         if (isset($dailyHabIndex[$habId])) {
-            $k           = $dailyHabIndex[$habId];
-            $def['id']   = $dailyData['items'][$k]['id'];
+            $k            = $dailyHabIndex[$habId];
+            $def['id']    = $dailyData['items'][$k]['id'];
             $def['order'] = $dailyData['items'][$k]['order'] ?? 0;
+            if (isset($dailyData['items'][$k]['horizon'])) {
+                $def['horizon'] = $dailyData['items'][$k]['horizon'];
+            }
             $dailyData['items'][$k] = $def;
         } else {
             $def['id']    = $dailyData['next_id']++;

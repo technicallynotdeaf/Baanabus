@@ -9,6 +9,15 @@ $data    = getTasks();
 $all     = $data['tasks'];
 $now     = time();
 
+$subtaskMap = [];
+foreach ($all as $t) {
+    if (!empty($t['parent_id']) && ($t['status'] ?? '') === 'active') {
+        $pid = (int)$t['parent_id'];
+        if (!isset($subtaskMap[$pid])) $subtaskMap[$pid] = [];
+        $subtaskMap[$pid][] = $t['title'];
+    }
+}
+
 $activeContexts = [];
 if ($database) {
     $rows = $database->query("SELECT context FROM contexts WHERE is_active=1 ORDER BY context")->fetchAll(PDO::FETCH_COLUMN);
@@ -107,7 +116,14 @@ if (isset($bucketFilters[$filter])) {
          style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
-        <?php if ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif; ?>
+        <?php
+          $subs = $subtaskMap[(int)$t['id']] ?? [];
+          if ($subs): ?>
+          <div style="font-size:0.78em;color:#bbb;margin-top:2px;line-height:1.4;">
+            <?= htmlspecialchars(implode(' · ', array_slice($subs, 0, 3))) ?>
+            <?php if (count($subs) > 3): ?><span style="color:#ddd;">+ <?= count($subs) - 3 ?> more</span><?php endif; ?>
+          </div>
+        <?php elseif ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif; ?>
       </div>
       <?php if ($filter !== 'inbox'): ?>
       <div style="display:flex;gap:4px;flex-shrink:0;">
@@ -253,8 +269,12 @@ $typeLabels = [
               !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
           $notDoable  = $isSnoozed || $isStuck || !$prereqsMet;
         ?>
+        <?php
+          $tSubs    = $subtaskMap[(int)$t['id']] ?? [];
+          $subSearch = strtolower(implode(' ', $tSubs));
+        ?>
         <div class="task-row" data-id="<?= (int)$t['id'] ?>"
-             data-title="<?= htmlspecialchars(strtolower($t['title'])) ?>"
+             data-title="<?= htmlspecialchars(strtolower($t['title']) . ' ' . $subSearch) ?>"
              data-context="<?= htmlspecialchars(trim($t['context'] ?? '')) ?>"
              style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
           <div style="flex:1;min-width:0;">
@@ -268,6 +288,14 @@ $typeLabels = [
               <span style="font-size:0.72em;color:#aaa;margin-left:4px;">stuck</span>
             <?php elseif (!$prereqsMet): ?>
               <span style="font-size:0.72em;color:#aaa;margin-left:4px;">blocked</span>
+            <?php endif; ?>
+            <?php if ($tSubs): ?>
+              <div style="font-size:0.78em;color:#bbb;margin-top:2px;line-height:1.4;">
+                <?= htmlspecialchars(implode(' · ', array_slice($tSubs, 0, 3))) ?>
+                <?php if (count($tSubs) > 3): ?><span style="color:#ddd;">+ <?= count($tSubs) - 3 ?> more</span><?php endif; ?>
+              </div>
+            <?php elseif (trim($t['context'] ?? '')): ?>
+              <div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars(trim($t['context'])) ?></div>
             <?php endif; ?>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0;">

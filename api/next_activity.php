@@ -159,27 +159,42 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
-// Serve due+incomplete dailies before any normal activity (morning → day → evening).
+// Split active dailies by horizon. Morning items are forced one-at-a-time, but not
+// back-to-back — the last_activity check ensures a game/task appears in between.
+// Day/evening items enter the normal pool below ($otherDailies).
+$morningDailies = [];
+$otherDailies   = [];
 try {
-    $activeDailies = getActiveDailies();
-    if (!empty($activeDailies)) {
-        $skip      = array_filter(array_map('intval', explode(',', $_GET['skip'] ?? '')));
-        $available = empty($skip)
-            ? $activeDailies
-            : array_values(array_filter($activeDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
-        $looped    = empty($available);
-        $d         = $looped ? $activeDailies[0] : $available[0];
+    $allActiveDailies = getActiveDailies();
+    $morningDailies   = array_values(array_filter($allActiveDailies, fn($d) => getDailyHorizon($d) === 'morning'));
+    $otherDailies     = array_values(array_filter($allActiveDailies, fn($d) => getDailyHorizon($d) !== 'morning'));
+} catch (Throwable $e) { /* non-fatal */ }
+
+if (!empty($morningDailies) && ($_SESSION['last_activity'] ?? '') !== 'morning_daily') {
+    $skip      = array_filter(array_map('intval', explode(',', $_GET['skip'] ?? '')));
+    $available = empty($skip)
+        ? $morningDailies
+        : array_values(array_filter($morningDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
+    if (!empty($available)) {
+        $d         = $available[0];
+        $dSubtasks = array_values(array_map(
+            fn($ci) => ['id' => $ci['id'], 'title' => $ci['text']],
+            $d['checklist'] ?? []
+        ));
+        $_SESSION['last_activity'] = 'morning_daily';
         json_response([
             'type'      => 'morning_daily',
             'id'        => (int)$d['id'],
             'title'     => $d['title'],
             'notes'     => $d['notes'] ?? '',
+            'subtasks'  => $dSubtasks,
             'horizon'   => getDailyHorizon($d),
-            'remaining' => count($activeDailies),
-            'looped'    => $looped,
+            'remaining' => count($morningDailies),
+            'looped'    => false,
         ]);
     }
-} catch (Throwable $e) { /* non-fatal */ }
+    // All morning dailies skipped — fall through to normal pool
+}
 
 // While inbox has items: force triage window scales with pile size (larger pile = longer forced run)
 // (fill-tasks only: force 2–4, then normal pool)
@@ -335,7 +350,9 @@ $pool = array_merge(
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
-    array_fill(0, $hasHouseTasks  ? 1 : 0,            'house_task')
+    array_fill(0, $hasHouseTasks  ? 1 : 0,             'house_task'),
+    array_fill(0, !empty($otherDailies) ? 2 : 0,       'other_daily'),
+    array_fill(0, !empty($morningDailies) ? 1 : 0,     'other_daily') // morning dailies also in pool as fallback
 );
 
 if (empty($pool)) {
@@ -360,6 +377,34 @@ if ($choice === 'tip') {
     $t = pick_tip();
     if ($t) json_response($t);
     json_response(pick_trivia());
+}
+if ($choice === 'other_daily') {
+    $allDailiesForPool = array_merge($otherDailies, $morningDailies);
+    if (!empty($allDailiesForPool)) {
+        $skip      = array_filter(array_map('intval', explode(',', $_GET['skip'] ?? '')));
+        $available = empty($skip)
+            ? $allDailiesForPool
+            : array_values(array_filter($allDailiesForPool, fn($d) => !in_array((int)$d['id'], $skip, true)));
+        if (!empty($available)) {
+            $d         = $available[0];
+            $dSubtasks = array_values(array_map(
+                fn($ci) => ['id' => $ci['id'], 'title' => $ci['text']],
+                $d['checklist'] ?? []
+            ));
+            $_SESSION['last_activity'] = 'morning_daily';
+            json_response([
+                'type'      => 'morning_daily',
+                'id'        => (int)$d['id'],
+                'title'     => $d['title'],
+                'notes'     => $d['notes'] ?? '',
+                'subtasks'  => $dSubtasks,
+                'horizon'   => getDailyHorizon($d),
+                'remaining' => count($allDailiesForPool),
+                'looped'    => false,
+            ]);
+        }
+    }
+    json_response(pick_trivia()); // fallback if no dailies available
 }
 if ($choice === 'house_task') {
     $ht = pick_house_task();

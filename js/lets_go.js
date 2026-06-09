@@ -921,6 +921,17 @@ window.initLetsGo = function() {
     const notesHtml = d.notes
       ? `<p style="font-size:0.85em;color:#888;margin:0 0 0.75rem;">${esc(d.notes)}</p>`
       : '';
+    let subtasksHtml = '';
+    if (d.subtasks && d.subtasks.length > 0) {
+      const rows = d.subtasks.map(s =>
+        `<div class="daily-sub-row" style="display:flex;align-items:flex-start;gap:8px;padding:0.3rem 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+          <span style="flex:1;line-height:1.4;font-size:0.9em;">${esc(s.title)}</span>
+          <button class="action-button" style="flex-shrink:0;padding:0.15rem 0.55rem;font-size:0.78em;"
+            onclick="window._dailySubDone(${d.id}, this)">Done</button>
+        </div>`
+      ).join('');
+      subtasksHtml = `<div id="daily-sub-list" style="margin:0.1rem 0 0.7rem;">${rows}</div>`;
+    }
     const countHtml = d.remaining > 1
       ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.remaining - 1} more after this</p>`
       : '';
@@ -928,9 +939,22 @@ window.initLetsGo = function() {
       <p style="font-size:0.75em;color:#b8860b;letter-spacing:0.05em;margin-bottom:0.4rem;">${label}</p>
       <p style="margin-bottom:0.5rem;">${esc(d.title)}</p>
       ${notesHtml}
+      ${subtasksHtml}
       <button class="action-button" onclick="scoreMorningDaily(${d.id})">Done</button>
       <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="skipMorningDaily(${d.id})">Skip for now</button>
       ${countHtml}`;
+
+    window._dailySubDone = function(dailyId, btn) {
+      const row = btn.closest('.daily-sub-row');
+      btn.disabled = true;
+      row.style.opacity = '0.4';
+      setTimeout(() => {
+        row.remove();
+        if (!document.querySelector('#daily-sub-list .daily-sub-row')) {
+          scoreMorningDaily(dailyId);
+        }
+      }, 300);
+    };
   }
 
   function renderMorningDone(d) {

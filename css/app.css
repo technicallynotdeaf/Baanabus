@@ -17,23 +17,6 @@ body {
 /* Canvas scene pages lock scroll via JS adding this class */
 body.scene-view { overflow: hidden; background: #ece0c8; }
 
-/* Navbar becomes a centered floating pill on the scene so it doesn't blend into the browser chrome */
-body.scene-view .navbar {
-    left: 50%;
-    width: auto;
-    transform: translateX(-50%);
-    border-radius: 22px;
-    top: 8px;
-    background: rgba(20, 25, 55, 0.72);
-    border: 1px solid rgba(120, 140, 220, 0.25);
-    flex-wrap: nowrap;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-}
-body.scene-view .navbar li a { color: rgba(220, 225, 255, 0.9); }
-body.scene-view .navbar li a:hover { color: #fff; }
-body.scene-view .nav-checkin-select { color: rgba(220, 225, 255, 0.9); }
-
 /* === Time-of-day tint overlay === */
 #scene-tint {
     position: fixed;
@@ -59,19 +42,21 @@ p  { margin: 0.5rem 0; line-height: 1.5; }
 /* === Navbar === */
 .navbar {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
     z-index: 200;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(20, 25, 55, 0.72);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     list-style: none;
     margin: 0;
     padding: 0;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
+    border-radius: 22px;
+    border: 1px solid rgba(120, 140, 220, 0.25);
 }
 
 .navbar li a {
@@ -81,13 +66,13 @@ p  { margin: 0.5rem 0; line-height: 1.5; }
     padding: 0 12px;
     height: 44px;
     text-decoration: none;
-    color: hsl(210, 100%, 20%);
+    color: rgba(220, 225, 255, 0.9);
     font-size: 0.85em;
     white-space: nowrap;
     transition: color 0.2s;
 }
 
-.navbar li a:hover { color: hsl(210, 100%, 45%); }
+.navbar li a:hover { color: #fff; }
 
 /* Mobile: hide nav labels, show emojis only */
 @media (max-width: 600px) {
@@ -514,7 +499,7 @@ body.scene-view #scene-total-pips { display: block; }
 .nav-checkin-select {
     background: transparent;
     border: none;
-    color: hsl(210, 40%, 30%);
+    color: rgba(220, 225, 255, 0.9);
     font-size: 0.82em;
     padding: 4px 2px;
     cursor: pointer;
@@ -522,8 +507,8 @@ body.scene-view #scene-total-pips { display: block; }
     font-family: inherit;
     max-width: 7em;
 }
-.nav-checkin-select:hover  { color: hsl(210, 100%, 45%); }
-.nav-checkin-select:focus  { color: hsl(210, 100%, 45%); }
+.nav-checkin-select:hover  { color: #fff; }
+.nav-checkin-select:focus  { color: #fff; }
 .night-mode .nav-checkin-select { color: #b8b8d8; }
 #scene-energy {
     display: none;
@@ -694,8 +679,8 @@ body.scene-view #scene-scoreboard { display: flex; }
 /* === Night mode (post-sunset) === */
 
 .night-mode .navbar {
-    background: rgba(16, 16, 42, 0.96);
-    border-bottom-color: rgba(255, 255, 255, 0.06);
+    background: rgba(16, 16, 42, 0.88);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 .night-mode .navbar li a { color: #b8b8d8; }
 .night-mode .navbar li a:hover { color: #e8e8ff; }

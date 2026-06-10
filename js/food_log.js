@@ -2,7 +2,7 @@ window.initFoodLog = function () {
   const root    = document.getElementById('food-log-root');
   if (!root) return;
 
-  const today   = new Date().toISOString().slice(0, 10);
+  const today   = new Date().toLocaleDateString('sv-SE');
   let selectedFood = null; // {food_id, name, serving_id, unit_label, weight_g}
 
   // ── Food search autocomplete ───────────────────────────────────────────────

@@ -119,7 +119,7 @@ window.initNutritionProgress = function () {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('sv-SE');
   const dateEl = document.getElementById('np-date');
   if (dateEl) dateEl.textContent = today;
 

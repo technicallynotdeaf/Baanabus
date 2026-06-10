@@ -28,6 +28,7 @@ $colMap = [
     'omega6_la_mg'          => ['foods_col' => 'omega6_la_mg',          'totals_key' => 'omega6_la'],
     'potassium'             => ['foods_col' => 'potassium_mg',          'totals_key' => 'potassium'],
     'calcium'               => ['foods_col' => 'calcium_mg',            'totals_key' => 'calcium'],
+    'phosphorus'            => ['foods_col' => 'phosphorus_mg',         'totals_key' => 'phosphorus'],
     'iron'                  => ['foods_col' => 'iron_mg',               'totals_key' => 'iron'],
     'magnesium'             => ['foods_col' => 'magnesium_mg',          'totals_key' => 'magnesium'],
     'zinc_mg'               => ['foods_col' => 'zinc_mg',               'totals_key' => 'zinc'],

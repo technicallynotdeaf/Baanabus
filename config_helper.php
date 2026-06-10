@@ -734,7 +734,7 @@ function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): a
                f.vitamin_b5_mg, f.vitamin_b6_mg, f.vitamin_b7_mcg, f.folate_mcg, f.vitamin_b12_mcg,
                f.vitamin_c_mg, f.vitamin_d_mcg, f.vitamin_e_mg, f.vitamin_k_mcg, f.vitamin_k2_mcg,
                f.choline_mg, f.lutein_zeaxanthin_mcg,
-               f.calcium_mg, f.copper_mg, f.iodine_mcg, f.iron_mg,
+               f.calcium_mg, f.phosphorus_mg, f.copper_mg, f.iodine_mcg, f.iron_mg,
                f.magnesium_mg, f.potassium_mg, f.selenium_mcg, f.sodium_mg, f.zinc_mg
         FROM food_servings fs JOIN foods f ON fs.food_id = f.food_id
         WHERE fs.serving_id IN ($placeholders)
@@ -781,6 +781,7 @@ function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): a
         'choline'               => 'choline_mg',
         'lutein_zeaxanthin'     => 'lutein_zeaxanthin_mcg',
         'calcium'               => 'calcium_mg',
+        'phosphorus'            => 'phosphorus_mg',
         'copper'                => 'copper_mg',
         'iodine'                => 'iodine_mcg',
         'iron'                  => 'iron_mg',

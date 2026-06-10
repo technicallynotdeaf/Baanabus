@@ -643,6 +643,17 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'add_quote') {
+        $text = trim($body['text'] ?? '');
+        if (!$text) json_response(['error' => 'text is required'], 400);
+        $quotes = getQuotes();
+        $id = $quotes['next_id'];
+        $quotes['items'][] = ['id' => $id, 'text' => $text];
+        $quotes['next_id']++;
+        saveQuotes($quotes);
+        json_response(['ok' => true, 'id' => $id, 'total' => count($quotes['items'])]);
+    }
+
     if ($action === 'migrate_quotes') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
         $dryRun = !empty($body['dry_run']);

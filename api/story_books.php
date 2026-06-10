@@ -6,86 +6,91 @@ if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
 $books = [
-    1 => ['title' => 'The Chai Meridian',    'color' => '#C8813A', 'file' => 'chai_meridian.php'],
-    2 => ['title' => 'The Platform That Isn\'t', 'color' => '#2A7FA8', 'file' => 'the_platform.php'],
-    3 => ['title' => 'Below the Alcyon',     'color' => '#6B5A8A', 'file' => 'below_the_alcyon.php'],
-    4 => ['title' => 'The Green Correspondence', 'color' => '#3A6B4A', 'file' => 'green_correspondence.php'],
-    5 => ['title' => 'Book Five',            'color' => '#7A3A3A', 'file' => null],
-    6 => ['title' => 'Book Six',             'color' => '#6B7A3A', 'file' => null],
+    1  => ['title' => 'The Letter in the Attic',    'color' => '#5A7A4A'],
+    2  => ['title' => 'The Chaiwalla\'s Corner',     'color' => '#C8813A'],
+    3  => ['title' => 'The Hollow Oak',              'color' => '#2D5A2D'],
+    4  => ['title' => 'The Ferryman Knows',          'color' => '#4A7AA0'],
+    5  => ['title' => 'The Mountain Shrine',         'color' => '#5A6A80'],
+    6  => ['title' => 'The Tide Caves',              'color' => '#2A8080'],
+    7  => ['title' => 'The Crystal Chambers',        'color' => '#7A5A9A'],
+    8  => ['title' => 'The Grumpy Count',            'color' => '#8A3A5A'],
+    9  => ['title' => 'The Harbour Dispute',         'color' => '#2A6AB0'],
+    10 => ['title' => 'Fred\'s Canal Boat',          'color' => '#C05A1A'],
+    11 => ['title' => 'The Hill Farm Runes',         'color' => '#7A4A8A'],
+    12 => ['title' => 'The Midsummer Fair',          'color' => '#B89020'],
+    13 => ['title' => 'The Sunken Rooms',            'color' => '#5A7A3A'],
+    14 => ['title' => 'The Oasis Chaiwalla',         'color' => '#C8803A'],
+    15 => ['title' => 'The Treehouse Village',       'color' => '#2A7040'],
+    16 => ['title' => 'The Underground River',       'color' => '#2A8070'],
+    17 => ['title' => 'Lars and the Boat Shed',      'color' => '#3A5A8A'],
+    18 => ['title' => 'The Monastery Library',       'color' => '#8A2A2A'],
+    19 => ['title' => 'The Deep Passage',            'color' => '#3A7A6A'],
+    20 => ['title' => 'The Mountain of Her Youth',   'color' => '#5A5A7A'],
+    21 => ['title' => 'The Valley of Stones',        'color' => '#6A5A70'],
+    22 => ['title' => 'The Storm Crossing',          'color' => '#3A4A6A'],
+    23 => ['title' => 'Grandmother\'s Letter',       'color' => '#8A7A3A'],
+    24 => ['title' => 'The Red Door',                'color' => '#9A2A2A'],
 ];
 
 $config      = getConfig() ?? [];
 $activeStory = (int)($config['active_story_id'] ?? 0);
 
-// Pre-compute ended state for each book so we can gate sequential unlocks
 $bookEnded = [];
 foreach ($books as $id => $book) {
-    if (!$book['file']) { $bookEnded[$id] = false; continue; }
-    $path = __DIR__ . '/../content/stories/' . $book['file'];
+    $path = __DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id);
     if (!file_exists($path)) { $bookEnded[$id] = false; continue; }
     $prog = getStoryProgress($id);
-    if (!$prog) { $bookEnded[$id] = false; continue; }
     $bookEnded[$id] = !empty($prog['ended']);
 }
 ?>
 <div data-init="initStoryBooks" style="max-width:520px;margin:0 auto;">
-  <h2 style="margin:0 0 1.25rem;font-size:1.1rem;letter-spacing:0.02em;">Books</h2>
-  <div style="display:flex;flex-direction:column;gap:0.6rem;">
+  <h2 style="margin:0 0 0.25rem;font-size:1.1rem;letter-spacing:0.02em;">The Grandmother's Quilt</h2>
+  <p style="margin:0 0 1.25rem;font-size:0.8rem;color:#aaa;">24 books &mdash; earn completions to unlock each one</p>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">
     <?php foreach ($books as $id => $book): ?>
       <?php
-        $fileExists = $book['file'] && file_exists(__DIR__ . '/../content/stories/' . $book['file']);
-        $prevId     = $id - 1;
-        $prevDone   = ($id === 1) || ($bookEnded[$prevId] ?? false);
-        $available  = $fileExists && $prevDone;
-        $prog           = $fileExists ? getStoryProgress($id) : null;
-        $depth          = $prog ? (int)($prog['depth'] ?? 0) : 0;
-        $pagesAvailable = $prog ? (int)($prog['pages_available'] ?? 1) : 1;
-        $currentKey     = $prog ? ($prog['current_key'] ?? '1_start') : '1_start';
-        $started        = $depth > 0 || $pagesAvailable > 1;
-        $isEnded        = $bookEnded[$id] ?? false;
-        $isActive       = ($activeStory === $id);
-        /* debug <?= "book=$id bookEnded=" . var_export($bookEnded[$id] ?? 'NOT SET', true) . " isEnded=" . var_export($isEnded, true) . " progEnded=" . var_export($prog['ended'] ?? 'NOT SET', true) ?> */
-        $readyChoices   = $available && !$isEnded ? max(0, $pagesAvailable - $depth) : 0;
+        $fileExists  = file_exists(__DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id));
+        $prevDone    = ($id === 1) || ($bookEnded[$id - 1] ?? false);
+        $unlocked    = $fileExists && $prevDone;
+        $prog        = $fileExists ? getStoryProgress($id) : null;
+        $depth       = $prog ? (int)($prog['depth'] ?? 0) : 0;
+        $pagesAvail  = $prog ? (int)($prog['pages_available'] ?? 1) : 1;
+        $isEnded     = $bookEnded[$id] ?? false;
+        $isActive    = ($activeStory === $id);
+        $readyChoice = $unlocked && !$isEnded && ($pagesAvail > $depth);
+        $bgColor     = $unlocked ? $book['color'] : '#c8c0b8';
+        $onclick     = $unlocked
+            ? ($isEnded ? "window._storyReset($id)" : "window._openStory($id)")
+            : '';
       ?>
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:8px;
-                  background:<?= $isActive ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.03)' ?>;
-                  opacity:<?= $available ? '1' : '0.35' ?>;
-                  <?= $isActive ? 'outline:1.5px solid rgba(0,0,0,0.12);' : '' ?>">
-        <div style="width:10px;height:44px;border-radius:3px;background:<?= htmlspecialchars($book['color']) ?>;
-                    flex-shrink:0;<?= !$available ? 'filter:grayscale(1);' : '' ?>"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:0.9rem;"><?= htmlspecialchars($book['title']) ?></div>
-          <div style="font-size:0.76rem;color:#aaa;margin-top:2px;">
-            <?php if (!$fileExists): ?>
-              Not yet written
-            <?php elseif (!$prevDone): ?>
-              Finish <?= htmlspecialchars($books[$prevId]['title']) ?> to unlock
-            <?php elseif ($isEnded): ?>
-              Finished &middot; <?= $depth ?> choice<?= $depth === 1 ? '' : 's' ?>
-            <?php elseif ($started): ?>
-              <?= $depth ?> choice<?= $depth === 1 ? '' : 's' ?> in
-              <?php if ($readyChoices > 0): ?>
-                &middot; <span style="color:#7a9e7e;font-weight:600;"><?= $readyChoices ?> ready</span>
-              <?php elseif ($isActive): ?>
-                &middot; <span style="color:#7a9e7e;">active</span>
-              <?php endif; ?>
-            <?php else: ?>
-              Not started<?php if ($readyChoices > 0): ?> &middot; <span style="color:#7a9e7e;font-weight:600;"><?= $readyChoices ?> ready</span><?php endif; ?>
-            <?php endif; ?>
+      <div onclick="<?= $onclick ?>"
+           title="<?= htmlspecialchars($book['title']) ?><?= !$unlocked ? ' — locked' : '' ?>"
+           style="position:relative;aspect-ratio:2/3;background:<?= $bgColor ?>;border-radius:3px;
+                  cursor:<?= $unlocked ? 'pointer' : 'default' ?>;overflow:hidden;
+                  <?= $isActive ? 'box-shadow:0 0 0 2px #fff,0 0 0 3.5px rgba(0,0,0,0.5);' : '' ?>
+                  <?= !$unlocked ? 'filter:saturate(0) brightness(0.88);' : '' ?>">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;
+                    align-items:center;justify-content:center;padding:4px 2px;">
+          <div style="font-weight:700;font-size:1rem;color:rgba(255,255,255,<?= $unlocked ? '0.9' : '0.5' ?>);
+                      line-height:1;"><?= $id ?></div>
+          <div style="font-size:0.42rem;color:rgba(255,255,255,<?= $unlocked ? '0.75' : '0.4' ?>);
+                      text-align:center;line-height:1.25;margin-top:3px;
+                      word-break:break-word;hyphens:auto;">
+            <?= htmlspecialchars($book['title']) ?>
           </div>
         </div>
-        <?php if ($available): ?>
-          <?php if ($isEnded): ?>
-            <button class="action-button" style="padding:6px 14px;font-size:0.85rem;flex-shrink:0;"
-              onclick="window._storyReset(<?= $id ?>)">Read again</button>
-          <?php else: ?>
-            <button class="action-button" style="padding:6px 14px;font-size:0.85rem;flex-shrink:0;"
-              onclick="window._openStory(<?= $id ?>)">
-              <?= $started ? 'Continue' : 'Begin' ?>
-            </button>
-          <?php endif; ?>
+        <?php if ($readyChoice): ?>
+          <div style="position:absolute;top:3px;right:3px;width:6px;height:6px;
+                      border-radius:50%;background:#7ac47a;box-shadow:0 0 3px rgba(0,0,0,0.3);">
+          </div>
+        <?php elseif ($isEnded): ?>
+          <div style="position:absolute;top:2px;right:3px;font-size:0.6rem;
+                      color:rgba(255,255,255,0.7);">&#10003;</div>
         <?php endif; ?>
       </div>
     <?php endforeach; ?>
   </div>
+  <p style="margin:1rem 0 0;font-size:0.75rem;color:#bbb;">
+    Green dot = a choice is ready to make &middot; Tick = finished
+  </p>
 </div>

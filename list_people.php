@@ -89,7 +89,8 @@ function renderPeopleList(): void {
           <?php foreach ($g['items'] as $p): ?>
             <?php
             $label   = !empty($p['next_review']) ? reviewLabel($p['next_review'], date('Y-m-d')) : null;
-            $circles = trim($p['circles'] ?? '');
+            $c = $p['circles'] ?? '';
+            $circles = trim(is_array($c) ? implode(', ', $c) : $c);
             ?>
             <div class="person-row"
                  data-name="<?= htmlspecialchars(strtolower($p['name'] ?? '')) ?>"

@@ -512,6 +512,13 @@
 
         drawPapers(ctx, PAPERS, width, height, floorY);
 
+        const sb = document.getElementById('scene-scoreboard');
+        if (sb) {
+            sb.style.top   = innerTop + 'px';
+            sb.style.left  = innerLeft + 'px';
+            sb.style.width = innerWidth + 'px';
+        }
+
         const avatar  = new Image();
         avatar.src    = 'avatars/baanabus_standing.png';
         avatar.onload = function () {

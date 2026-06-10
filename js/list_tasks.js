@@ -218,7 +218,6 @@ window.initSnoozedTasks = function() {
         row.style.opacity = '0';
         setTimeout(() => {
           row.remove();
-          decrementSnoozedBadge();
           const remaining = document.querySelectorAll('.snooze-task-row').length;
           if (remaining === 0) {
             const list = document.querySelector('[data-init="initSnoozedTasks"]');
@@ -233,13 +232,4 @@ window.initSnoozedTasks = function() {
     .catch(() => { btn.disabled = false; btn.textContent = 'Wake now'; });
   });
 
-  function decrementSnoozedBadge() {
-    const badge = document.getElementById('scene-snoozed');
-    const countEl = document.getElementById('scene-snoozed-count');
-    if (!badge || !countEl) return;
-    const current = parseInt(badge.dataset.count || '0');
-    const next = Math.max(0, current - 1);
-    badge.dataset.count = next;
-    countEl.textContent = next;
-  }
 };

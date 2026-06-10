@@ -549,15 +549,21 @@ body.scene-view .scene-mode-btn { display: inline-flex; align-items: center; }
 #reset-btn { left: 50%; transform: translateX(-50%); }
 #reset-btn.active { background: rgba(80,60,20,0.82); border-color: rgba(255,200,100,0.4); }
 
-/* === Scoreboard bar (scene overlay) === */
-/* top/left/width are set by scene.js to align with the bookcase top edge */
+/* === Scoreboard pill (scene overlay) — top is set by scene.js; horizontal centering via CSS === */
 #scene-scoreboard {
     position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
     height: 26px;
     display: none;
     flex-direction: row;
-    z-index: 100;
+    z-index: 15;
     overflow: hidden;
+    border-radius: 13px;
+    border: 1px solid rgba(120, 140, 220, 0.3);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    white-space: nowrap;
 }
 body.scene-view #scene-scoreboard { display: flex; }
 
@@ -566,58 +572,32 @@ body.scene-view #scene-scoreboard { display: flex; }
     align-items: center;
     justify-content: center;
     gap: 5px;
-    padding: 0 6px;
+    padding: 0 10px;
     border: none;
     cursor: pointer;
-    overflow: hidden;
     white-space: nowrap;
     font-family: inherit;
     color: rgba(255,255,255,0.92);
     transition: filter 0.15s;
-    min-width: 0;
+    flex: none;
 }
 .scb-seg:hover { filter: brightness(1.2); }
 .scb-label {
     font-size: 0.67em;
     letter-spacing: 0.05em;
     text-transform: lowercase;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 .scb-count {
     font-size: 0.78em;
     font-weight: 700;
-    flex-shrink: 0;
 }
 @media (max-width: 600px) {
-    #scene-scoreboard { height: 18px; }
+    #scene-scoreboard { height: 22px; border-radius: 11px; }
     .scb-label { display: none; }
     .scb-count { font-size: 0.72em; }
-    .scb-seg { padding: 0 3px; }
+    .scb-seg { padding: 0 7px; }
 }
 
-#scene-snoozed {
-    display: none;
-    position: fixed;
-    right: 3vw;
-    bottom: 3.2rem;
-    background: rgba(30, 35, 65, 0.55);
-    color: rgba(180, 195, 255, 0.88);
-    border: 1px solid rgba(120, 140, 220, 0.3);
-    border-radius: 20px;
-    padding: 6px 13px;
-    font-size: 0.76em;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    z-index: 50;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    transition: background 0.2s;
-    white-space: nowrap;
-    font-family: inherit;
-}
-#scene-snoozed:hover { background: rgba(50, 55, 100, 0.75); }
-body.scene-view #scene-snoozed:not([data-count="0"]) { display: inline-flex; align-items: center; gap: 4px; }
 .scene-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #f5a623, #f7c96a);

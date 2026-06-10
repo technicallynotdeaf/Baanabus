@@ -106,7 +106,7 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <?php if ($scoreboardSegs): ?>
 <div id="scene-scoreboard">
   <?php foreach ($scoreboardSegs as $seg): ?>
-  <button class="scb-seg" style="flex:<?= $seg['flex'] ?>;background:<?= $seg['color'] ?>;"
+  <button class="scb-seg" style="background:<?= $seg['color'] ?>;"
           onclick="loadOverlay('list_tasks.php?filter=<?= $seg['filter'] ?>')"
           title="<?= htmlspecialchars($seg['label']) ?>: <?= $seg['count'] ?>">
     <span class="scb-label"><?= htmlspecialchars($seg['label']) ?></span>
@@ -117,9 +117,5 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <?php endif; ?>
 
 <button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
-<button id="scene-snoozed" data-count="<?= $snoozedCount ?>"
-        onclick="loadOverlay('list_tasks.php?filter=snoozed')">
-  <span id="scene-snoozed-count"><?= $snoozedCount ?></span> snoozed
-</button>
 
 <script src="js/scene.js"></script>

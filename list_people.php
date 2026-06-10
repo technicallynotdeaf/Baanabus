@@ -267,19 +267,30 @@ function renderPersonPanel(int $personId): void {
       <?php endif; ?>
 
       <!-- Tasks -->
-      <?php if ($tasks): ?>
-        <div style="margin-bottom:1rem;">
-          <p style="font-size:0.72em;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Tasks (<?= count($tasks) ?>)</p>
+      <div style="margin-bottom:1rem;">
+        <p style="font-size:0.72em;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">
+          Tasks <span id="person-task-count">(<?= count($tasks) ?>)</span>
+        </p>
+        <div id="person-tasks-list">
           <?php foreach ($tasks as $t): ?>
-            <div style="padding:0.3rem 0;border-bottom:1px solid #f0f0f0;font-size:0.88em;display:flex;align-items:center;gap:4px;">
+            <div class="person-task-row" style="padding:0.3rem 0;border-bottom:1px solid #f0f0f0;font-size:0.88em;display:flex;align-items:center;gap:4px;">
               <span style="flex:1;"><?= htmlspecialchars($t['title']) ?></span>
               <?php if (($t['urgency'] ?? '') === 'high'): ?>
                 <span style="font-size:0.72em;color:#c0392b;">high</span>
               <?php endif; ?>
             </div>
           <?php endforeach; ?>
+          <?php if (!$tasks): ?>
+            <p class="muted" id="no-person-tasks-msg" style="font-size:0.85em;">No tasks yet.</p>
+          <?php endif; ?>
         </div>
-      <?php endif; ?>
+        <div style="display:flex;gap:8px;margin-top:0.5rem;align-items:center;">
+          <input type="text" id="new-person-task" placeholder="Add a task…" style="flex:1;min-width:0;">
+          <button class="action-button" id="btn-add-person-task"
+                  style="padding:5px 12px;font-size:0.82em;min-height:32px;flex-shrink:0;">Add</button>
+        </div>
+        <span id="person-task-status" class="muted" style="font-size:0.82em;min-height:1.2em;display:block;margin-top:0.2rem;"></span>
+      </div>
 
       <!-- Notes -->
       <div style="margin-bottom:1rem;">

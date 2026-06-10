@@ -179,6 +179,51 @@ window.initPersonPanel = function() {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) window._addNote();
   });
 
+  // ── Add person task ────────────────────────────────────────────────────────
+  const taskInput  = document.getElementById('new-person-task');
+  const taskBtn    = document.getElementById('btn-add-person-task');
+  const taskStatus = document.getElementById('person-task-status');
+  const tasksList  = document.getElementById('person-tasks-list');
+  const taskCount  = document.getElementById('person-task-count');
+
+  function addPersonTask() {
+    const title = taskInput.value.trim();
+    if (!title) { taskStatus.textContent = 'Enter a task first.'; return; }
+    taskBtn.disabled = true;
+    taskStatus.textContent = 'Saving…';
+    fetch('api/add_person_task.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, person_id: pid }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) throw new Error(d.error || 'Failed');
+      const noMsg = document.getElementById('no-person-tasks-msg');
+      if (noMsg) noMsg.remove();
+      const row = document.createElement('div');
+      row.className = 'person-task-row';
+      row.style.cssText = 'padding:0.3rem 0;border-bottom:1px solid #f0f0f0;font-size:0.88em;display:flex;align-items:center;gap:4px;';
+      row.innerHTML = `<span style="flex:1;">${esc(title)}</span>`;
+      tasksList.appendChild(row);
+      const n = (parseInt(taskCount.textContent.replace(/\D/g,'')) || 0) + 1;
+      taskCount.textContent = `(${n})`;
+      taskInput.value = '';
+      taskStatus.textContent = 'Saved.';
+      taskStatus.style.color = '';
+      setTimeout(() => { taskStatus.textContent = ''; }, 2000);
+      taskBtn.disabled = false;
+    })
+    .catch(e => {
+      taskStatus.textContent = e.message;
+      taskStatus.style.color = 'crimson';
+      taskBtn.disabled = false;
+    });
+  }
+
+  taskBtn.addEventListener('click', addPersonTask);
+  taskInput.addEventListener('keydown', e => { if (e.key === 'Enter') addPersonTask(); });
+
   function esc(s) {
     return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')

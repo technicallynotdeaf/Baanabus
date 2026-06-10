@@ -14,13 +14,14 @@ $storyId  = (int)($input['story_id']  ?? 1);
 $choiceKey = trim($input['choice_key'] ?? '');
 if (!$choiceKey) json_response(['error' => 'Missing choice_key'], 400);
 
-$storyFiles = [
-    1 => 'chai_meridian.php',
-    2 => 'the_platform.php',
-    3 => 'below_the_alcyon.php',
-    4 => 'green_correspondence.php',
-];
-$story = require __DIR__ . '/../content/stories/' . ($storyFiles[$storyId] ?? 'chai_meridian.php');
+$storyFiles = [];
+for ($i = 1; $i <= 24; $i++) {
+    $f = sprintf('quilt_%02d.php', $i);
+    if (file_exists(__DIR__ . '/../content/stories/' . $f)) {
+        $storyFiles[$i] = $f;
+    }
+}
+$story = require __DIR__ . '/../content/stories/' . ($storyFiles[$storyId] ?? $storyFiles[array_key_first($storyFiles)] ?? 'quilt_01.php');
 $prog  = getStoryProgress($storyId);
 
 // Validate the choice exists from the current page

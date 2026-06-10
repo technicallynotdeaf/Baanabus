@@ -5,14 +5,15 @@ require_once __DIR__ . '/../config_helper.php';
 if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
-$storyFiles = [
-    1 => 'chai_meridian.php',
-    2 => 'the_platform.php',
-    3 => 'below_the_alcyon.php',
-    4 => 'green_correspondence.php',
-];
+$storyFiles = [];
+for ($i = 1; $i <= 24; $i++) {
+    $f = sprintf('quilt_%02d.php', $i);
+    if (file_exists(__DIR__ . '/../content/stories/' . $f)) {
+        $storyFiles[$i] = $f;
+    }
+}
 $storyId = (int)($_GET['story'] ?? 1);
-if (!isset($storyFiles[$storyId])) $storyId = 1;
+if (!isset($storyFiles[$storyId])) $storyId = array_key_first($storyFiles) ?? 1;
 $story   = require __DIR__ . '/../content/stories/' . $storyFiles[$storyId];
 $prog    = getStoryProgress($storyId);
 $history = $prog['history'] ?? [];

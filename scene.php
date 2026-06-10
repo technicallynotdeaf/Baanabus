@@ -36,7 +36,7 @@ $pageCount    = 0;
 $pageTarget   = 15;
 $totalPages   = 0;
 $snoozedCount = 0;
-$buckets      = ['inbox' => 0, 'ready' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
+$buckets      = ['inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
 if (isUnlocked()) {
     try {
         $t = getTasks();
@@ -44,17 +44,24 @@ if (isUnlocked()) {
         $totalPages = (int)($t['total_pages'] ?? 0);
         $pageTarget = todayPagesTarget();
         $nowTs = time();
+        $completedIds = [];
+        foreach ($t['tasks'] ?? [] as $task) {
+            if (($task['status'] ?? '') === 'complete') $completedIds[(int)$task['id']] = true;
+        }
+        $prereqsMet = fn($task) => empty($task['prereq_tasks']) ||
+            !array_diff(array_map('intval', (array)$task['prereq_tasks']), array_keys($completedIds));
         foreach ($t['tasks'] ?? [] as $task) {
             if (($task['status'] ?? '') !== 'active') continue;
             if (!empty($task['parent_id'])) continue;
             $type      = $task['task_type'] ?? 'next_action';
             $isSnoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
-            if ($type === 'inbox')            { $buckets['inbox']++; }
-            elseif ($isSnoozed)               { $buckets['snoozed']++; }
-            elseif ($type === 'next_action')  { $buckets['ready']++; }
-            elseif ($type === 'someday')      { $buckets['someday']++; }
-            elseif ($type === 'waiting')      { $buckets['waiting']++; }
-            elseif ($type === 'project')      { $buckets['project']++; }
+            if ($type === 'inbox')                                  { $buckets['inbox']++; }
+            elseif ($isSnoozed)                                     { $buckets['snoozed']++; }
+            elseif ($type === 'next_action' && $prereqsMet($task))   { $buckets['ready']++; }
+            elseif ($type === 'next_action' && !$prereqsMet($task)) { $buckets['blocked']++; }
+            elseif ($type === 'someday')                            { $buckets['someday']++; }
+            elseif ($type === 'waiting')                            { $buckets['waiting']++; }
+            elseif ($type === 'project')                            { $buckets['project']++; }
         }
         $snoozedCount = $buckets['snoozed'];
     } catch (Throwable $e) {}
@@ -63,6 +70,7 @@ if (isUnlocked()) {
 $bucketDefs = [
     'inbox'   => ['label' => 'inbox',        'color' => '#9a6200', 'filter' => 'inbox'],
     'ready'   => ['label' => 'ready',        'color' => '#1a6b3a', 'filter' => 'ready'],
+    'blocked' => ['label' => 'blocked',      'color' => '#a82020', 'filter' => 'blocked'],
     'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
     'waiting' => ['label' => 'waiting',      'color' => '#553c87', 'filter' => 'waiting'],

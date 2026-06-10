@@ -72,6 +72,7 @@ $bucketFilters = [
     'ready'   => ['title' => 'Ready',           'note' => 'Active next actions you can do now.',                       'type' => 'next_action'],
     'someday' => ['title' => 'Someday',         'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
     'waiting' => ['title' => 'Waiting',         'note' => 'Delegated or blocked on someone else.',                    'type' => 'waiting'],
+    'blocked' => ['title' => 'Blocked',         'note' => 'Next actions waiting on another task to be done first.',                        'type' => 'next_action'],
     'project' => ['title' => 'Needs a next step','note' => 'Multi-step tasks. Each one needs a concrete first action before it\'s doable.', 'type' => 'project'],
 ];
 if (isset($bucketFilters[$filter])) {
@@ -81,6 +82,10 @@ if (isset($bucketFilters[$filter])) {
     }
     $prereqsMet = fn($t) => empty($t['prereq_tasks']) ||
         !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
+    $taskTitleMap = [];
+    foreach ($all as $t2) {
+        $taskTitleMap[(int)$t2['id']] = $t2['title'];
+    }
 
     $def      = $bucketFilters[$filter];
     $filtered = [];
@@ -88,8 +93,10 @@ if (isset($bucketFilters[$filter])) {
         if (($t['status'] ?? '') !== 'active') continue;
         if (!empty($t['parent_id'])) continue;
         if (($t['task_type'] ?? '') !== $def['type']) continue;
-        if ($filter === 'ready' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
-        if ($filter === 'ready' && !$prereqsMet($t)) continue;
+        if ($filter === 'ready'   && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        if ($filter === 'ready'   && !$prereqsMet($t)) continue;
+        if ($filter === 'blocked' && $prereqsMet($t)) continue;
+        if ($filter === 'blocked' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
         $filtered[] = $t;
     }
     if ($filter === 'ready') {
@@ -116,14 +123,23 @@ if (isset($bucketFilters[$filter])) {
          style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
-        <?php
+        <?php if ($filter === 'blocked' && !empty($t['prereq_tasks'])):
+            $unmetIds = array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
+            $blockers = array_values(array_filter(array_map(fn($id) => $taskTitleMap[$id] ?? null, $unmetIds)));
+            if ($blockers): ?>
+          <div style="font-size:0.78em;color:#a82020;margin-top:3px;line-height:1.4;">
+            needs first: <?= htmlspecialchars(implode(', ', $blockers)) ?>
+          </div>
+        <?php endif;
+        else:
           $subs = $subtaskMap[(int)$t['id']] ?? [];
           if ($subs): ?>
           <div style="font-size:0.78em;color:#bbb;margin-top:2px;line-height:1.4;">
             <?= htmlspecialchars(implode(' · ', array_slice($subs, 0, 3))) ?>
             <?php if (count($subs) > 3): ?><span style="color:#ddd;">+ <?= count($subs) - 3 ?> more</span><?php endif; ?>
           </div>
-        <?php elseif ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif; ?>
+        <?php elseif ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif;
+        endif; ?>
       </div>
       <?php if ($filter !== 'inbox'): ?>
       <div style="display:flex;gap:4px;flex-shrink:0;">

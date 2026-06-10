@@ -63,28 +63,27 @@ require_once __DIR__ . '/init.php';
     <li><a href="#" id="task-list">📋<span class="nav-text"> Tasks</span></a></li>
     <li><a href="#" id="food-log-link">🥦<span class="nav-text"> Food</span></a></li>
     <li><a href="#" id="settings-page-link">⚙️<span class="nav-text"> Settings</span></a></li>
-    <li class="nav-checkin">
-      <select id="nav-energy" class="nav-checkin-select">
-        <option value=""<?= $navEnergy === null ? ' selected disabled' : '' ?>>Energy</option>
-        <option value="1"<?= $navEnergy === 1 ? ' selected' : '' ?>>Exhausted</option>
-        <option value="2"<?= $navEnergy === 2 ? ' selected' : '' ?>>Low</option>
-        <option value="3"<?= $navEnergy === 3 ? ' selected' : '' ?>>Okay</option>
-        <option value="4"<?= $navEnergy === 4 ? ' selected' : '' ?>>Good</option>
-        <option value="5"<?= $navEnergy === 5 ? ' selected' : '' ?>>On fire</option>
-      </select>
-    </li>
-    <li class="nav-checkin">
-      <select id="nav-daytype" class="nav-checkin-select">
-        <option value=""<?= $navDayType === null ? ' selected disabled' : '' ?>>Location</option>
-        <option value="1"<?= $navDayType === 1 ? ' selected' : '' ?>>Home</option>
-        <option value="2"<?= $navDayType === 2 ? ' selected' : '' ?>>Work</option>
-        <option value="3"<?= $navDayType === 3 ? ' selected' : '' ?>>Out</option>
-        <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
-        <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
-      </select>
-    </li>
     <li><a href="logout.php" id="logout-link">🚪<span class="nav-text"> Logout</span></a></li>
   </ul>
+  <div id="nav-context-pill">
+    <select id="nav-energy" class="nav-checkin-select">
+      <option value=""<?= $navEnergy === null ? ' selected disabled' : '' ?>>Energy</option>
+      <option value="1"<?= $navEnergy === 1 ? ' selected' : '' ?>>Exhausted</option>
+      <option value="2"<?= $navEnergy === 2 ? ' selected' : '' ?>>Low</option>
+      <option value="3"<?= $navEnergy === 3 ? ' selected' : '' ?>>Okay</option>
+      <option value="4"<?= $navEnergy === 4 ? ' selected' : '' ?>>Good</option>
+      <option value="5"<?= $navEnergy === 5 ? ' selected' : '' ?>>On fire</option>
+    </select>
+    <span class="nav-context-sep">|</span>
+    <select id="nav-daytype" class="nav-checkin-select">
+      <option value=""<?= $navDayType === null ? ' selected disabled' : '' ?>>Location</option>
+      <option value="1"<?= $navDayType === 1 ? ' selected' : '' ?>>Home</option>
+      <option value="2"<?= $navDayType === 2 ? ' selected' : '' ?>>Work</option>
+      <option value="3"<?= $navDayType === 3 ? ' selected' : '' ?>>Out</option>
+      <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
+      <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
+    </select>
+  </div>
 <?php endif; ?>
 
 <div id="scene-tint"></div>

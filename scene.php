@@ -8,14 +8,16 @@ if (isUnlocked()) {
         $paperCount   = count(getInboxTasks());
         $storyStarted = true;
         $badgeIds     = array_keys(checkAndAwardBadges());
-        $storyFiles = [1 => 'chai_meridian.php', 2 => 'the_platform.php', 3 => 'below_the_alcyon.php'];
-        $prevEnded  = true; // book 1 has no prerequisite
+        $storyFiles = [];
+        for ($n = 1; $n <= 24; $n++) {
+            $storyFiles[$n] = sprintf('quilt_%02d.php', $n);
+        }
+        $prevEnded = true; // book 1 has no prerequisite
         foreach ($storyFiles as $sid => $file) {
             $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
             if ($fileOk && $prevEnded) {
                 $storyBooksAvail[] = $sid;
             }
-            // Determine if this book is ended so the next one can check
             $prevEnded = false;
             if ($fileOk) {
                 $prog      = getStoryProgress($sid);

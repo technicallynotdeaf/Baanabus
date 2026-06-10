@@ -8,12 +8,30 @@
     const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[1]');
 
     const STORY_BOOKS = [
-        { id: 1, color: '#C8813A', h: 0.82 },
-        { id: 2, color: '#2A7FA8', h: 0.72 },
-        { id: 3, color: '#6B5A8A', h: 0.78 },
-        { id: 4, color: '#3A6B4A', h: 0.70 },
-        { id: 5, color: '#7A3A3A', h: 0.75 },
-        { id: 6, color: '#6B7A3A', h: 0.68 },
+        { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
+        { id:  2, color: '#B84040', h: 0.75 }, // Basque Country
+        { id:  3, color: '#3A7A4A', h: 0.80 }, // Black Forest
+        { id:  4, color: '#4A7A90', h: 0.72 }, // Danube Delta
+        { id:  5, color: '#6A4A8A', h: 0.85 }, // Carpathians
+        { id:  6, color: '#2A82B8', h: 0.76 }, // Croatian coast
+        { id:  7, color: '#9A7030', h: 0.79 }, // Slovenia
+        { id:  8, color: '#A85020', h: 0.83 }, // Transylvania
+        { id:  9, color: '#2A5AA8', h: 0.73 }, // Aegean coast
+        { id: 10, color: '#C8A020', h: 0.87 }, // Amsterdam
+        { id: 11, color: '#8A306A', h: 0.78 }, // Yorkshire
+        { id: 12, color: '#B84070', h: 0.81 }, // Alsace
+        { id: 13, color: '#2A8070', h: 0.74 }, // North Macedonia
+        { id: 14, color: '#C85A30', h: 0.86 }, // Cappadocia
+        { id: 15, color: '#2A6A40', h: 0.77 }, // Borneo
+        { id: 16, color: '#1A5A88', h: 0.80 }, // Palawan
+        { id: 17, color: '#4A2A8A', h: 0.83 }, // Lofoten
+        { id: 18, color: '#2A4A80', h: 0.76 }, // Georgia
+        { id: 19, color: '#1A4A70', h: 0.70 }, // Adriatic
+        { id: 20, color: '#A87820', h: 0.84 }, // Ukrainian Carpathians
+        { id: 21, color: '#6A5A80', h: 0.79 }, // Brittany
+        { id: 22, color: '#4A6A80', h: 0.73 }, // Pyrenees
+        { id: 23, color: '#4A7A2A', h: 0.82 }, // Herefordshire
+        { id: 24, color: '#A82A4A', h: 0.87 }, // Wales (return)
     ];
 
     let bookBounds      = [];
@@ -54,20 +72,30 @@
     function drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
         bookBounds = [];
         const secW   = Math.floor(innerWidth / 3);
-        // Left section: 5 shelf lines = 6 bays; books sit in the top bay
         const shelfH = Math.floor((innerHeight - clearance) / 6);
-        const bayBot = innerTop + clearance + shelfH; // bottom of top-left shelf
 
-        const sidePad = 3;
-        const gap     = 2;
-        const refBkH  = Math.floor(shelfH * 0.75);          // typical book height
-        const bookW   = Math.max(10, Math.floor(refBkH / 6)); // ~1:6 spine ratio
+        const sidePad    = 3;
+        const gap        = 2;
+        const refBkH     = Math.floor(shelfH * 0.75);
+        const narrowBookW = Math.max(10, Math.floor(refBkH / 6));
+
+        // Fit up to 8 books per row in the left section; adapt if the section is very narrow
+        const BOOKS_PER_ROW = Math.min(8, Math.floor((secW - sidePad * 2 + gap) / (narrowBookW + gap)));
+
+        // Expand book width to fill the available slot, but no wider than 1/3 of book height
+        const slotW  = Math.floor((secW - sidePad * 2 + gap) / BOOKS_PER_ROW);
+        const bookW  = Math.max(narrowBookW, Math.min(slotW - gap, Math.floor(refBkH / 3)));
 
         STORY_BOOKS.forEach((book, i) => {
+            const row = Math.floor(i / BOOKS_PER_ROW);
+            const col = i % BOOKS_PER_ROW;
+
+            const bayBot = innerTop + clearance + (row + 1) * shelfH;
+            const bkH    = Math.floor(shelfH * book.h);
+            const bx     = innerLeft + sidePad + col * (bookW + gap);
+            const by     = bayBot - bkH;
+
             const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
-            const bkH      = Math.floor(shelfH * book.h);
-            const bx       = innerLeft + sidePad + i * (bookW + gap);
-            const by       = bayBot - bkH;
             const color    = unlocked ? book.color : desaturate(book.color);
             const spineW   = Math.max(3, Math.floor(bookW * 0.20));
 
@@ -79,7 +107,7 @@
             ctx.fillStyle = color;
             ctx.fillRect(bx, by, bookW, bkH);
 
-            // Binding strip (left ~20%, darkened by overlay)
+            // Binding strip (left ~18%)
             ctx.fillStyle = 'rgba(0,0,0,0.28)';
             ctx.fillRect(bx, by, spineW, bkH);
 

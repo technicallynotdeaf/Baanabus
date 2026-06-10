@@ -9,11 +9,12 @@ $storyFiles = [];
 for ($i = 1; $i <= 24; $i++) {
     $f = sprintf('quilt_%02d.php', $i);
     if (file_exists(__DIR__ . '/../content/stories/' . $f)) {
-        $storyFiles[$i] = $f;
+        $storyFiles['q' . $i] = $f;
     }
 }
-$storyId = (int)($_GET['story'] ?? 1);
-if (!isset($storyFiles[$storyId])) $storyId = array_key_first($storyFiles) ?? 1;
+$raw = trim($_GET['story'] ?? '');
+$storyId = preg_match('/^q\d+$/', $raw) ? $raw : 'q1';
+if (!isset($storyFiles[$storyId])) $storyId = array_key_first($storyFiles) ?? 'q1';
 $story   = require __DIR__ . '/../content/stories/' . $storyFiles[$storyId];
 $prog    = getStoryProgress($storyId);
 $history = $prog['history'] ?? [];

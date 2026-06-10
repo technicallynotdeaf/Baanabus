@@ -859,7 +859,7 @@ function vaultAddPeopleNote(int $personId, string $contents): int {
 
 // ---------- Story progress (stored in config.enc under config['stories'][$id]) ----------
 
-function getStoryProgress(int $storyId): array {
+function getStoryProgress(string $storyId): array {
     $cfg      = getConfig() ?? [];
     $progress = $cfg['stories'][$storyId] ?? [];
     return [
@@ -871,7 +871,7 @@ function getStoryProgress(int $storyId): array {
     ];
 }
 
-function saveStoryProgress(int $storyId, array $progress): void {
+function saveStoryProgress(string $storyId, array $progress): void {
     $cfg = getConfig() ?? [];
     $cfg['stories'][$storyId] = $progress;
     saveConfig($cfg);
@@ -912,10 +912,10 @@ function migrateStoryPagesToGlobal(): void {
 }
 
 // Legacy stubs kept so nothing crashes if called during transition
-function incrementStoryPages(int $storyId): int { return incrementGlobalStoryPages(); }
-function getActiveStoryId(): ?int { $cfg = getConfig() ?? []; return isset($cfg['active_story_id']) ? (int)$cfg['active_story_id'] : null; }
-function setActiveStoryId(int $storyId): void {}
-function consumePendingStoryPages(int $storyId): void { migrateStoryPagesToGlobal(); }
+function incrementStoryPages(string $storyId): int { return incrementGlobalStoryPages(); }
+function getActiveStoryId(): ?string { $cfg = getConfig() ?? []; return isset($cfg['active_story_id']) ? (string)$cfg['active_story_id'] : null; }
+function setActiveStoryId(string $storyId): void {}
+function consumePendingStoryPages(string $storyId): void { migrateStoryPagesToGlobal(); }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------
 
@@ -1135,7 +1135,7 @@ function checkAndAwardBadges(): array {
     } catch (Throwable $e) {}
 
     try {
-        $prog = getStoryProgress(1);
+        $prog = getStoryProgress('q1');
         if ($prog['depth'] >= 1) $award('story_start');
         if ($prog['depth'] >= 5) $award('story_deep');
     } catch (Throwable $e) {}

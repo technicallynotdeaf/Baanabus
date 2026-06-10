@@ -10,7 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'POST only'
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) json_response(['error' => 'Invalid JSON'], 400);
 
-$storyId  = (int)($input['story_id']  ?? 1);
+$raw = trim($input['story_id'] ?? '');
+$storyId = preg_match('/^q\d+$/', $raw) ? $raw : 'q1';
 $choiceKey = trim($input['choice_key'] ?? '');
 if (!$choiceKey) json_response(['error' => 'Missing choice_key'], 400);
 
@@ -18,7 +19,7 @@ $storyFiles = [];
 for ($i = 1; $i <= 24; $i++) {
     $f = sprintf('quilt_%02d.php', $i);
     if (file_exists(__DIR__ . '/../content/stories/' . $f)) {
-        $storyFiles[$i] = $f;
+        $storyFiles['q' . $i] = $f;
     }
 }
 $story = require __DIR__ . '/../content/stories/' . ($storyFiles[$storyId] ?? $storyFiles[array_key_first($storyFiles)] ?? 'quilt_01.php');

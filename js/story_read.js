@@ -1,5 +1,5 @@
 window.initStoryRead = function() {
-    const storyId = parseInt(document.getElementById('story-content')?.dataset.storyId || '1', 10);
+    const storyId = document.getElementById('story-content')?.dataset.storyId || 'q1';
 
     window._storyChoose = function(choiceKey) {
         document.querySelectorAll('#story-choices button').forEach(b => b.disabled = true);

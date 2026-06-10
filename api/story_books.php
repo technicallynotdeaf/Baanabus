@@ -33,13 +33,13 @@ $books = [
 ];
 
 $config      = getConfig() ?? [];
-$activeStory = (int)($config['active_story_id'] ?? 0);
+$activeStory = (string)($config['active_story_id'] ?? '');
 
 $bookEnded = [];
 foreach ($books as $id => $book) {
     $path = __DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id);
     if (!file_exists($path)) { $bookEnded[$id] = false; continue; }
-    $prog = getStoryProgress($id);
+    $prog = getStoryProgress('q' . $id);
     $bookEnded[$id] = !empty($prog['ended']);
 }
 ?>
@@ -52,15 +52,16 @@ foreach ($books as $id => $book) {
         $fileExists  = file_exists(__DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id));
         $prevDone    = ($id === 1) || ($bookEnded[$id - 1] ?? false);
         $unlocked    = $fileExists && $prevDone;
-        $prog        = $fileExists ? getStoryProgress($id) : null;
+        $prog        = $fileExists ? getStoryProgress('q' . $id) : null;
         $depth       = $prog ? (int)($prog['depth'] ?? 0) : 0;
         $pagesAvail  = $prog ? (int)($prog['pages_available'] ?? 1) : 1;
         $isEnded     = $bookEnded[$id] ?? false;
-        $isActive    = ($activeStory === $id);
+        $isActive    = ($activeStory === 'q' . $id);
         $readyChoice = $unlocked && !$isEnded && ($pagesAvail > $depth);
         $bgColor     = $unlocked ? $book['color'] : '#c8c0b8';
+        $qid         = 'q' . $id;
         $onclick     = $unlocked
-            ? ($isEnded ? "window._storyReset($id)" : "window._openStory($id)")
+            ? ($isEnded ? "window._storyReset('$qid')" : "window._openStory('$qid')")
             : '';
       ?>
       <div onclick="<?= $onclick ?>"

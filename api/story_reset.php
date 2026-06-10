@@ -8,8 +8,8 @@ if (!isUnlocked())      json_response(['error' => 'Vault locked'], 423);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'POST only'], 405);
 
 $input   = json_decode(file_get_contents('php://input'), true);
-$storyId = (int)($input['story_id'] ?? 0);
-if (!$storyId) json_response(['error' => 'Missing story_id'], 400);
+$storyId = trim($input['story_id'] ?? '');
+if (!preg_match('/^q\d+$/', $storyId)) json_response(['error' => 'Missing or invalid story_id'], 400);
 
 try {
     $prog = getStoryProgress($storyId);

@@ -10,7 +10,7 @@ if (isUnlocked()) {
         $badgeIds     = array_keys(checkAndAwardBadges());
         $storyFiles = [];
         for ($n = 1; $n <= 24; $n++) {
-            $storyFiles[$n] = sprintf('quilt_%02d.php', $n);
+            $storyFiles['q' . $n] = sprintf('quilt_%02d.php', $n);
         }
         $prevEnded = true; // book 1 has no prerequisite
         foreach ($storyFiles as $sid => $file) {

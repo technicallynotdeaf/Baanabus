@@ -50,6 +50,9 @@
  *
  * POST {"action":"add_context","context":"...","description":"..."}
  *      → add a new context option to the lookup table (INSERT OR IGNORE)
+ *
+ * POST {"action":"set_story_pages","pages":N}
+ *      → overwrite the global story_pages pool (use to correct pages_available)
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -551,6 +554,19 @@ if ($method === 'POST') {
         try {
             vaultUpdateTask($taskId, $fields);
             json_response(['ok' => true, 'updated' => $fields]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'set_story_pages') {
+        $pages = isset($body['pages']) ? (int)$body['pages'] : null;
+        if ($pages === null || $pages < 0) json_response(['error' => 'Missing or invalid pages (must be >= 0)'], 400);
+        try {
+            $cfg = getConfig() ?? [];
+            $cfg['story_pages'] = $pages;
+            saveConfig($cfg);
+            json_response(['ok' => true, 'story_pages' => $pages]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

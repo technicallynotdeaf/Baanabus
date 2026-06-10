@@ -106,7 +106,7 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <?php if ($scoreboardSegs): ?>
 <div id="scene-scoreboard">
   <?php foreach ($scoreboardSegs as $seg): ?>
-  <button class="scb-seg" style="background:<?= $seg['color'] ?>;"
+  <button class="scb-seg" style="flex:<?= $seg['flex'] ?>;background:<?= $seg['color'] ?>;"
           onclick="loadOverlay('list_tasks.php?filter=<?= $seg['filter'] ?>')"
           title="<?= htmlspecialchars($seg['label']) ?>: <?= $seg['count'] ?>">
     <span class="scb-label"><?= htmlspecialchars($seg['label']) ?></span>

@@ -71,7 +71,7 @@ if (isUnlocked()) {
 }
 
 $bucketDefs = [
-    'routine' => ['label' => 'routine',      'color' => '#3aaa6c', 'filter' => ''],
+    'routine' => ['label' => 'routine',      'color' => '#3aaa6c', 'filter' => '', 'link' => "loadOverlay('list_dailies.php')"],
     'inbox'   => ['label' => 'inbox',        'color' => '#9a6200', 'filter' => 'inbox'],
     'ready'   => ['label' => 'next action',  'color' => '#1a6b3a', 'filter' => 'ready'],
     'blocked' => ['label' => 'blocked',      'color' => '#a82020', 'filter' => 'blocked'],
@@ -108,9 +108,10 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <?php if ($scoreboardSegs): ?>
 <div id="scene-scoreboard">
   <?php foreach ($scoreboardSegs as $seg):
-    $onclick = $seg['filter']
-      ? "loadOverlay('list_tasks.php?filter={$seg['filter']}')"
-      : "loadSpeechBubble('lets-go.php')";
+    $onclick = $seg['link']
+      ?? ($seg['filter']
+          ? "loadOverlay('list_tasks.php?filter={$seg['filter']}')"
+          : "loadSpeechBubble('lets-go.php')");
   ?>
   <button class="scb-seg" style="flex:<?= $seg['flex'] ?>;background:<?= $seg['color'] ?>;"
           onclick="<?= $onclick ?>"

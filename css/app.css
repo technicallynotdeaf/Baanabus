@@ -786,6 +786,42 @@ body.scene-view #scene-scoreboard { display: flex; }
 .selected { outline: 3px solid hsl(210, 100%, 30%); }
 
 
+/* Dailies list overlay */
+.daily-list-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.daily-list-row:hover { background: #fafafa; }
+.dlr-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dlr-title { flex: 1; line-height: 1.4; }
+.dlr-done  { color: #aaa; text-decoration: line-through; }
+.dlr-tags  { display: flex; gap: 4px; flex-shrink: 0; }
+.dlr-tag   { font-size: 0.72em; color: #999; background: #f5f5f5; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+
+/* Daily detail form */
+.daily-field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.65rem;
+    flex-wrap: wrap;
+}
+.daily-field-row > label:first-child {
+    font-size: 0.82em;
+    color: #888;
+    min-width: 5.5rem;
+    flex-shrink: 0;
+}
+
 /* Morning mode — dim locked nav items */
 body.morning-mode #story-book-link,
 body.morning-mode #note-to-self,

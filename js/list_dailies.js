@@ -14,6 +14,13 @@ window._dailyDone = function(btn, id) {
       row.querySelector('.dlr-dot').style.background = '#4caf50';
       row.querySelector('.dlr-title').classList.add('dlr-done');
       btn.remove();
+      fetch('api/earn_pip.php')
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok && typeof updateProgressBar === 'function')
+            updateProgressBar(d.pages, d.pages_target, d.total_pages);
+        })
+        .catch(() => {});
     } else {
       btn.disabled = false;
     }

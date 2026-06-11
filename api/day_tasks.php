@@ -19,6 +19,11 @@ try {
     $scheduled  = array_values(array_filter($all, fn($t) =>
         ($t['scheduled_date'] ?? '') === $date && $t['status'] !== 'deleted'
     ));
+    $snoozedHere = array_values(array_filter($all, fn($t) =>
+        $t['status'] === 'active' &&
+        !empty($t['snoozed_until']) &&
+        substr($t['snoozed_until'], 0, 10) === $date
+    ));
     $unscheduled = array_values(array_filter($all, fn($t) =>
         empty($t['scheduled_date']) &&
         ($t['task_type'] ?? '') === 'next_action' &&
@@ -69,6 +74,19 @@ try {
         </li>
       <?php endforeach; ?>
     </ul>
+  <?php endif; ?>
+
+  <?php if (!empty($snoozedHere)): ?>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.78em;color:#9e9e9e;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.4rem;">Waking up today</div>
+      <ul style="list-style:none;margin:0;padding:0;">
+        <?php foreach ($snoozedHere as $t): ?>
+          <li style="padding:0.45rem 0;border-bottom:1px solid #f0ede6;color:#666;font-size:0.92em;">
+            <?= htmlspecialchars($t['title']) ?>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
   <?php endif; ?>
 
   <?php if ($canAdd): ?>

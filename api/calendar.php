@@ -10,20 +10,37 @@ $month = $_GET['month'] ?? date('Y-m');
 if (!preg_match('/^\d{4}-\d{2}$/', $month)) json_response(['error' => 'Invalid month'], 400);
 
 try {
-    $all   = getTasks()['tasks'];
-    $tasks = array_values(array_filter($all, fn($t) =>
+    $all = getTasks()['tasks'];
+
+    $scheduled = array_values(array_filter($all, fn($t) =>
         $t['status'] !== 'deleted' &&
         !empty($t['scheduled_date']) &&
         str_starts_with($t['scheduled_date'], $month)
     ));
-    $tasks = array_map(fn($t) => [
+    $scheduled = array_map(fn($t) => [
         'id'             => (int)$t['id'],
         'title'          => $t['title'],
         'scheduled_date' => $t['scheduled_date'],
         'urgency'        => $t['urgency'] ?? null,
         'status'         => $t['status'],
-    ], $tasks);
-    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks]);
+        'type'           => 'scheduled',
+    ], $scheduled);
+
+    $snoozed = array_values(array_filter($all, fn($t) =>
+        $t['status'] === 'active' &&
+        !empty($t['snoozed_until']) &&
+        str_starts_with(substr($t['snoozed_until'], 0, 10), $month)
+    ));
+    $snoozed = array_map(fn($t) => [
+        'id'          => (int)$t['id'],
+        'title'       => $t['title'],
+        'snooze_date' => substr($t['snoozed_until'], 0, 10),
+        'urgency'     => $t['urgency'] ?? null,
+        'status'      => $t['status'],
+        'type'        => 'snoozed',
+    ], $snoozed);
+
+    json_response(['ok' => true, 'month' => $month, 'tasks' => $scheduled, 'snoozed' => $snoozed]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

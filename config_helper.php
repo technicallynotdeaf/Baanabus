@@ -1070,6 +1070,23 @@ function getActiveDailies(): array {
     $data    = getDailies();
     $done    = array_map('intval', $data['completions'][$today] ?? []);
 
+    $dayType = null;
+    try {
+        $entry   = getDiaryEntry($today);
+        $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
+    } catch (Throwable $e) {}
+
+    $locationOk = function(array $d) use ($dayType): bool {
+        $loc = strtolower(trim($d['location'] ?? ''));
+        if (!$loc || !$dayType) return true;
+        if ($dayType === 1) return $loc !== 'work';
+        if ($dayType === 2) return !in_array($loc, ['home', 'shops'], true);
+        if ($dayType === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        if ($dayType === 5) return $loc !== 'shops';
+        if ($dayType === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        return true; // Rest (4): no suppression
+    };
+
     $morningLeft = array_filter($data['items'], fn($d) =>
         getDailyHorizon($d) === 'morning' &&
         isDailyDueToday($d, $today) &&
@@ -1078,9 +1095,10 @@ function getActiveDailies(): array {
     $morningDone = empty($morningLeft);
 
     $hOrder = ['morning' => 0, 'day' => 1, 'evening' => 2];
-    $active = array_values(array_filter($data['items'], function($d) use ($today, $done, $morningDone, $hour, $timeStr) {
+    $active = array_values(array_filter($data['items'], function($d) use ($today, $done, $morningDone, $hour, $timeStr, $locationOk) {
         if (!isDailyDueToday($d, $today)) return false;
         if (in_array((int)$d['id'], $done, true)) return false;
+        if (!$locationOk($d)) return false;
         if (!empty($d['relevant_after'])   && $timeStr <  $d['relevant_after'])   return false;
         if (!empty($d['irrelevant_after']) && $timeStr >= $d['irrelevant_after']) return false;
         $h = getDailyHorizon($d);

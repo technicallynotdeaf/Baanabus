@@ -36,9 +36,11 @@
         { id: 24, color: '#A82A4A', h: 0.87 }, // Wales (return)
     ];
 
-    let bookBounds      = [];
-    let boardBounds     = null;
+    let bookBounds        = [];
+    let boardBounds       = null;
     let kitchenDoorBounds = null;
+    let toyboxBounds      = null;
+    let chestBounds       = null;
 
     function frand(s) { return ((Math.sin(s * 91.3 + 217.5) * 53758.5) % 1 + 1) % 1; }
 
@@ -444,6 +446,7 @@
     }
 
     function drawToybox(ctx, bx, by, bw, bh, hasObjects) {
+        toyboxBounds = { x: bx, y: by, w: bw, h: bh };
         const lidH = Math.round(bh * 0.30);
         const bodyH = bh - lidH;
         const bodyY = by + lidH;
@@ -564,7 +567,9 @@
     }
 
     function drawTreasureChest(ctx, bx, by, bw, bh, hasResolved) {
+        chestBounds = null;
         if (!hasResolved) return;
+        chestBounds = { x: bx, y: by, w: bw, h: bh };
 
         const lidH  = Math.round(bh * 0.38);
         const bodyH = bh - lidH;
@@ -813,6 +818,10 @@
     window.addEventListener('load',   updateBackground);
     window.refreshScene = updateBackground;
 
+    function inRect(cx, cy, r) {
+        return r && cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
+    }
+
     canvas.addEventListener('click', function(e) {
         const rect = this.getBoundingClientRect();
         const cx   = e.clientX - rect.left;
@@ -824,6 +833,10 @@
         }
         if (ptInQuad(cx, cy, boardBounds)) {
             loadOverlay('api/badges.php');
+            return;
+        }
+        if (inRect(cx, cy, toyboxBounds) || inRect(cx, cy, chestBounds)) {
+            loadOverlay('api/objects_list.php');
             return;
         }
         for (const b of bookBounds) {
@@ -838,6 +851,9 @@
         const rect = this.getBoundingClientRect();
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
-        this.style.cursor = ptInQuad(cx, cy, kitchenDoorBounds) ? 'pointer' : '';
+        const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
+            || inRect(cx, cy, toyboxBounds)
+            || inRect(cx, cy, chestBounds);
+        this.style.cursor = pointer ? 'pointer' : '';
     });
 })();

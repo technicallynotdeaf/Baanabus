@@ -1176,3 +1176,59 @@ function checkAndAwardBadges(): array {
     return $earned;
 }
 
+// ---------- Physical objects vault ----------
+
+function physicalObjectsPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/physical_objects.enc";
+}
+
+function getPhysicalObjects(): array {
+    $path = physicalObjectsPath();
+    if (!is_file($path)) return ['next_id' => 1, 'objects' => []];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('physical_objects: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('physical_objects decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'objects' => []];
+}
+
+function savePhysicalObjects(array $data): void {
+    $path = physicalObjectsPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    if (file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        throw new Exception('Failed to write physical_objects.enc');
+    }
+    @chmod($path, 0600);
+}
+
+function addPhysicalObject(string $label): array {
+    $data   = getPhysicalObjects();
+    $id     = (int)($data['next_id'] ?? 1);
+    $data['objects'][] = [
+        'id'         => $id,
+        'label'      => $label,
+        'task_id'    => null,
+        'status'     => 'out',
+        'created_at' => date('c'),
+    ];
+    $data['next_id'] = $id + 1;
+    savePhysicalObjects($data);
+    return $data;
+}
+

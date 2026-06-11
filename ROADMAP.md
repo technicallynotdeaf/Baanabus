@@ -243,6 +243,23 @@ Design constraint: many users are neurodiverse. Prefer tappable structured optio
 
 ---
 
+## M2.8 — Physical Object Triage
+
+Process physical objects that are left out as visual reminders — without requiring the user to mentally translate them to tasks first. The object IS the prompt.
+
+- ✅ Vault store: `physical_objects.enc` — `{id, label, task_id, status: 'out'|'resolved', created_at}`
+- ✅ Quick capture: "Note to Self" overlay gains a "What's out?" form (separate from inbox)
+- ✅ Speech bubble activity type `physical_object_triage`: surfaces oldest unresolved object, asks "What's this doing out?"
+  - "It's out for a task" → name the task → creates `next_action`, links object, resolves it
+  - "It needs a home" → auto-creates task "Find a home for: [label]", resolves object
+  - "Just put it away" → marks resolved, no task
+- ✅ `api/add_physical_object.php` — POST `{label}`
+- ✅ `api/physical_object_triage.php` — POST `{object_id, action, task_id?, task_title?}`
+- [ ] Objects list overlay: view/manage all logged objects and their linked tasks
+- [ ] Bidirectional task link: tasks gain `physical_object_ids` array; task card shows object labels
+
+---
+
 ## Next up
 
 **Current priority: M6.1 — Habitica bidirectional sync.** Tasks deleted in Habitica should be removed from Baanabus; tasks created in Baanabus should push to Habitica; metadata (urgency, context, snooze state) should write to Habitica notes; `doable`/`snoozed` and `location:*` tags applied at sync time.

@@ -316,6 +316,14 @@ if (in_array($dayType, [1, 4, 5], true)) {
     }
 }
 
+$hasPhysicalObjects = false;
+try {
+    $objData = getPhysicalObjects();
+    $hasPhysicalObjects = !empty(array_filter($objData['objects'], fn($o) =>
+        $o['status'] === 'out' && $o['task_id'] === null
+    ));
+} catch (Throwable $e) {}
+
 $hasPersonReview = false;
 try {
     $peopleData = getPeople();
@@ -352,8 +360,9 @@ $pool = array_merge(
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
-    array_fill(0, $hasHouseTasks  ? 1 : 0,             'house_task'),
-    array_fill(0, !empty($otherDailies) ? 2 : 0,       'other_daily'),
+    array_fill(0, $hasHouseTasks         ? 1 : 0,        'house_task'),
+    array_fill(0, $hasPhysicalObjects   ? 1 : 0,        'physical_object_triage'),
+    array_fill(0, !empty($otherDailies) ? 2 : 0,        'other_daily'),
     array_fill(0, !empty($morningDailies) ? 1 : 0,     'other_daily') // morning dailies also in pool as fallback
 );
 
@@ -417,6 +426,11 @@ if ($choice === 'person_review') {
     $pr = pick_person_review();
     if ($pr) json_response($pr);
     json_response(pick_fun_task()); // fallback if no people
+}
+if ($choice === 'physical_object_triage') {
+    $po = pick_physical_object();
+    if ($po) json_response($po);
+    json_response(pick_fun_task());
 }
 if ($choice === 'bible_verse') json_response(pick_bible_verse());
 if ($choice === 'fun_task')  json_response(pick_fun_task());
@@ -872,6 +886,20 @@ function pick_house_task(): ?array {
     if (empty($avail)) return null;
     $t = $avail[array_rand($avail)];
     return ['type' => 'house_task', 'task_id' => $t['id'], 'title' => $t['title']];
+}
+
+function pick_physical_object(): ?array {
+    try {
+        $data       = getPhysicalObjects();
+        $unresolved = array_values(array_filter($data['objects'], fn($o) =>
+            $o['status'] === 'out' && $o['task_id'] === null
+        ));
+        if (empty($unresolved)) return null;
+        $o = $unresolved[0]; // oldest first
+        return ['type' => 'physical_object_triage', 'id' => (int)$o['id'], 'label' => $o['label']];
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
 function pick_easy_task(): array {

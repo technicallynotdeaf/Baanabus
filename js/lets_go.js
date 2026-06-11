@@ -46,7 +46,8 @@ window.initLetsGo = function() {
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
-      case 'house_task':     renderHouseTask(d);     break;
+      case 'house_task':            renderHouseTask(d);           break;
+      case 'physical_object_triage': renderPhysicalObjectTriage(d); break;
       case 'morning_daily':  renderMorningDaily(d);  break;
       case 'morning_done':   renderMorningDone(d);   break;
       case 'topic_picker':   renderTopicPicker(d);   break;
@@ -912,6 +913,75 @@ window.initLetsGo = function() {
       <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
       <button class="action-button" onclick="houseTaskDone(${JSON.stringify(d.task_id)})">Done</button>
       <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="loadSpeechBubble('lets-go.php')">Not now</button>`;
+  }
+
+  function renderPhysicalObjectTriage(d) {
+    function postTriage(payload) {
+      return fetch('api/physical_object_triage.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      }).then(r => r.json());
+    }
+
+    function showInitial() {
+      c.innerHTML = `
+        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">What's this doing out?</p>
+        <p style="font-weight:600;margin-bottom:1rem;">${esc(d.label)}</p>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <button class="action-button" id="obj-for-task" style="text-align:left;">It's out for a task</button>
+          <button class="action-button" id="obj-find-home" style="text-align:left;">It needs a home</button>
+          <button class="action-button" id="obj-put-away" style="text-align:left;background:transparent;color:#888;border:1px solid #ddd;">Just put it away</button>
+        </div>`;
+      document.getElementById('obj-for-task').addEventListener('click', showTaskInput);
+      document.getElementById('obj-find-home').addEventListener('click', () => {
+        postTriage({object_id: d.id, action: 'find_home'}).then(data => {
+          if (data.ok) {
+            c.innerHTML = `<p style="margin-bottom:0.75rem;">Task added: find it a home.</p>
+              <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+          }
+        });
+      });
+      document.getElementById('obj-put-away').addEventListener('click', () => {
+        postTriage({object_id: d.id, action: 'put_away'}).then(() => loadSpeechBubble('lets-go.php'));
+      });
+    }
+
+    function showTaskInput() {
+      c.innerHTML = `
+        <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">What task is it for?</p>
+        <p style="color:#888;font-size:0.9em;margin-bottom:0.75rem;">${esc(d.label)}</p>
+        <input id="obj-task-title" type="text"
+          style="width:100%;box-sizing:border-box;font-size:1rem;padding:0.5rem 0.75rem;border:1px solid #ccc;border-radius:6px;margin-bottom:0.6rem;font-family:inherit;"
+          placeholder="Name the task…" autofocus>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="action-button" id="obj-link-btn">Create task</button>
+          <button class="action-button" style="background:transparent;color:#888;border:1px solid #ddd;"
+            onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+        </div>
+        <p id="obj-status" class="muted" style="margin-top:0.5rem;min-height:1em;font-size:0.85em;"></p>`;
+      const input  = document.getElementById('obj-task-title');
+      const status = document.getElementById('obj-status');
+      document.getElementById('obj-link-btn').addEventListener('click', submit);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+
+      function submit() {
+        const title = input.value.trim();
+        if (!title) { status.textContent = 'Enter a task name.'; return; }
+        document.getElementById('obj-link-btn').disabled = true;
+        postTriage({object_id: d.id, action: 'link_task', task_title: title}).then(data => {
+          if (data.ok) {
+            c.innerHTML = `<p style="margin-bottom:0.75rem;">Task added to your list.</p>
+              <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+          } else {
+            status.textContent = data.error || 'Something went wrong.';
+            document.getElementById('obj-link-btn').disabled = false;
+          }
+        });
+      }
+    }
+
+    showInitial();
   }
 
   function renderMorningDaily(d) {

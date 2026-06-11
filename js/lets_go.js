@@ -974,6 +974,10 @@ window.initLetsGo = function() {
           status.textContent = data.error || 'Something went wrong.';
           document.getElementById('scan-submit-btn').disabled = false;
         }
+      })
+      .catch(() => {
+        status.textContent = 'Could not save — try again.';
+        document.getElementById('scan-submit-btn').disabled = false;
       });
     });
   }

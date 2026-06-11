@@ -62,6 +62,8 @@ usort($resolved, fn($a, $b) => strcmp($b['resolved_at'] ?? '', $a['resolved_at']
   <?php endif; ?>
 
   <?php if (!$out && !$resolved): ?>
-  <p style="color:#bbb;font-size:0.9em;margin-top:0.5rem;">Nothing tracked yet. Do a room scan to get started.</p>
+  <p style="color:#555;font-size:0.95em;line-height:1.5;margin-top:0.25rem;">Can you see things lying around that you need to do something with?</p>
+  <button class="action-button" style="margin-top:0.75rem;"
+          onclick="document.getElementById('close-overlay').click(); loadSpeechBubble('lets-go.php?force=room_scan')">Yes, I can</button>
   <?php endif; ?>
 </div>

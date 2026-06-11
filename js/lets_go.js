@@ -24,7 +24,9 @@ window.initLetsGo = function() {
       .catch(() => {});
   }
 
-  fetch('api/next_activity.php')
+  const _force = c.dataset.force || '';
+  const _actUrl = 'api/next_activity.php' + (_force ? '?force=' + encodeURIComponent(_force) : '');
+  fetch(_actUrl)
     .then(r => r.json())
     .then(render)
     .catch(() => { c.innerHTML = '<p class="muted">Could not load next activity.</p>'; });

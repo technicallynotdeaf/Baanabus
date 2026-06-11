@@ -133,21 +133,41 @@ if ($dailyId !== null) {
     $done     = array_map('intval', $data['completions'][$today] ?? []);
     $items    = $data['items'] ?? [];
 
-    $groups  = ['morning' => [], 'day' => [], 'evening' => []];
+    // IDs currently passing all gates (time, location, horizon unlock, due today)
+    $doableIds = array_flip(array_map(fn($d) => (int)$d['id'], getActiveDailies()));
+    // Also treat completed-today items as "doable" (they were doable, user did them)
+    foreach ($done as $id) $doableIds[$id] = true;
+
+    $groups   = ['morning' => [], 'day' => [], 'evening' => []];
+    $gated    = []; // active but not currently doable
     $inactive = [];
     foreach ($items as $d) {
         if (!($d['is_active'] ?? true)) { $inactive[] = $d; continue; }
-        $h = getDailyHorizon($d);
-        if (!isset($groups[$h])) $h = 'day';
-        $groups[$h][] = $d;
+        if (isset($doableIds[(int)$d['id']])) {
+            $h = getDailyHorizon($d);
+            if (!isset($groups[$h])) $h = 'day';
+            $groups[$h][] = $d;
+        } else {
+            $gated[] = $d;
+        }
     }
     foreach ($groups as &$g) $g = sortDailyItems($g);
+    $gated = sortDailyItems($gated);
     unset($g);
 
     $horizonLabels  = ['morning' => 'Morning', 'day' => 'Day', 'evening' => 'Evening'];
     $locationLabels = ['home' => 'Home', 'work' => 'Work', 'shops' => 'Shops', 'phone' => 'Phone', 'online' => 'Online'];
 
-    $hasAny = !empty($inactive);
+    $sep = "\xE2\x80\x93"; // en-dash UTF-8
+    function dailyRowTags(array $d, array $locationLabels, string $sep): array {
+        $loc      = $locationLabels[$d['location'] ?? ''] ?? null;
+        $ra       = $d['relevant_after']   ?? '';
+        $ia       = $d['irrelevant_after'] ?? '';
+        $timeGate = ($ra || $ia) ? trim("{$ra}{$sep}{$ia}", $sep) : null;
+        return array_filter([$loc, $timeGate]);
+    }
+
+    $hasAny = !empty($inactive) || !empty($gated);
     foreach ($groups as $g) { if (!empty($g)) { $hasAny = true; break; } }
     ?>
     <div data-init="initDailiesList">
@@ -157,13 +177,8 @@ if ($dailyId !== null) {
         <?php if (empty($groupItems)) continue; ?>
         <p style="font-size:0.72em;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin:0.75rem 0 0.25rem;"><?= $horizonLabels[$horizon] ?></p>
         <?php foreach ($groupItems as $d):
-          $isDone  = in_array((int)$d['id'], $done, true);
-          $loc     = $locationLabels[$d['location'] ?? ''] ?? null;
-          $ra      = $d['relevant_after']   ?? '';
-          $ia      = $d['irrelevant_after'] ?? '';
-          $sep = "\xE2\x80\x93"; // en-dash UTF-8
-          $timeGate = ($ra || $ia) ? trim("{$ra}{$sep}{$ia}", $sep) : null;
-          $tags = array_filter([$loc, $timeGate]);
+          $isDone = in_array((int)$d['id'], $done, true);
+          $tags   = dailyRowTags($d, $locationLabels, $sep);
         ?>
           <div class="daily-list-row"
                onclick="loadOverlay('list_dailies.php?daily_id=<?= (int)$d['id'] ?>')">
@@ -178,13 +193,31 @@ if ($dailyId !== null) {
         <?php endforeach; ?>
       <?php endforeach; ?>
 
+      <?php if (!empty($gated)): ?>
+        <p style="font-size:0.72em;font-weight:600;color:#ccc;text-transform:uppercase;letter-spacing:0.06em;margin:1rem 0 0.25rem;">Not right now</p>
+        <?php foreach ($gated as $d):
+          $tags = dailyRowTags($d, $locationLabels, $sep);
+        ?>
+          <div class="daily-list-row"
+               onclick="loadOverlay('list_dailies.php?daily_id=<?= (int)$d['id'] ?>')">
+            <span class="dlr-dot" style="background:#e0e0e0;"></span>
+            <span class="dlr-title" style="color:#999;"><?= htmlspecialchars($d['title']) ?></span>
+            <span class="dlr-tags">
+              <?php foreach ($tags as $tag): ?>
+                <span class="dlr-tag" style="opacity:0.6;"><?= htmlspecialchars($tag) ?></span>
+              <?php endforeach; ?>
+            </span>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+
       <?php if (!empty($inactive)): ?>
-        <p style="font-size:0.72em;font-weight:600;color:#ccc;text-transform:uppercase;letter-spacing:0.06em;margin:1rem 0 0.25rem;">Inactive</p>
+        <p style="font-size:0.72em;font-weight:600;color:#ddd;text-transform:uppercase;letter-spacing:0.06em;margin:1rem 0 0.25rem;">Inactive</p>
         <?php foreach ($inactive as $d): ?>
           <div class="daily-list-row"
                onclick="loadOverlay('list_dailies.php?daily_id=<?= (int)$d['id'] ?>')">
             <span class="dlr-dot" style="background:#eee;"></span>
-            <span class="dlr-title" style="color:#bbb;"><?= htmlspecialchars($d['title']) ?></span>
+            <span class="dlr-title" style="color:#ccc;"><?= htmlspecialchars($d['title']) ?></span>
           </div>
         <?php endforeach; ?>
       <?php endif; ?>

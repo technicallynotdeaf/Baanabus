@@ -25,8 +25,7 @@
     updateNav();
     loadAndDraw();
     window.addEventListener('resize', () => {
-      const cached = taskCache[`${curYear}-${String(curMonth).padStart(2,'0')}`] || {};
-      drawCalendar(curYear, curMonth, cached.tasks || [], cached.snoozed || []);
+      drawCalendar(curYear, curMonth, taskCache[`${curYear}-${String(curMonth).padStart(2,'0')}`] || []);
     });
     document.getElementById('cal-prev').addEventListener('click', prevMonth);
     document.getElementById('cal-next').addEventListener('click', nextMonth);
@@ -51,15 +50,15 @@
       try {
         const r = await fetch(`api/calendar.php?month=${key}`);
         const d = await r.json();
-        taskCache[key] = { tasks: d.tasks || [], snoozed: d.snoozed || [] };
+        taskCache[key] = d.tasks || [];
       } catch(e) {
-        taskCache[key] = { tasks: [], snoozed: [] };
+        taskCache[key] = [];
       }
     }
-    drawCalendar(curYear, curMonth, taskCache[key].tasks, taskCache[key].snoozed);
+    drawCalendar(curYear, curMonth, taskCache[key]);
   }
 
-  function drawCalendar(year, month, tasks, snoozed) {
+  function drawCalendar(year, month, tasks) {
     const canvas = document.getElementById('calCanvas');
     const ctx    = canvas.getContext('2d');
     canvas.width  = window.innerWidth;
@@ -73,12 +72,6 @@
     tasks.forEach(t => {
       if (!byDate[t.scheduled_date]) byDate[t.scheduled_date] = [];
       if (byDate[t.scheduled_date].length < 3) byDate[t.scheduled_date].push(t);
-    });
-
-    const bySnoozed = {};
-    (snoozed || []).forEach(t => {
-      if (!bySnoozed[t.snooze_date]) bySnoozed[t.snooze_date] = [];
-      if (bySnoozed[t.snooze_date].length < 3) bySnoozed[t.snooze_date].push(t);
     });
 
     const firstDay    = new Date(year, month - 1, 1);
@@ -139,10 +132,9 @@
       ctx.textBaseline = 'top';
       ctx.fillText(String(day), cx + (isToday ? 8 : 5), cy + 5);
 
-      const dotR   = Math.max(3, Math.min(5, Math.floor(cellH / 7)));
-      const gap    = dotR * 2 + 4;
-
       if (dayTasks.length > 0) {
+        const dotR   = Math.max(3, Math.min(5, Math.floor(cellH / 7)));
+        const gap    = dotR * 2 + 4;
         const totalW = dayTasks.length * dotR * 2 + (dayTasks.length - 1) * 4;
         const dotX0  = cx + cellW / 2 - totalW / 2 + dotR;
         const dotY   = cy + cellH - dotR - 5;
@@ -156,23 +148,6 @@
           ctx.beginPath();
           ctx.arc(dotX0 + i * gap, dotY, dotR, 0, Math.PI * 2);
           ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-      }
-
-      const snoozedDots = bySnoozed[dateStr] || [];
-      if (snoozedDots.length > 0) {
-        const schedRowH  = dayTasks.length > 0 ? dotR * 2 + 4 : 0;
-        const totalW     = snoozedDots.length * dotR * 2 + (snoozedDots.length - 1) * 4;
-        const dotX0      = cx + cellW / 2 - totalW / 2 + dotR;
-        const dotY       = cy + cellH - dotR - 5 - schedRowH;
-        ctx.globalAlpha  = isPast ? 0.25 : 0.6;
-        ctx.strokeStyle  = '#9e9e9e';
-        ctx.lineWidth    = 1.5;
-        snoozedDots.forEach((t, i) => {
-          ctx.beginPath();
-          ctx.arc(dotX0 + i * gap, dotY, dotR - 0.5, 0, Math.PI * 2);
-          ctx.stroke();
         });
         ctx.globalAlpha = 1;
       }

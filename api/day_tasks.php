@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
 
@@ -24,6 +24,10 @@ try {
         !empty($t['snoozed_until']) &&
         substr($t['snoozed_until'], 0, 10) === $date
     ));
+    foreach ($snoozedHere as $t) {
+        $t['_snoozed'] = true;
+        $scheduled[] = $t;
+    }
     $unscheduled = array_values(array_filter($all, fn($t) =>
         empty($t['scheduled_date']) &&
         ($t['task_type'] ?? '') === 'next_action' &&
@@ -65,8 +69,13 @@ try {
       <?php foreach ($scheduled as $t): ?>
         <li data-id="<?= (int)$t['id'] ?>"
             style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
-          <span style="flex:1;line-height:1.4;"><?= htmlspecialchars($t['title']) ?></span>
-          <?php if (!$isPast): ?>
+          <span style="flex:1;line-height:1.4;">
+            <?= htmlspecialchars($t['title']) ?>
+            <?php if (!empty($t['_snoozed'])): ?>
+              <span style="font-size:0.78em;color:#bbb;margin-left:6px;">snoozed</span>
+            <?php endif; ?>
+          </span>
+          <?php if (!$isPast && empty($t['_snoozed'])): ?>
             <button class="action-button"
                     style="font-size:0.78em;padding:4px 10px;min-height:32px;background:transparent;color:#888;border:1px solid #ddd;"
                     onclick="window._removeFromDay(<?= (int)$t['id'] ?>, '<?= $date ?>')">Remove</button>
@@ -76,26 +85,13 @@ try {
     </ul>
   <?php endif; ?>
 
-  <?php if (!empty($snoozedHere)): ?>
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:0.78em;color:#9e9e9e;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.4rem;">Waking up today</div>
-      <ul style="list-style:none;margin:0;padding:0;">
-        <?php foreach ($snoozedHere as $t): ?>
-          <li style="padding:0.45rem 0;border-bottom:1px solid #f0ede6;color:#666;font-size:0.92em;">
-            <?= htmlspecialchars($t['title']) ?>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    </div>
-  <?php endif; ?>
-
   <?php if ($canAdd): ?>
     <div id="add-section">
       <button class="action-button" id="add-btn" style="margin-top:0.25rem;"
               onclick="window._showPicker()">+ Schedule a task here</button>
       <div id="task-picker" style="display:none;margin-top:0.75rem;">
         <?php if (empty($unscheduled)): ?>
-          <p class="muted" style="font-size:0.9em;">No unscheduled next actions â€” triage your inbox to create some.</p>
+          <p class="muted" style="font-size:0.9em;">No unscheduled next actions — triage your inbox to create some.</p>
         <?php else: ?>
           <?php foreach ($unscheduled as $t): ?>
             <button class="action-button"
@@ -108,6 +104,6 @@ try {
       </div>
     </div>
   <?php elseif (!$isPast && count($scheduled) >= 3): ?>
-    <p class="muted" style="margin-top:0.75rem;font-size:0.85em;">Day is full â€” 3 tasks max.</p>
+    <p class="muted" style="margin-top:0.75rem;font-size:0.85em;">Day is full — 3 tasks max.</p>
   <?php endif; ?>
 </div>

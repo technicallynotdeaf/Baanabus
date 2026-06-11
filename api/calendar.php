@@ -23,7 +23,6 @@ try {
         'scheduled_date' => $t['scheduled_date'],
         'urgency'        => $t['urgency'] ?? null,
         'status'         => $t['status'],
-        'type'           => 'scheduled',
     ], $scheduled);
 
     $snoozed = array_values(array_filter($all, fn($t) =>
@@ -32,15 +31,16 @@ try {
         str_starts_with(substr($t['snoozed_until'], 0, 10), $month)
     ));
     $snoozed = array_map(fn($t) => [
-        'id'          => (int)$t['id'],
-        'title'       => $t['title'],
-        'snooze_date' => substr($t['snoozed_until'], 0, 10),
-        'urgency'     => $t['urgency'] ?? null,
-        'status'      => $t['status'],
-        'type'        => 'snoozed',
+        'id'             => (int)$t['id'],
+        'title'          => $t['title'],
+        'scheduled_date' => substr($t['snoozed_until'], 0, 10),
+        'urgency'        => $t['urgency'] ?? null,
+        'status'         => $t['status'],
+        'snoozed'        => true,
     ], $snoozed);
 
-    json_response(['ok' => true, 'month' => $month, 'tasks' => $scheduled, 'snoozed' => $snoozed]);
+    $tasks = array_merge($scheduled, $snoozed);
+    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

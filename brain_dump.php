@@ -32,20 +32,5 @@ if (empty($_SESSION['DEK'])) {
     </div>
   </form>
 
-  <hr style="border:none;border-top:1px solid #ede9e0;margin:1.25rem 0;">
-
-  <p class="muted" style="margin-bottom:0.75rem;">Something physical out as a reminder?</p>
-  <form id="object-dump-form">
-    <input
-      id="object-dump-text"
-      type="text"
-      placeholder="What's out? (e.g. library book, adapter cable)"
-      style="width:100%;box-sizing:border-box;font-size:1rem;padding:0.55rem 0.75rem;border:1px solid #ccc;border-radius:6px;font-family:inherit;"
-    >
-    <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.6rem;flex-wrap:wrap;">
-      <button type="submit" class="btn">Log object</button>
-      <p id="object-status" class="muted" style="margin:0;min-height:1.4em;"></p>
-    </div>
-  </form>
 </div>
 

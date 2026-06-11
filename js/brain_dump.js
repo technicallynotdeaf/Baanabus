@@ -43,42 +43,4 @@ window.initBrainDump = function() {
     }
   });
 
-  const objForm   = document.getElementById('object-dump-form');
-  const objText   = document.getElementById('object-dump-text');
-  const objStatus = document.getElementById('object-status');
-
-  if (objForm) {
-    objForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const label = objText.value.trim();
-      if (!label) { objText.focus(); return; }
-
-      const btn = objForm.querySelector('button[type="submit"]');
-      btn.disabled = true;
-      objStatus.textContent = 'Saving…';
-      objStatus.style.color = '';
-
-      try {
-        const resp = await fetch('api/add_physical_object.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label }),
-          credentials: 'same-origin'
-        });
-        const data = await resp.json();
-        if (data.ok) {
-          objText.value = '';
-          objStatus.textContent = 'Logged.';
-          objText.focus();
-        } else {
-          throw new Error(data.error || 'Save failed');
-        }
-      } catch(err) {
-        objStatus.textContent = err.message;
-        objStatus.style.color = 'crimson';
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  }
 };

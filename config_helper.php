@@ -1184,9 +1184,20 @@ function physicalObjectsPath(): string {
     return __DIR__ . "/config/$uid/physical_objects.enc";
 }
 
+function _defaultPhysicalObjects(): array {
+    return [
+        'next_id'         => 1,
+        'objects'         => [],
+        'rooms'           => [
+            ['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room'],
+        ],
+        'room_scan_dates' => [],
+    ];
+}
+
 function getPhysicalObjects(): array {
     $path = physicalObjectsPath();
-    if (!is_file($path)) return ['next_id' => 1, 'objects' => []];
+    if (!is_file($path)) return _defaultPhysicalObjects();
     if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
     $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
     $blob  = json_decode(file_get_contents($path), true);
@@ -1195,7 +1206,7 @@ function getPhysicalObjects(): array {
     if (!$nonce || !$ct) throw new Exception('physical_objects: corrupt file');
     $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
     if ($plain === false) throw new Exception('physical_objects decrypt failed');
-    return json_decode($plain, true) ?? ['next_id' => 1, 'objects' => []];
+    return json_decode($plain, true) ?? _defaultPhysicalObjects();
 }
 
 function savePhysicalObjects(array $data): void {
@@ -1217,12 +1228,14 @@ function savePhysicalObjects(array $data): void {
     @chmod($path, 0600);
 }
 
-function addPhysicalObject(string $label): array {
-    $data   = getPhysicalObjects();
-    $id     = (int)($data['next_id'] ?? 1);
+function addPhysicalObject(string $label, string $location = '', ?int $roomId = null): array {
+    $data = getPhysicalObjects();
+    $id   = (int)($data['next_id'] ?? 1);
     $data['objects'][] = [
         'id'         => $id,
         'label'      => $label,
+        'location'   => $location !== '' ? $location : null,
+        'room_id'    => $roomId,
         'task_id'    => null,
         'status'     => 'out',
         'created_at' => date('c'),

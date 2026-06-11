@@ -38,7 +38,7 @@ $pageCount    = 0;
 $pageTarget   = 15;
 $totalPages   = 0;
 $snoozedCount = 0;
-$buckets      = ['inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
+$buckets      = ['routine' => 0, 'inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
 if (isUnlocked()) {
     try {
         $t = getTasks();
@@ -57,21 +57,23 @@ if (isUnlocked()) {
             if (!empty($task['parent_id'])) continue;
             $type      = $task['task_type'] ?? 'next_action';
             $isSnoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
-            if ($type === 'inbox')                                  { $buckets['inbox']++; }
-            elseif ($isSnoozed)                                     { $buckets['snoozed']++; }
+            if ($type === 'inbox')                                   { $buckets['inbox']++; }
+            elseif ($isSnoozed)                                      { $buckets['snoozed']++; }
             elseif ($type === 'next_action' && $prereqsMet($task))   { $buckets['ready']++; }
-            elseif ($type === 'next_action' && !$prereqsMet($task)) { $buckets['blocked']++; }
-            elseif ($type === 'someday')                            { $buckets['someday']++; }
-            elseif ($type === 'waiting')                            { $buckets['waiting']++; }
-            elseif ($type === 'project')                            { $buckets['project']++; }
+            elseif ($type === 'next_action' && !$prereqsMet($task))  { $buckets['blocked']++; }
+            elseif ($type === 'someday')                             { $buckets['someday']++; }
+            elseif ($type === 'waiting')                             { $buckets['waiting']++; }
+            elseif ($type === 'project')                             { $buckets['project']++; }
         }
+        $buckets['routine'] = count(getActiveDailies());
         $snoozedCount = $buckets['snoozed'];
     } catch (Throwable $e) {}
 }
 
 $bucketDefs = [
+    'routine' => ['label' => 'routine',      'color' => '#3aaa6c', 'filter' => ''],
     'inbox'   => ['label' => 'inbox',        'color' => '#9a6200', 'filter' => 'inbox'],
-    'ready'   => ['label' => 'ready',        'color' => '#1a6b3a', 'filter' => 'ready'],
+    'ready'   => ['label' => 'next action',  'color' => '#1a6b3a', 'filter' => 'ready'],
     'blocked' => ['label' => 'blocked',      'color' => '#a82020', 'filter' => 'blocked'],
     'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
@@ -105,9 +107,13 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <div id="scene-energy"><?= htmlspecialchars($energyLabel) ?></div>
 <?php if ($scoreboardSegs): ?>
 <div id="scene-scoreboard">
-  <?php foreach ($scoreboardSegs as $seg): ?>
+  <?php foreach ($scoreboardSegs as $seg):
+    $onclick = $seg['filter']
+      ? "loadOverlay('list_tasks.php?filter={$seg['filter']}')"
+      : "loadSpeechBubble('lets-go.php')";
+  ?>
   <button class="scb-seg" style="flex:<?= $seg['flex'] ?>;background:<?= $seg['color'] ?>;"
-          onclick="loadOverlay('list_tasks.php?filter=<?= $seg['filter'] ?>')"
+          onclick="<?= $onclick ?>"
           title="<?= htmlspecialchars($seg['label']) ?>: <?= $seg['count'] ?>">
     <span class="scb-label"><?= htmlspecialchars($seg['label']) ?></span>
     <span class="scb-count"><?= $seg['count'] ?></span>

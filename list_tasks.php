@@ -73,7 +73,7 @@ $bucketFilters = [
     'someday' => ['title' => 'Someday',         'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
     'waiting' => ['title' => 'Waiting',         'note' => 'Delegated or blocked on someone else.',                    'type' => 'waiting'],
     'blocked' => ['title' => 'Blocked',         'note' => 'Next actions waiting on another task to be done first.',                        'type' => 'next_action'],
-    'project' => ['title' => 'Needs a next step','note' => 'Multi-step tasks. Each one needs a concrete first action before it\'s doable.', 'type' => 'project'],
+    'project' => ['title' => 'Projects',          'note' => 'Multi-step tasks. Break any without a next action into a first concrete step.', 'type' => 'project'],
 ];
 if (isset($bucketFilters[$filter])) {
     $completedIds = [];
@@ -138,7 +138,12 @@ if (isset($bucketFilters[$filter])) {
             <?= htmlspecialchars(implode(' · ', array_slice($subs, 0, 3))) ?>
             <?php if (count($subs) > 3): ?><span style="color:#ddd;">+ <?= count($subs) - 3 ?> more</span><?php endif; ?>
           </div>
-        <?php elseif ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif;
+        <?php else: ?>
+          <?php if ($filter === 'project'): ?>
+          <div style="font-size:0.78em;color:#8b7355;margin-top:3px;">needs a next action</div>
+          <?php endif; ?>
+          <?php if ($ctx): ?><div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars($ctx) ?></div><?php endif; ?>
+        <?php endif;
         endif; ?>
       </div>
       <?php if ($filter !== 'inbox'): ?>

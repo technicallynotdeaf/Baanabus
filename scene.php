@@ -82,7 +82,7 @@ $bucketDefs = [
     'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
     'waiting' => ['label' => 'waiting',      'color' => '#553c87', 'filter' => 'waiting'],
-    'project' => ['label' => 'needs a step', 'color' => '#8b3a00', 'filter' => 'project'],
+    'project' => ['label' => 'projects',      'color' => '#2a2a2a', 'filter' => 'project'],
 ];
 $scoreboardSegs = [];
 foreach ($bucketDefs as $key => $def) {

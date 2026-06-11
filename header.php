@@ -55,7 +55,7 @@ require_once __DIR__ . '/init.php';
     }
   ?>
   <ul class="navbar">
-    <li><a href="index.php">🏠<span class="nav-text"> Home</span></a></li>
+    <li><a href="index.php">🏠<span class="nav-text"> Library</span></a></li>
     <li><a href="scene2.php">📅<span class="nav-text"> Calendar</span></a></li>
     <li><a href="#" id="lets-go">🎯<span class="nav-text"> Let's Go</span></a></li>
     <li><a href="#" id="note-to-self">📝<span class="nav-text"> Note to Self</span></a></li>

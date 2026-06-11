@@ -62,7 +62,7 @@ window.initNutritionProgress = function () {
     return `<div style="margin-bottom:0.55rem;">
       <div style="display:flex;justify-content:space-between;font-size:0.81em;margin-bottom:2px;flex-wrap:wrap;gap:2px;">
         <span>${esc(p.label)}${noteStr}${limitNote}${badge}</span>
-        <span style="color:${colour};white-space:nowrap;">${fmt(p.actual)} / ${fmt(p.target)}${esc(p.unit)}</span>
+        <span style="color:${colour};white-space:nowrap;">${fmt(p.actual)} / ${fmt(p.target)}${esc(p.unit)} <span style="color:${colour};opacity:0.75;font-size:0.9em;">(${pctDisp}%)</span></span>
       </div>
       <div style="background:#eee;border-radius:3px;height:6px;overflow:hidden;">
         <div style="height:100%;width:${pctDisp}%;background:${colour};border-radius:3px;transition:width 0.4s;"></div>
@@ -93,7 +93,7 @@ window.initNutritionProgress = function () {
           <span><strong>${esc(p.name)}</strong>
             <span style="color:#aaa;margin-left:4px;">${esc(p.serving)}</span></span>
           <span style="color:#27ae60;white-space:nowrap;margin-left:8px;">
-            +${fmt(p.per_serving)}${esc(s.unit)}
+            +${fmt(p.per_serving)}${esc(s.unit)}${p.pct_of_rdi != null ? ` <span style="color:#aaa;">(${p.pct_of_rdi}%)</span>` : ''}
           </span>
         </div>`).join('');
       return `<div style="margin-bottom:1.1rem;">

@@ -7,6 +7,7 @@
     const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
     const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[1]');
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
+    const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
 
     const STORY_BOOKS = [
         { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
@@ -442,20 +443,7 @@
         });
     }
 
-    function drawToybox(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance, hasObjects) {
-        const secW   = Math.floor(innerWidth / 3);
-        // Middle section has 6 shelves → 7 bays; bottom bay is below shelf 6
-        const shelfH = Math.floor((innerHeight - clearance) / 7);
-        const bayTop = innerTop + clearance + 6 * shelfH;
-        const bayBot = innerTop + innerHeight;
-        const bayH   = bayBot - bayTop;
-        const bayL   = innerLeft + secW;
-        const bayW   = secW;
-
-        const bw   = Math.round(bayW * 0.52);
-        const bh   = Math.round(bayH * 0.72);
-        const bx   = Math.round(bayL + (bayW - bw) / 2);
-        const by   = bayBot - bh - Math.round(bayH * 0.05);
+    function drawToybox(ctx, bx, by, bw, bh, hasObjects) {
         const lidH = Math.round(bh * 0.30);
         const bodyH = bh - lidH;
         const bodyY = by + lidH;
@@ -500,7 +488,7 @@
             ctx.fillRect(bx + 2, bodyY, bw - 4, Math.round(lidH * 0.8));
 
             // Items peeking above rim: 3 coloured circles
-            const itemR = Math.max(3, Math.round(Math.min(bw, bayH) * 0.085));
+            const itemR = Math.max(3, Math.round(Math.min(bw, bh) * 0.085));
             const itemY = bodyY - Math.round(itemR * 0.5);
             [
                 { cx: bx + Math.round(bw * 0.22), color: '#d03838' },
@@ -575,6 +563,147 @@
         }
     }
 
+    function drawTreasureChest(ctx, bx, by, bw, bh, hasResolved) {
+        if (!hasResolved) return;
+
+        const lidH  = Math.round(bh * 0.38);
+        const bodyH = bh - lidH;
+        const bodyY = by + lidH;
+        const archH = Math.round(lidH * 0.32); // how far the dome rises inside lidH
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(bx + 3, by + 3, bw, bh);
+
+        // === BODY ===
+        const bg = ctx.createLinearGradient(bx, bodyY, bx + bw, bodyY);
+        bg.addColorStop(0, '#7a4518');
+        bg.addColorStop(0.5, '#9a5828');
+        bg.addColorStop(1, '#5a3010');
+        ctx.fillStyle = bg;
+        ctx.fillRect(bx, bodyY, bw, bodyH);
+
+        // Horizontal metal band on body
+        const bandH = Math.max(4, Math.round(bodyH * 0.20));
+        const bandY = bodyY + Math.round((bodyH - bandH) / 2);
+        ctx.fillStyle = '#363030';
+        ctx.fillRect(bx, bandY, bw, bandH);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(bx, bandY, bw, 1);
+
+        // Band rivets
+        const rivetR = Math.max(2, Math.round(bw * 0.028));
+        [0.18, 0.50, 0.82].forEach(s => {
+            const rx = bx + Math.round(bw * s);
+            const ry = bandY + Math.round(bandH / 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.beginPath(); ctx.arc(rx + 1, ry + 1, rivetR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#909080';
+            ctx.beginPath(); ctx.arc(rx, ry, rivetR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.28)';
+            ctx.beginPath(); ctx.arc(rx - rivetR * 0.28, ry - rivetR * 0.32, rivetR * 0.4, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Body corner brackets
+        const bktS = Math.max(3, Math.round(bw * 0.055));
+        ctx.fillStyle = '#484038';
+        [[bx, bodyY], [bx + bw - bktS, bodyY],
+         [bx, bodyY + bodyH - bktS], [bx + bw - bktS, bodyY + bodyH - bktS]
+        ].forEach(([sx, sy]) => ctx.fillRect(sx, sy, bktS, bktS));
+
+        // === LID (domed top) ===
+        const lidGrad = ctx.createLinearGradient(bx - 2, by, bx - 2, bodyY);
+        lidGrad.addColorStop(0, '#d08030');
+        lidGrad.addColorStop(0.45, '#b06020');
+        lidGrad.addColorStop(1, '#804018');
+        ctx.fillStyle = lidGrad;
+        ctx.beginPath();
+        ctx.moveTo(bx - 2, bodyY);
+        ctx.lineTo(bx - 2, by + archH);
+        ctx.quadraticCurveTo(bx - 2, by, bx + bw / 2, by);
+        ctx.quadraticCurveTo(bx + bw + 2, by, bx + bw + 2, by + archH);
+        ctx.lineTo(bx + bw + 2, bodyY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Arch highlight (top catch-light)
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(bx - 2 + 3, by + archH - 1);
+        ctx.quadraticCurveTo(bx + bw / 2, by + 2, bx + bw + 2 - 3, by + archH - 1);
+        ctx.stroke();
+
+        // Seam shadow at lid/body join
+        ctx.fillStyle = 'rgba(0,0,0,0.30)';
+        ctx.fillRect(bx - 2, bodyY - 2, bw + 4, 2);
+
+        // Horizontal metal band on lid
+        const lidBandY = by + archH + Math.round((lidH - archH) * 0.38);
+        const lidBandH = Math.max(3, Math.round(lidH * 0.16));
+        ctx.fillStyle = '#363030';
+        ctx.fillRect(bx - 2, lidBandY, bw + 4, lidBandH);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)';
+        ctx.fillRect(bx - 2, lidBandY, bw + 4, 1);
+
+        // Lid band rivets
+        const lidBandMidY = lidBandY + Math.round(lidBandH / 2);
+        [0.18, 0.50, 0.82].forEach(s => {
+            const rx = bx - 2 + Math.round((bw + 4) * s);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.beginPath(); ctx.arc(rx + 1, lidBandMidY + 1, rivetR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#909080';
+            ctx.beginPath(); ctx.arc(rx, lidBandMidY, rivetR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.28)';
+            ctx.beginPath(); ctx.arc(rx - rivetR * 0.28, lidBandMidY - rivetR * 0.32, rivetR * 0.4, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Lid corner brackets
+        ctx.fillStyle = '#484038';
+        [[bx - 2, bodyY - bktS], [bx + bw + 2 - bktS, bodyY - bktS]
+        ].forEach(([sx, sy]) => ctx.fillRect(sx, sy, bktS, bktS));
+
+        // === GOLD PADLOCK at centre seam ===
+        const lockW = Math.max(9, Math.round(bw * 0.16));
+        const lockH = Math.max(6, Math.round(bh * 0.12));
+        const lockX = bx + Math.round((bw - lockW) / 2);
+        const lockY = bodyY - Math.round(lockH * 0.48);
+        const shackleR = lockW * 0.26;
+
+        // Lock body shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillRect(lockX + 1, lockY + 1, lockW, lockH);
+        // Lock body
+        ctx.fillStyle = '#d4a820';
+        ctx.fillRect(lockX, lockY, lockW, lockH);
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.fillRect(lockX, lockY, lockW, 2);
+        // Inner recess
+        ctx.fillStyle = '#8a6815';
+        ctx.fillRect(lockX + 2, lockY + 3, lockW - 4, lockH - 4);
+
+        // Shackle (U-arch above lock body)
+        ctx.strokeStyle = '#d4a820';
+        ctx.lineWidth = Math.max(2, Math.round(lockW * 0.20));
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(lockX + lockW / 2, lockY, shackleR, Math.PI, 0);
+        ctx.stroke();
+
+        // Keyhole
+        ctx.fillStyle = '#5a4010';
+        ctx.beginPath();
+        ctx.arc(lockX + lockW / 2, lockY + Math.round(lockH * 0.48), Math.max(1, Math.round(lockW * 0.10)), 0, Math.PI * 2);
+        ctx.fill();
+
+        // Warm glow seeping from seam (suggests treasure inside)
+        const glowGrad = ctx.createRadialGradient(bx + bw / 2, bodyY, 1, bx + bw / 2, bodyY, bw * 0.8);
+        glowGrad.addColorStop(0, 'rgba(255,210,50,0.22)');
+        glowGrad.addColorStop(1, 'rgba(255,210,50,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.fillRect(bx - bw * 0.3, bodyY - 6, bw * 1.6, bh * 0.55);
+    }
+
     function updateBackground() {
         const canvas = document.getElementById('sceneCanvas');
         const ctx    = canvas.getContext('2d');
@@ -631,7 +760,19 @@
         });
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
-        drawToybox(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance, OBJECTS_OUT);
+
+        // Middle section bottom bay: toybox (unresolved) + treasure chest (resolved)
+        const midShelfH = Math.floor((innerHeight - clearance) / 7);
+        const mbayBot   = innerTop + innerHeight;
+        const mbayH     = mbayBot - (innerTop + clearance + 6 * midShelfH);
+        const mbayL     = innerLeft + secW;
+        const itemW     = Math.round(secW * 0.43);
+        const itemH     = Math.round(mbayH * 0.72);
+        const itemY     = mbayBot - itemH - Math.round(mbayH * 0.05);
+        const itemGap   = Math.max(4, Math.round(secW * 0.06));
+        const startX    = mbayL + Math.round((secW - itemW * 2 - itemGap) / 2);
+        drawToybox(ctx, startX, itemY, itemW, itemH, OBJECTS_OUT);
+        drawTreasureChest(ctx, startX + itemW + itemGap, itemY, itemW, itemH, OBJECTS_RESOLVED);
 
         // Desktop-only decorations: window on left wall, table + lamp on right
         if (width > 640) {

@@ -26,7 +26,8 @@ if (isUnlocked()) {
             }
         }
         $obj = getPhysicalObjects();
-        $objectsOut = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'out'));
+        $objectsOut      = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'out'));
+        $objectsResolved = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'resolved'));
     } catch (Throwable $e) {}
 }
 ?>
@@ -35,7 +36,8 @@ if (isUnlocked()) {
   data-story-started="<?= $storyStarted ? '1' : '0' ?>"
   data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"
   data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"
-  data-objects-out="<?= $objectsOut ? '1' : '0' ?>"></canvas>
+  data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
+  data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"></canvas>
 
 <?php
 $pageCount    = 0;

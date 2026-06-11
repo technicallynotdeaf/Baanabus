@@ -841,7 +841,7 @@
         }
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
-                if (b.unlocked) loadOverlay('api/story_books.php');
+                loadOverlay('api/story_books.php');
                 break;
             }
         }
@@ -851,9 +851,11 @@
         const rect = this.getBoundingClientRect();
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
+        const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || inRect(cx, cy, toyboxBounds)
-            || inRect(cx, cy, chestBounds);
+            || inRect(cx, cy, chestBounds)
+            || onBook;
         this.style.cursor = pointer ? 'pointer' : '';
     });
 })();

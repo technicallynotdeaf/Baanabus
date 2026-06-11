@@ -223,13 +223,6 @@ function setupOverlayListeners() {
         });
   }
 
-  const story_link = document.getElementById('story-book-link');
-  if (story_link) {
-    story_link.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadOverlay('api/story_books.php');
-        });
-  }
 
   // Navbar context dropdowns — energy and location
   ['nav-energy', 'nav-daytype'].forEach(id => {
@@ -374,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Morning mode lockout — prevent nav overlays until daily sequence is done
     if (document.body.classList.contains('morning-mode')) {
-        const blockedIds = ['story-book-link', 'note-to-self', 'people-book', 'task-list'];
+        const blockedIds = ['note-to-self', 'people-book', 'task-list'];
         blockedIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('click', e => {

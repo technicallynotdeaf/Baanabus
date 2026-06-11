@@ -87,7 +87,7 @@ if ($dailyId !== null) {
         </span>
       </div>
 
-      <div id="dd-days-wrap" style="<?= $currentFreq !== 'weekly' ? 'display:none;' ?>margin-bottom:0.75rem;">
+      <div id="dd-days-wrap" style="<?= $currentFreq !== 'weekly' ? 'display:none;' : '' ?>margin-bottom:0.75rem;">
         <label style="font-size:0.82em;color:#888;display:block;margin-bottom:0.4rem;">Days of week</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <?php foreach ($dayKeys as $key => $lbl): ?>

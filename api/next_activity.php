@@ -18,6 +18,7 @@ try {
     $hasTasks   = !empty($tasks);
     $inboxTasks = getInboxTasks();
     $hasInbox   = !empty($inboxTasks);
+    $inboxCount = count($inboxTasks);
     $fillTasks  = array_values(array_filter($tasks, fn($t) =>
         (!isset($t['energy'])  || $t['energy']  === null) ||
         (!isset($t['context']) || $t['context'] === null) ||
@@ -29,6 +30,7 @@ try {
     $hasTasks     = false;
     $inboxTasks   = [];
     $hasInbox     = false;
+    $inboxCount   = 0;
     $fillTasks    = [];
     $hasFillTasks = false;
 }
@@ -260,7 +262,6 @@ $fatigue   = (int)floor($actCount / 4);
 $taskSlots = max(0, $energy - $fatigue);
 $gameSlots = min(8, (6 - $energy) + $fatigue);
 
-$inboxCount  = count($inboxTasks);
 if ($hasInbox) {
     $triageSlots = min($inboxCount * 2 + $taskSlots, 10);
 } elseif ($hasFillTasks) {

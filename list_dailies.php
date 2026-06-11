@@ -81,7 +81,7 @@ if ($dailyId !== null) {
           <option value="daily"<?= $currentFreq === 'daily' ? ' selected' : '' ?>>Daily</option>
           <option value="weekly"<?= $currentFreq === 'weekly' ? ' selected' : '' ?>>Weekly</option>
         </select>
-        <span id="dd-everyx-wrap" style="<?= $currentFreq !== 'daily' ? 'display:none;' ?>margin-left:8px;font-size:0.85em;color:#888;white-space:nowrap;">
+        <span id="dd-everyx-wrap" style="<?= $currentFreq !== 'daily' ? 'display:none;' : '' ?>margin-left:8px;font-size:0.85em;color:#888;white-space:nowrap;">
           every <input type="number" id="dd-everyx" min="1" max="30" value="<?= $currentEveryX ?>"
             style="width:3rem;padding:2px 5px;font-size:0.95em;"> days
         </span>

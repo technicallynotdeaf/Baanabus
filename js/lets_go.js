@@ -367,7 +367,7 @@ window.initLetsGo = function() {
       return;
     }
     const btns = d.topics.map(topic =>
-      `<button class="action-button" style="width:100%;" onclick="window._pickTopic(${JSON.stringify(topic)})">${esc(topic)}</button>`
+      `<button class="action-button" style="width:100%;" onclick="window._pickTopic('${topic.replace(/'/g, "\\'")}')"> ${esc(topic)}</button>`
     ).join('');
     c.innerHTML = `
       <p style="font-weight:600;margin-bottom:0.5rem;">You've mastered all the current trivia questions!</p>
@@ -912,7 +912,7 @@ window.initLetsGo = function() {
     c.innerHTML = `
       <p style="font-size:0.75em;color:#7a9e7a;letter-spacing:0.05em;margin-bottom:0.4rem;">HOUSE RESET</p>
       <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
-      <button class="action-button" onclick="houseTaskDone(${JSON.stringify(d.task_id)})">Done</button>
+      <button class="action-button" onclick="houseTaskDone('${d.task_id}')">Done</button>
       <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="loadSpeechBubble('lets-go.php')">Not now</button>`;
   }
 

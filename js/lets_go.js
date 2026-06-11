@@ -47,6 +47,7 @@ window.initLetsGo = function() {
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
       case 'house_task':            renderHouseTask(d);           break;
+      case 'room_scan':              renderRoomScan(d);             break;
       case 'physical_object_triage': renderPhysicalObjectTriage(d); break;
       case 'morning_daily':  renderMorningDaily(d);  break;
       case 'morning_done':   renderMorningDone(d);   break;
@@ -915,6 +916,66 @@ window.initLetsGo = function() {
       <button class="action-button" style="margin-top:0.4rem;background:#888;" onclick="loadSpeechBubble('lets-go.php')">Not now</button>`;
   }
 
+  function renderRoomScan(d) {
+    const rowStyle = 'display:flex;gap:6px;margin-bottom:0.45rem;';
+    const labelStyle = 'flex:2;box-sizing:border-box;font-size:0.9rem;padding:0.45rem 0.65rem;border:1px solid #ccc;border-radius:6px;font-family:inherit;';
+    const locStyle   = 'flex:1;box-sizing:border-box;font-size:0.9rem;padding:0.45rem 0.65rem;border:1px solid #ccc;border-radius:6px;font-family:inherit;color:#666;';
+    const rows = [1,2,3,4,5].map(n => `
+      <div style="${rowStyle}">
+        <input type="text" class="scan-label" style="${labelStyle}" placeholder="What is it?${n===1?' e.g. library book':''}"${n===1?' autofocus':''}>
+        <input type="text" class="scan-loc"   style="${locStyle}"   placeholder="Where?${n===1?' e.g. on the table':''}">
+      </div>`).join('');
+
+    const existingHtml = (d.existing && d.existing.length > 0) ? `
+      <p style="font-size:0.75em;color:#aaa;text-transform:uppercase;letter-spacing:0.05em;margin:1rem 0 0.35rem;">Already waiting</p>
+      <div style="max-height:110px;overflow-y:auto;border:1px solid #ede9e0;border-radius:6px;padding:0.3rem 0.6rem;">
+        ${d.existing.map(o => `
+          <div style="padding:0.3rem 0;border-bottom:1px solid #f4f1ec;font-size:0.88em;display:flex;gap:6px;">
+            <span style="flex:1;">${esc(o.label)}</span>
+            ${o.location ? `<span style="color:#bbb;font-size:0.95em;">${esc(o.location)}</span>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;">Room scan</p>
+      <p style="margin-bottom:0.85rem;">Look around your <strong>${esc(d.room_label)}</strong>. What's out and waiting for you?</p>
+      ${rows}
+      <p style="font-size:0.75em;color:#bbb;margin:0.1rem 0 0.75rem;">Up to 5 items. Location is optional but helps.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" id="scan-submit-btn">Log these</button>
+        <button class="action-button" style="background:transparent;color:#888;border:1px solid #ddd;"
+          onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+      </div>
+      <p id="scan-status" class="muted" style="margin-top:0.5rem;min-height:1em;font-size:0.85em;"></p>
+      ${existingHtml}`;
+
+    document.getElementById('scan-submit-btn').addEventListener('click', function() {
+      const labels = Array.from(c.querySelectorAll('.scan-label'));
+      const locs   = Array.from(c.querySelectorAll('.scan-loc'));
+      const items  = labels.map((el, i) => ({label: el.value.trim(), location: locs[i].value.trim()}))
+                           .filter(it => it.label !== '');
+      const status = document.getElementById('scan-status');
+      if (!items.length) { status.textContent = 'Add at least one item.'; return; }
+      this.disabled = true;
+      fetch('api/room_scan.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({room_id: d.room_id, items}),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          c.innerHTML = `
+            <p style="margin-bottom:0.75rem;">${data.added} item${data.added === 1 ? '' : 's'} logged. They'll come up for triage in the next few activities.</p>
+            <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+        } else {
+          status.textContent = data.error || 'Something went wrong.';
+          document.getElementById('scan-submit-btn').disabled = false;
+        }
+      });
+    });
+  }
+
   function renderPhysicalObjectTriage(d) {
     function postTriage(payload) {
       return fetch('api/physical_object_triage.php', {
@@ -924,10 +985,15 @@ window.initLetsGo = function() {
       }).then(r => r.json());
     }
 
+    const locationHint = d.location
+      ? `<p style="font-size:0.85em;color:#999;margin:-0.5rem 0 1rem;">${esc(d.location)}</p>`
+      : '';
+
     function showInitial() {
       c.innerHTML = `
         <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">What's this doing out?</p>
-        <p style="font-weight:600;margin-bottom:1rem;">${esc(d.label)}</p>
+        <p style="font-weight:600;margin-bottom:0.3rem;">${esc(d.label)}</p>
+        ${locationHint}
         <div style="display:flex;flex-direction:column;gap:7px;">
           <button class="action-button" id="obj-for-task" style="text-align:left;">It's out for a task</button>
           <button class="action-button" id="obj-find-home" style="text-align:left;">It needs a home</button>

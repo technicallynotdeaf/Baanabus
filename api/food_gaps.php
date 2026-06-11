@@ -118,14 +118,14 @@ foreach (array_slice(array_keys($gaps), 0, $maxSuggestions) as $n) {
     $unit      = $gaps[$n]['unit'];
     $label     = $gaps[$n]['label'];
 
-    // Get top foods for this nutrient, all categories
+    // Get top foods for this nutrient, excluding prepared meals
     $stmt = $database->prepare("
         SELECT f.food_id, f.name, f.category, f.suggested_serving_g,
                fs.unit_label, fs.weight_g,
                ROUND(f.suggested_serving_g / 100.0 * f.$foodsCol, 1) AS per_serving
         FROM foods f
         JOIN food_servings fs ON fs.food_id = f.food_id AND fs.is_default = 1
-        WHERE f.$foodsCol IS NOT NULL AND f.$foodsCol > 0
+        WHERE f.$foodsCol IS NOT NULL AND f.$foodsCol > 0 AND f.category != 'meal'
         ORDER BY per_serving DESC
         LIMIT 40
     ");
@@ -151,15 +151,18 @@ foreach (array_slice(array_keys($gaps), 0, $maxSuggestions) as $n) {
     foreach (array_filter($buckets) as $pick) {
         $perServing = (float)$pick['per_serving'];
         $servings   = $perServing > 0 ? ceil($remaining / $perServing) : null;
+        $pctOfRdi   = $gaps[$n]['target'] > 0 ? round($perServing / $gaps[$n]['target'] * 100) : null;
         $picks[] = [
-            'food_id'     => (int)$pick['food_id'],
-            'name'        => $pick['name'],
-            'serving'     => "1 {$pick['unit_label']}",
-            'per_serving' => $perServing,
-            'unit'        => $unit,
+            'food_id'           => (int)$pick['food_id'],
+            'name'              => $pick['name'],
+            'serving'           => "1 {$pick['unit_label']}",
+            'per_serving'       => $perServing,
+            'unit'              => $unit,
+            'pct_of_rdi'        => $pctOfRdi,
             'servings_to_cover' => $servings,
         ];
     }
+    usort($picks, fn($a, $b) => $b['per_serving'] <=> $a['per_serving']);
 
     $suggestions[$n] = [
         'label'     => $label,

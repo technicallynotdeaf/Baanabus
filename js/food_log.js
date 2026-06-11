@@ -153,7 +153,7 @@ window.initFoodLog = function () {
             <span style="color:#aaa;margin-left:4px;">${esc(p.serving)}</span>
           </span>
           <span style="color:#27ae60;white-space:nowrap;margin-left:8px;">
-            +${p.per_serving}${esc(s.unit)}
+            +${p.per_serving}${esc(s.unit)}${p.pct_of_rdi != null ? ` <span style="color:#aaa;">(${p.pct_of_rdi}%)</span>` : ''}
           </span>
         </div>`).join('');
       return `

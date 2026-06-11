@@ -3,6 +3,7 @@ $paperCount      = 0;
 $storyStarted    = false;
 $badgeIds        = [];
 $storyBooksAvail = [];
+$objectsOut      = false;
 if (isUnlocked()) {
     try {
         $paperCount   = count(getInboxTasks());
@@ -24,6 +25,8 @@ if (isUnlocked()) {
                 $prevEnded = !empty($prog['ended']);
             }
         }
+        $obj = getPhysicalObjects();
+        $objectsOut = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'out'));
     } catch (Throwable $e) {}
 }
 ?>
@@ -31,7 +34,8 @@ if (isUnlocked()) {
   data-papers="<?= (int)$paperCount ?>"
   data-story-started="<?= $storyStarted ? '1' : '0' ?>"
   data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"
-  data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"></canvas>
+  data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"
+  data-objects-out="<?= $objectsOut ? '1' : '0' ?>"></canvas>
 
 <?php
 $pageCount    = 0;

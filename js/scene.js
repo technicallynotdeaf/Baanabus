@@ -6,6 +6,7 @@
     const STORY_STARTED       = canvas.dataset.storyStarted === '1';
     const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
     const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[1]');
+    const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
 
     const STORY_BOOKS = [
         { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
@@ -441,6 +442,139 @@
         });
     }
 
+    function drawToybox(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance, hasObjects) {
+        const secW   = Math.floor(innerWidth / 3);
+        // Middle section has 6 shelves → 7 bays; bottom bay is below shelf 6
+        const shelfH = Math.floor((innerHeight - clearance) / 7);
+        const bayTop = innerTop + clearance + 6 * shelfH;
+        const bayBot = innerTop + innerHeight;
+        const bayH   = bayBot - bayTop;
+        const bayL   = innerLeft + secW;
+        const bayW   = secW;
+
+        const bw   = Math.round(bayW * 0.52);
+        const bh   = Math.round(bayH * 0.72);
+        const bx   = Math.round(bayL + (bayW - bw) / 2);
+        const by   = bayBot - bh - Math.round(bayH * 0.05);
+        const lidH = Math.round(bh * 0.30);
+        const bodyH = bh - lidH;
+        const bodyY = by + lidH;
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(bx + 3, by + 3, bw, bh);
+
+        // Body
+        const bodyGrad = ctx.createLinearGradient(bx, bodyY, bx + bw, bodyY);
+        bodyGrad.addColorStop(0, '#9a6030');
+        bodyGrad.addColorStop(0.5, '#b87040');
+        bodyGrad.addColorStop(1, '#7a4820');
+        ctx.fillStyle = bodyGrad;
+        ctx.fillRect(bx, bodyY, bw, bodyH);
+
+        // Wood planks on body
+        ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+        ctx.lineWidth = 0.8;
+        for (let i = 1; i < 3; i++) {
+            const py = bodyY + Math.round(bodyH * i / 3);
+            ctx.beginPath(); ctx.moveTo(bx + 1, py); ctx.lineTo(bx + bw - 1, py); ctx.stroke();
+        }
+        // Center vertical crease
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.round(bw / 2), bodyY + 2);
+        ctx.lineTo(bx + Math.round(bw / 2), bodyY + bodyH - 2);
+        ctx.stroke();
+
+        const studSize = Math.max(3, Math.round(bw * 0.05));
+        ctx.fillStyle = '#5a3010';
+        [[bx, bodyY], [bx + bw - studSize, bodyY],
+         [bx, bodyY + bodyH - studSize], [bx + bw - studSize, bodyY + bodyH - studSize]
+        ].forEach(([sx, sy]) => ctx.fillRect(sx, sy, studSize, studSize));
+
+        if (hasObjects) {
+            // Interior darkness at top of body
+            const intGrad = ctx.createLinearGradient(bx, bodyY, bx, bodyY + Math.round(lidH * 0.8));
+            intGrad.addColorStop(0, 'rgba(15,8,2,0.90)');
+            intGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = intGrad;
+            ctx.fillRect(bx + 2, bodyY, bw - 4, Math.round(lidH * 0.8));
+
+            // Items peeking above rim: 3 coloured circles
+            const itemR = Math.max(3, Math.round(Math.min(bw, bayH) * 0.085));
+            const itemY = bodyY - Math.round(itemR * 0.5);
+            [
+                { cx: bx + Math.round(bw * 0.22), color: '#d03838' },
+                { cx: bx + Math.round(bw * 0.50), color: '#3478c0' },
+                { cx: bx + Math.round(bw * 0.78), color: '#38a838' },
+            ].forEach(item => {
+                ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                ctx.beginPath(); ctx.arc(item.cx + 1, itemY + 1, itemR, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = item.color;
+                ctx.beginPath(); ctx.arc(item.cx, itemY, itemR, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.32)';
+                ctx.beginPath(); ctx.arc(item.cx - itemR * 0.28, itemY - itemR * 0.32, itemR * 0.38, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Lid open: foreshortened trapezoid leaning back above the opening
+            const lidInset  = Math.round(bw * 0.03);
+            const lidOpenH  = Math.max(4, Math.round(lidH * 0.38));
+            const lidGradO  = ctx.createLinearGradient(bx, bodyY - lidOpenH, bx, bodyY);
+            lidGradO.addColorStop(0, '#c07840');
+            lidGradO.addColorStop(1, '#7a4820');
+            ctx.fillStyle = lidGradO;
+            ctx.beginPath();
+            ctx.moveTo(bx,                   bodyY);
+            ctx.lineTo(bx + bw,              bodyY);
+            ctx.lineTo(bx + bw - lidInset,   bodyY - lidOpenH);
+            ctx.lineTo(bx + lidInset,        bodyY - lidOpenH);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(bx + lidInset, bodyY - lidOpenH, bw - lidInset * 2, 1);
+
+        } else {
+            // Lid closed: slightly wider, sits on top
+            const lidX = bx - 2;
+            const lidW = bw + 4;
+            const lidGrad = ctx.createLinearGradient(lidX, by, lidX, by + lidH);
+            lidGrad.addColorStop(0, '#c07840');
+            lidGrad.addColorStop(1, '#9a5828');
+            ctx.fillStyle = lidGrad;
+            ctx.fillRect(lidX, by, lidW, lidH);
+
+            // Lid top highlight and seam shadow
+            ctx.fillStyle = 'rgba(255,255,255,0.22)';
+            ctx.fillRect(lidX, by, lidW, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.28)';
+            ctx.fillRect(lidX, by + lidH - 2, lidW, 2);
+
+            // Centre stripe
+            ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(lidX + 2, by + Math.round(lidH / 2));
+            ctx.lineTo(lidX + lidW - 2, by + Math.round(lidH / 2));
+            ctx.stroke();
+
+            // Lid corner studs
+            ctx.fillStyle = '#5a3010';
+            [[lidX, by], [lidX + lidW - studSize, by],
+             [lidX, by + lidH - studSize], [lidX + lidW - studSize, by + lidH - studSize]
+            ].forEach(([sx, sy]) => ctx.fillRect(sx, sy, studSize, studSize));
+
+            // Metal clasp at centre seam
+            const claspW = Math.max(8, Math.round(bw * 0.12));
+            const claspH = Math.max(5, Math.round(lidH * 0.40));
+            const claspX = bx + Math.round((bw - claspW) / 2);
+            const claspY = by + lidH - Math.round(claspH / 2);
+            ctx.fillStyle = '#c8a040';
+            ctx.fillRect(claspX, claspY, claspW, claspH);
+            ctx.fillStyle = 'rgba(255,255,255,0.30)';
+            ctx.fillRect(claspX, claspY, claspW, 1);
+            ctx.fillStyle = '#8a6820';
+            ctx.fillRect(claspX + 2, claspY + 2, claspW - 4, claspH - 3);
+        }
+    }
+
     function updateBackground() {
         const canvas = document.getElementById('sceneCanvas');
         const ctx    = canvas.getContext('2d');
@@ -497,6 +631,7 @@
         });
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawToybox(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance, OBJECTS_OUT);
 
         // Desktop-only decorations: window on left wall, table + lamp on right
         if (width > 640) {

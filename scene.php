@@ -9,19 +9,16 @@ if (isUnlocked()) {
         $paperCount   = count(getInboxTasks());
         $storyStarted = true;
         $badgeIds     = array_keys(checkAndAwardBadges());
-        $storyFiles = [];
-        for ($n = 1; $n <= 24; $n++) {
-            $storyFiles['q' . $n] = sprintf('quilt_%02d.php', $n);
-        }
+        $storyBooksExist = [];
         $prevEnded = true; // book 1 has no prerequisite
-        foreach ($storyFiles as $sid => $file) {
+        for ($n = 1; $n <= 24; $n++) {
+            $file   = sprintf('quilt_%02d.php', $n);
             $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
-            if ($fileOk && $prevEnded) {
-                $storyBooksAvail[] = $sid;
-            }
+            if ($fileOk) $storyBooksExist[] = $n;
+            if ($fileOk && $prevEnded) $storyBooksAvail[] = $n;
             $prevEnded = false;
             if ($fileOk) {
-                $prog      = getStoryProgress($sid);
+                $prog      = getStoryProgress('q' . $n);
                 $prevEnded = !empty($prog['ended']);
             }
         }
@@ -36,6 +33,7 @@ if (isUnlocked()) {
   data-story-started="<?= $storyStarted ? '1' : '0' ?>"
   data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"
   data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"
+  data-story-books-exist="<?= htmlspecialchars(json_encode($storyBooksExist ?? []), ENT_QUOTES) ?>"
   data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
   data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"></canvas>
 

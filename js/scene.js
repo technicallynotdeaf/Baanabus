@@ -5,7 +5,8 @@
     const PAPERS        = parseInt(canvas.dataset.papers, 10) || 0;
     const STORY_STARTED       = canvas.dataset.storyStarted === '1';
     const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
-    const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[1]');
+    const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[]');
+    const STORY_BOOKS_EXIST   = JSON.parse(canvas.dataset.storyBooksExist || '[]');
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
 
@@ -78,15 +79,12 @@
         const secW   = Math.floor(innerWidth / 3);
         const shelfH = Math.floor((innerHeight - clearance) / 6);
 
-        const sidePad    = 3;
-        const gap        = 2;
-        const refBkH     = Math.floor(shelfH * 0.75);
+        const sidePad     = 3;
+        const gap         = 2;
+        const refBkH      = Math.floor(shelfH * 0.75);
         const narrowBookW = Math.max(10, Math.floor(refBkH / 6));
 
-        // Fit up to 8 books per row in the left section; adapt if the section is very narrow
         const BOOKS_PER_ROW = Math.min(8, Math.floor((secW - sidePad * 2 + gap) / (narrowBookW + gap)));
-
-        // Expand book width to fill the available slot, but no wider than 1/3 of book height
         const slotW  = Math.floor((secW - sidePad * 2 + gap) / BOOKS_PER_ROW);
         const bookW  = Math.max(narrowBookW, Math.min(slotW - gap, Math.floor(refBkH / 3)));
 
@@ -100,36 +98,37 @@
             const by     = bayBot - bkH;
 
             const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
-            const color    = unlocked ? book.color : desaturate(book.color);
+            const exists   = STORY_BOOKS_EXIST.includes(book.id);
+            const color    = unlocked ? book.color : (exists ? '#606060' : '#c0c0c0');
             const spineW   = Math.max(3, Math.floor(bookW * 0.20));
 
             // Drop shadow
             ctx.fillStyle = 'rgba(0,0,0,0.22)';
             ctx.fillRect(bx + 2, by + 2, bookW, bkH);
 
-            // Cover face
+            // Cover face (left portion — spine is on the right for a left-wall shelf)
             ctx.fillStyle = color;
             ctx.fillRect(bx, by, bookW, bkH);
 
-            // Binding strip (left ~18%)
+            // Binding strip (right edge)
             ctx.fillStyle = 'rgba(0,0,0,0.28)';
-            ctx.fillRect(bx, by, spineW, bkH);
+            ctx.fillRect(bx + bookW - spineW, by, spineW, bkH);
 
-            // Binding-to-cover highlight seam
+            // Highlight seam at left edge of spine
             ctx.fillStyle = 'rgba(255,255,255,0.18)';
-            ctx.fillRect(bx + spineW, by, 2, bkH);
+            ctx.fillRect(bx + bookW - spineW - 2, by, 2, bkH);
 
-            // Page edges at top (cream strip)
+            // Page edges at top (cream strip, cover side only)
             ctx.fillStyle = 'rgba(255,250,235,0.9)';
-            ctx.fillRect(bx + spineW + 2, by, bookW - spineW - 2, 3);
+            ctx.fillRect(bx, by, bookW - spineW - 2, 3);
 
-            // Top shadow (3-D top edge)
+            // Top shadow
             ctx.fillStyle = 'rgba(0,0,0,0.35)';
             ctx.fillRect(bx, by, bookW, 2);
 
-            // Right-edge catch-light
+            // Left-edge catch-light (viewer-facing edge)
             ctx.fillStyle = 'rgba(255,255,255,0.12)';
-            ctx.fillRect(bx + bookW - 2, by + 3, 2, bkH - 5);
+            ctx.fillRect(bx, by + 3, 2, bkH - 5);
 
             // Horizontal rule lines across cover face
             ctx.strokeStyle = 'rgba(0,0,0,0.06)';
@@ -137,29 +136,20 @@
             for (let l = 1; l < 5; l++) {
                 const ly = by + Math.floor(bkH * l / 5);
                 ctx.beginPath();
-                ctx.moveTo(bx + spineW + 2, ly);
-                ctx.lineTo(bx + bookW - 2,  ly);
+                ctx.moveTo(bx + 2, ly);
+                ctx.lineTo(bx + bookW - spineW - 3, ly);
                 ctx.stroke();
             }
 
-            // Unlocked: gold accent bands
+            // Unlocked: gold accent bands on cover face
             if (unlocked) {
                 ctx.fillStyle = 'rgba(245,166,35,0.75)';
-                ctx.fillRect(bx + spineW + 2, by + Math.max(4, Math.floor(bkH * 0.07)),  bookW - spineW - 3, 3);
-                ctx.fillRect(bx + spineW + 2, by + bkH - Math.max(6, Math.floor(bkH * 0.13)), bookW - spineW - 3, 3);
+                ctx.fillRect(bx + 2, by + Math.max(4, Math.floor(bkH * 0.07)),            bookW - spineW - 4, 3);
+                ctx.fillRect(bx + 2, by + bkH - Math.max(6, Math.floor(bkH * 0.13)), bookW - spineW - 4, 3);
             }
 
             bookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, unlocked });
         });
-    }
-
-    function desaturate(hex) {
-        const r = parseInt(hex.slice(1,3),16);
-        const g = parseInt(hex.slice(3,5),16);
-        const b = parseInt(hex.slice(5,7),16);
-        const avg = Math.round(r*0.3 + g*0.59 + b*0.11);
-        const mix = v => Math.round(v * 0.25 + avg * 0.75);
-        return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
     }
 
     // One-point perspective helpers.

@@ -978,6 +978,7 @@ window.initLetsGo = function() {
       first_step: 'Is there a quick 2-minute step that moves this forward?',
       energy:     'How much energy does this take?',
       context:    'Which area of your life does this belong to?',
+      urgency:    'How urgent is this?',
     };
     const itemsHtml = (d.items && d.items.length > 0)
       ? `<ul style="margin:0 0 0.6rem 0;padding-left:1.2rem;font-size:0.88em;color:#555;line-height:1.5;">${d.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
@@ -1078,6 +1079,15 @@ window.initLetsGo = function() {
       const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
       el.append(sel, saveBtn,
         mkBtn("Doesn't apply", () => save({action:'save_context', context:' '}), skipStyle));
+
+    } else if (question === 'urgency') {
+      const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
+      el.append(
+        mkBtn("High — time-sensitive or blocking",  () => save({action:'save_urgency', urgency:'high'})),
+        mkBtn("Medium — important but not pressing", () => save({action:'save_urgency', urgency:'medium'})),
+        mkBtn("Low — can wait indefinitely",         () => save({action:'save_urgency', urgency:'low'})),
+        mkBtn("Not sure — skip for now",             () => save({action:'save_urgency', urgency:'medium'}), skipStyle)
+      );
     }
   }
 

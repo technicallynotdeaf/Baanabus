@@ -19,8 +19,9 @@ try {
     $inboxTasks = getInboxTasks();
     $hasInbox   = !empty($inboxTasks);
     $fillTasks  = array_values(array_filter($tasks, fn($t) =>
-        (!isset($t['energy']) || $t['energy'] === null) ||
-        (!isset($t['context']) || $t['context'] === null)
+        (!isset($t['energy'])  || $t['energy']  === null) ||
+        (!isset($t['context']) || $t['context'] === null) ||
+        (!isset($t['urgency']) || $t['urgency'] === null)
     ));
     $hasFillTasks = !empty($fillTasks);
 } catch (Throwable $e) {
@@ -566,8 +567,9 @@ function triage_next_question(array $t): string {
 }
 
 function fill_next_question(array $t): string {
-    if (!isset($t['energy']) || $t['energy'] === null) return 'energy';
+    if (!isset($t['energy'])  || $t['energy']  === null) return 'energy';
     if (!isset($t['context']) || $t['context'] === null) return 'context';
+    if (!isset($t['urgency']) || $t['urgency'] === null) return 'urgency';
     return 'done';
 }
 

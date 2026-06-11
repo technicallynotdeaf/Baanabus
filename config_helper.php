@@ -1047,11 +1047,9 @@ function getDailyHorizon(array $d): string {
 
 // Returns incomplete morning-horizon dailies for today (used for the morning-mode CSS flag).
 function getMorningModeDailies(): array {
-    $melbTz  = new DateTimeZone('Australia/Melbourne');
-    $melbNow = new DateTime('now', $melbTz);
-    $today   = $melbNow->format('Y-m-d');
-    $data    = getDailies();
-    $done    = array_map('intval', $data['completions'][$today] ?? []);
+    $today = date('Y-m-d');
+    $data  = getDailies();
+    $done  = array_map('intval', $data['completions'][$today] ?? []);
     return array_values(array_filter($data['items'], fn($d) =>
         getDailyHorizon($d) === 'morning' &&
         isDailyDueToday($d, $today) &&
@@ -1062,11 +1060,13 @@ function getMorningModeDailies(): array {
 // Returns all currently-unlocked incomplete dailies across horizons, ordered morning → day → evening.
 // Day items unlock when morning is done, or after a 10am fallback (so a skipped morning
 // doesn't block the whole day). Evening items unlock after show_after hour (default 19).
+// Optional relevant_after / irrelevant_after (HH:MM) gate individual items by time of day.
+// Timezone comes from date_default_timezone_set() in init.php — never hardcoded here.
 function getActiveDailies(): array {
-    $melbTz  = new DateTimeZone('Australia/Melbourne');
-    $melbNow = new DateTime('now', $melbTz);
-    $today   = $melbNow->format('Y-m-d');
-    $hour    = (int)$melbNow->format('H');
+    $now     = new DateTime('now');
+    $today   = $now->format('Y-m-d');
+    $hour    = (int)$now->format('H');
+    $timeStr = $now->format('H:i');
     $data    = getDailies();
     $done    = array_map('intval', $data['completions'][$today] ?? []);
 
@@ -1077,10 +1077,12 @@ function getActiveDailies(): array {
     );
     $morningDone = empty($morningLeft);
 
-    $hOrder  = ['morning' => 0, 'day' => 1, 'evening' => 2];
-    $active  = array_values(array_filter($data['items'], function($d) use ($today, $done, $morningDone, $hour) {
+    $hOrder = ['morning' => 0, 'day' => 1, 'evening' => 2];
+    $active = array_values(array_filter($data['items'], function($d) use ($today, $done, $morningDone, $hour, $timeStr) {
         if (!isDailyDueToday($d, $today)) return false;
         if (in_array((int)$d['id'], $done, true)) return false;
+        if (!empty($d['relevant_after'])   && $timeStr <  $d['relevant_after'])   return false;
+        if (!empty($d['irrelevant_after']) && $timeStr >= $d['irrelevant_after']) return false;
         $h = getDailyHorizon($d);
         if ($h === 'morning') return true;
         if ($h === 'day')     return $morningDone || $hour >= 10;

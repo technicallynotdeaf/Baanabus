@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'quick_win'];
+$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'save_urgency', 'quick_win'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -36,7 +36,12 @@ $timeRaw  = $body['time'] ?? null;
 $time     = (is_int($timeRaw) || ctype_digit((string)$timeRaw)) && (int)$timeRaw > 0 ? (int)$timeRaw : null;
 
 try {
-    if ($action === 'save_energy') {
+    if ($action === 'save_urgency') {
+        $urg = $body['urgency'] ?? null;
+        if (!in_array($urg, ['low', 'medium', 'high'], true)) $urg = 'medium';
+        vaultUpdateTask($taskId, ['urgency' => $urg]);
+
+    } elseif ($action === 'save_energy') {
         $energy = $body['energy'] ?? ' ';
         if (!in_array($energy, ['low', 'medium', 'high', ' '], true)) $energy = ' ';
         vaultUpdateTask($taskId, ['energy' => $energy]);

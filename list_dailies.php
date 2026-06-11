@@ -189,6 +189,11 @@ if ($dailyId !== null) {
                 <span class="dlr-tag"><?= htmlspecialchars($tag) ?></span>
               <?php endforeach; ?>
             </span>
+            <?php if (!$isDone): ?>
+              <button class="action-button"
+                      style="font-size:0.75em;padding:2px 9px;min-height:22px;margin-left:6px;flex-shrink:0;"
+                      onclick="event.stopPropagation();window._dailyDone(this,<?= (int)$d['id'] ?>)">Done</button>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
       <?php endforeach; ?>

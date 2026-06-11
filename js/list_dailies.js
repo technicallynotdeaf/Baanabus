@@ -1,5 +1,24 @@
-window.initDailiesList = function() {
-  // Row clicks are wired inline by PHP — nothing else needed here.
+window.initDailiesList = function() {};
+
+window._dailyDone = function(btn, id) {
+  btn.disabled = true;
+  const row = btn.closest('.daily-list-row');
+  fetch('api/score_daily.php', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({id}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      row.querySelector('.dlr-dot').style.background = '#4caf50';
+      row.querySelector('.dlr-title').classList.add('dlr-done');
+      btn.remove();
+    } else {
+      btn.disabled = false;
+    }
+  })
+  .catch(() => { btn.disabled = false; });
 };
 
 window.initDailyDetail = function() {

@@ -10,7 +10,7 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $field = $input['field'] ?? '';
 $value = $input['value'] ?? null;
 
-if (!in_array($field, ['energy_level', 'day_type'], true)) {
+if (!in_array($field, ['energy_level', 'day_type', 'location'], true)) {
     json_response(['error' => 'Invalid field'], 400);
 }
 if ($value === null || !is_numeric($value)) {

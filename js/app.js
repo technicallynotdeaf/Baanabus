@@ -229,7 +229,7 @@ function setupOverlayListeners() {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('change', function() {
-      const field = id === 'nav-energy' ? 'energy_level' : 'day_type';
+      const field = id === 'nav-energy' ? 'energy_level' : 'location';
       const val   = parseInt(this.value);
       fetch('api/checkin.php', {
         method: 'POST',

@@ -47,7 +47,10 @@ require_once __DIR__ . '/init.php';
         try {
             $todayEntry = getDiaryEntry(date('Y-m-d'));
             $navEnergy  = !empty($todayEntry['energy_level']) ? (int)$todayEntry['energy_level'] : null;
-            $navDayType = !empty($todayEntry['day_type'])     ? (int)$todayEntry['day_type']     : null;
+            // location = current physical location (overrides day_type); falls back to day_type for existing data
+            $navDayType = !empty($todayEntry['location'])
+                ? (int)$todayEntry['location']
+                : (!empty($todayEntry['day_type']) ? (int)$todayEntry['day_type'] : null);
         } catch (Throwable $e) {}
         try {
             $morningModeActive = !empty(getMorningModeDailies());

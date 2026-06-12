@@ -146,9 +146,12 @@ try {
     } else {
         $energy  = max(1, min(5, (int)$row['energy_level']));
         $dayType = (int)($row['day_type'] ?? 0);
+        // physical location overrides day_type for where-am-I-now logic
+        $physicalLocation = isset($row['location']) ? (int)$row['location'] : $dayType;
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
-$dayType = $dayType ?? 0;
+$dayType          = $dayType ?? 0;
+$physicalLocation = $physicalLocation ?? $dayType;
 
 // Comeback callout (set in mark_complete when best week detected) — fires once
 if (!empty($_SESSION['comeback_callout'])) {
@@ -307,9 +310,9 @@ if ($database) {
 
 $easySlots = ($energy <= 2) ? 2 : 1;
 
-// House tasks: only at home (day types Home=1, Rest=4, WFH=5); each shown once per day
+// House tasks: only when physically at home (Home=1, Rest=4, WFH=5)
 $hasHouseTasks = false;
-if (in_array($dayType, [1, 4, 5], true)) {
+if (in_array($physicalLocation, [1, 4, 5], true)) {
     $houseDefs = include __DIR__ . '/../content/house_tasks.php';
     $now       = time();
     $houseSeen = ($cfg['house_tasks_seen'] ?? [])[date('Y-m-d')] ?? [];
@@ -329,11 +332,13 @@ try {
     $hasPhysicalObjects = !empty(array_filter($objData['objects'], fn($o) =>
         $o['status'] === 'out' && $o['task_id'] === null
     ));
-    $rooms      = $objData['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
-    $scanDates  = $objData['room_scan_dates'] ?? [];
-    $todayScan  = date('Y-m-d');
-    foreach ($rooms as $room) {
-        if (($scanDates[$room['id']] ?? '') !== $todayScan) { $hasRoomScan = true; break; }
+    if (in_array($physicalLocation, [1, 4, 5], true)) {
+        $rooms      = $objData['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
+        $scanDates  = $objData['room_scan_dates'] ?? [];
+        $todayScan  = date('Y-m-d');
+        foreach ($rooms as $room) {
+            if (($scanDates[$room['id']] ?? '') !== $todayScan) { $hasRoomScan = true; break; }
+        }
     }
 } catch (Throwable $e) {}
 

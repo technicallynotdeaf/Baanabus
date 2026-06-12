@@ -288,22 +288,25 @@ function getDoableTasks(): array {
         !array_diff(array_map('intval', (array)$t['prereq_tasks']), array_keys($completedIds));
 
     $dayType = null;
+    $physicalLocation = null;
     try {
         $entry   = getDiaryEntry(date('Y-m-d'));
         $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
+        // location = current physical location; falls back to day_type when not set
+        $physicalLocation = isset($entry['location']) ? (int)$entry['location'] : $dayType;
     } catch (Throwable $e) {}
 
     // Location filtering: task 'location' field = where/how the task can be done.
     // Values: home, work, shops, phone, online, or null (anywhere).
     // 'context' is a planning tag (area of life) and is NOT used for filtering.
-    $locationOk = function(array $t) use ($dayType): bool {
+    $locationOk = function(array $t) use ($physicalLocation): bool {
         $loc = strtolower(trim($t['location'] ?? ''));
-        if (!$loc || !$dayType) return true;
-        if ($dayType === 1) return $loc !== 'work';                                            // Home: no work tasks
-        if ($dayType === 2) return !in_array($loc, ['home', 'shops'], true);                  // Work: no home or shops
-        if ($dayType === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true); // Out: portable only
-        if ($dayType === 5) return $loc !== 'shops';                                           // WFH: home+work ok, no shops
-        if ($dayType === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true); // Transit: online/null only
+        if (!$loc || !$physicalLocation) return true;
+        if ($physicalLocation === 1) return $loc !== 'work';
+        if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
+        if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        if ($physicalLocation === 5) return $loc !== 'shops';
+        if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
         return true; // Rest (4): no suppression
     };
 
@@ -1071,19 +1074,21 @@ function getActiveDailies(): array {
     $done    = array_map('intval', $data['completions'][$today] ?? []);
 
     $dayType = null;
+    $physicalLocation = null;
     try {
         $entry   = getDiaryEntry($today);
         $dayType = isset($entry['day_type']) ? (int)$entry['day_type'] : null;
+        $physicalLocation = isset($entry['location']) ? (int)$entry['location'] : $dayType;
     } catch (Throwable $e) {}
 
-    $locationOk = function(array $d) use ($dayType): bool {
+    $locationOk = function(array $d) use ($physicalLocation): bool {
         $loc = strtolower(trim($d['location'] ?? ''));
-        if (!$loc || !$dayType) return true;
-        if ($dayType === 1) return $loc !== 'work';
-        if ($dayType === 2) return !in_array($loc, ['home', 'shops'], true);
-        if ($dayType === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
-        if ($dayType === 5) return $loc !== 'shops';
-        if ($dayType === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        if (!$loc || !$physicalLocation) return true;
+        if ($physicalLocation === 1) return $loc !== 'work';
+        if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
+        if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        if ($physicalLocation === 5) return $loc !== 'shops';
+        if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
         return true; // Rest (4): no suppression
     };
 

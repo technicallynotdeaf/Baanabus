@@ -138,7 +138,7 @@ Cycle awareness woven into Baanabus's wellness layer — private, vault-only, no
 
 **Implemented (2026-06-14):**
 - ✅ **Vault storage** (`config['period_tracking']`): enabled flag, LMP date, cycle length min/max
-- ✅ **Phase calculation** (`getCyclePhase()` / `getCyclePhases()` in `config_helper.php`): four phases — bleeding (days 1–4, red), follicular (days 5 to avg−14, yellow), luteal (avg−14+1 to avg−5, green), premenstrual (last 5 days, blue). Ovulation estimated at cycle_length − 14 (luteal phase is a biological constant ~14 days).
+- ✅ **Phase calculation** (`getCyclePhase()` / `getCyclePhases()` in `config_helper.php`): four phases — bleeding (days 1–4, red), follicular (days 5 to ov−3, yellow), ovulatory window (ov−2 to ov+2, 5 days, green), post-ovulatory/luteal (remainder, blue). Ovulation estimated at cycle_length − 14 (luteal phase is a biological constant ~14 days).
 - ✅ **Cycle dial** (`js/cycle_dial.js`): clock-face canvas with coloured ring and a hand pointing to the current day. Small fixed dial (72px) on desktop, larger dial (120px) in Settings → Wellness with phase legend. `getCyclePhases()` provides arc definitions for JS.
 - ✅ **Settings UI** (Settings → Wellness): enable toggle, LMP date picker, cycle length range inputs, saved via `api/save_period_pref.php`
 

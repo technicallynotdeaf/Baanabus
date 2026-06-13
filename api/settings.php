@@ -407,8 +407,8 @@ if ($database) {
           <div style="margin-top:0.6rem;font-size:0.78em;line-height:1.8;color:#555;">
             <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#e74c3c;margin-right:5px;vertical-align:middle;"></span>Bleeding</div>
             <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f0ad00;margin-right:5px;vertical-align:middle;"></span>Follicular</div>
-            <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2ecc71;margin-right:5px;vertical-align:middle;"></span>Luteal</div>
-            <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3498db;margin-right:5px;vertical-align:middle;"></span>Premenstrual</div>
+            <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2ecc71;margin-right:5px;vertical-align:middle;"></span>Ovulatory</div>
+            <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3498db;margin-right:5px;vertical-align:middle;"></span>Luteal</div>
           </div>
         </div>
       </div>

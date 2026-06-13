@@ -1269,29 +1269,36 @@ function getCyclePhase(): ?array {
 
     $day = ($elapsed % $avg) + 1;
 
+    // Ovulation estimated at cycle_length − 14; clamped so it falls after bleeding.
+    $ov         = max(5, $avg - 14);
+    $greenStart = max(5, $ov - 2); // 2 days before ovulation
+    $greenEnd   = $ov + 2;         // 2 days after ovulation (5-day window)
+
     if ($day <= 4)
         return ['phase' => 'bleeding',     'label' => 'Bleeding',     'colour' => '#e74c3c', 'day' => $day, 'cycle_length' => $avg];
-    if ($avg - 14 > 4 && $day <= $avg - 14)
+    if ($greenStart > 5 && $day < $greenStart)
         return ['phase' => 'follicular',   'label' => 'Follicular',   'colour' => '#f0ad00', 'day' => $day, 'cycle_length' => $avg];
-    if ($day <= $avg - 5)
-        return ['phase' => 'luteal',       'label' => 'Luteal',       'colour' => '#2ecc71', 'day' => $day, 'cycle_length' => $avg];
-    return     ['phase' => 'premenstrual', 'label' => 'Premenstrual', 'colour' => '#3498db', 'day' => $day, 'cycle_length' => $avg];
+    if ($day <= $greenEnd)
+        return ['phase' => 'ovulatory',    'label' => 'Ovulatory',    'colour' => '#2ecc71', 'day' => $day, 'cycle_length' => $avg];
+    return     ['phase' => 'luteal',       'label' => 'Luteal',       'colour' => '#3498db', 'day' => $day, 'cycle_length' => $avg];
 }
 
-// Returns all four phase arcs as [{colour, startDay, endDay}] for the given average cycle length.
-// Boundaries match getCyclePhase() exactly; zero-length phases are omitted.
+// Returns phase arc definitions [{colour, startDay, endDay}] matching getCyclePhase() boundaries.
+// Zero-length phases omitted.
 function getCyclePhases(int $avg): array {
-    $ovEnd = max(4, $avg - 14); // end of follicular (= ovulation day)
-    $ltEnd = max($ovEnd, $avg - 5); // end of main luteal
+    $ov         = max(5, $avg - 14);
+    $greenStart = max(5, $ov - 2);
+    $greenEnd   = min($ov + 2, $avg);
+    $blueStart  = max(5, $greenEnd + 1);
 
     $phases = [];
     $phases[] = ['colour' => '#e74c3c', 'startDay' => 1,          'endDay' => 4];
-    if ($ovEnd > 4)
-        $phases[] = ['colour' => '#f0ad00', 'startDay' => 5,       'endDay' => $ovEnd];
-    if ($ltEnd > $ovEnd)
-        $phases[] = ['colour' => '#2ecc71', 'startDay' => $ovEnd + 1, 'endDay' => $ltEnd];
-    if ($avg > $ltEnd)
-        $phases[] = ['colour' => '#3498db', 'startDay' => $ltEnd + 1, 'endDay' => $avg];
+    if ($greenStart > 5)
+        $phases[] = ['colour' => '#f0ad00', 'startDay' => 5,       'endDay' => $greenStart - 1];
+    if ($greenEnd >= $greenStart)
+        $phases[] = ['colour' => '#2ecc71', 'startDay' => $greenStart, 'endDay' => $greenEnd];
+    if ($avg >= $blueStart)
+        $phases[] = ['colour' => '#3498db', 'startDay' => $blueStart,  'endDay' => $avg];
     return $phases;
 }
 

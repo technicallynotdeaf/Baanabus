@@ -132,6 +132,27 @@ Log whole foods and close nutrient gaps — woven into the game loop, not bolted
 
 ---
 
+## M4.6 — Period & Fertility Tracking
+
+Cycle awareness woven into Baanabus's wellness layer — private, vault-only, no external sync.
+
+**Implemented (2026-06-14):**
+- ✅ **Vault storage** (`config['period_tracking']`): enabled flag, LMP date, cycle length min/max
+- ✅ **Phase calculation** (`getCyclePhase()` / `getCyclePhases()` in `config_helper.php`): four phases — bleeding (days 1–4, red), follicular (days 5 to avg−14, yellow), luteal (avg−14+1 to avg−5, green), premenstrual (last 5 days, blue). Ovulation estimated at cycle_length − 14 (luteal phase is a biological constant ~14 days).
+- ✅ **Cycle dial** (`js/cycle_dial.js`): clock-face canvas with coloured ring and a hand pointing to the current day. Small fixed dial (72px) on desktop, larger dial (120px) in Settings → Wellness with phase legend. `getCyclePhases()` provides arc definitions for JS.
+- ✅ **Settings UI** (Settings → Wellness): enable toggle, LMP date picker, cycle length range inputs, saved via `api/save_period_pref.php`
+
+**Up next — sympto-thermal / fertility awareness:**
+- [ ] **Symptom log** (`symptoms.enc`): daily entry for basal body temperature (BBT), cervical mucus type (dry/sticky/creamy/watery/egg-white), spotting, pain (cramp severity 0–5), mood, breast tenderness, headache. Tap-to-select only — no free text boxes.
+- [ ] **BBT chart**: canvas line chart of temperature over the cycle, overlaid on phase colour bands; shows the biphasic shift (temperature rise post-ovulation confirms luteal phase)
+- [ ] **Cervical mucus pattern display**: timeline of mucus types mapped to cycle days; "egg-white" peak marks likely fertility window
+- [ ] **Fertility window estimate**: highlight days ~5 before to 1 after estimated ovulation; adjusts estimate once BBT shift is observed (overrides calendar-only estimate)
+- [ ] **Speech bubble integration**: phase-aware prompts — e.g. on premenstrual days: "You might want to have supplies handy in the next day or two"; on follicular days: "You're likely at higher energy this week"
+- [ ] **Nutrient focus by phase**: surface phase-relevant nutrition nudges (iron + vitamin C during bleeding; B vitamins + magnesium in luteal; omega-3 for premenstrual)
+- [ ] **Retrospective LMP logging**: let user mark "period started today" from a prompt so LMP stays accurate without manual date entry
+
+---
+
 ## M5 — Storybook Rewards ✅ (first story complete)
 
 The long-term engagement layer.

@@ -1278,3 +1278,20 @@ function getCyclePhase(): ?array {
     return     ['phase' => 'premenstrual', 'label' => 'Premenstrual', 'colour' => '#3498db', 'day' => $day, 'cycle_length' => $avg];
 }
 
+// Returns all four phase arcs as [{colour, startDay, endDay}] for the given average cycle length.
+// Boundaries match getCyclePhase() exactly; zero-length phases are omitted.
+function getCyclePhases(int $avg): array {
+    $ovEnd = max(4, $avg - 14); // end of follicular (= ovulation day)
+    $ltEnd = max($ovEnd, $avg - 5); // end of main luteal
+
+    $phases = [];
+    $phases[] = ['colour' => '#e74c3c', 'startDay' => 1,          'endDay' => 4];
+    if ($ovEnd > 4)
+        $phases[] = ['colour' => '#f0ad00', 'startDay' => 5,       'endDay' => $ovEnd];
+    if ($ltEnd > $ovEnd)
+        $phases[] = ['colour' => '#2ecc71', 'startDay' => $ovEnd + 1, 'endDay' => $ltEnd];
+    if ($avg > $ltEnd)
+        $phases[] = ['colour' => '#3498db', 'startDay' => $ltEnd + 1, 'endDay' => $avg];
+    return $phases;
+}
+

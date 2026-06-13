@@ -27,6 +27,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/food_log.js?v=<?= filemtime(__DIR__ . '/js/food_log.js') ?>" defer></script>
   <script src="js/nutrition_progress.js?v=<?= filemtime(__DIR__ . '/js/nutrition_progress.js') ?>" defer></script>
   <script src="js/list_dailies.js?v=<?= filemtime(__DIR__ . '/js/list_dailies.js') ?>" defer></script>
+  <script src="js/cycle_dial.js?v=<?= filemtime(__DIR__ . '/js/cycle_dial.js') ?>" defer></script>
 </head>
 <body<?php
   $bodyClasses = [];
@@ -55,8 +56,12 @@ require_once __DIR__ . '/init.php';
         try {
             $morningModeActive = !empty(getMorningModeDailies());
         } catch (Throwable $e) {}
-        $cyclePhase = null;
-        try { $cyclePhase = getCyclePhase(); } catch (Throwable $e) {}
+        $cyclePhase  = null;
+        $cyclePhases = [];
+        try {
+            $cyclePhase = getCyclePhase();
+            if ($cyclePhase) $cyclePhases = getCyclePhases($cyclePhase['cycle_length']);
+        } catch (Throwable $e) {}
     }
   ?>
   <ul class="navbar">
@@ -88,13 +93,15 @@ require_once __DIR__ . '/init.php';
       <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
       <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
     </select>
-    <?php if (!empty($cyclePhase)): ?>
-    <span class="nav-context-sep">|</span>
-    <span class="cycle-phase-dot"
-          style="background:<?= htmlspecialchars($cyclePhase['colour']) ?>;"
-          title="<?= htmlspecialchars($cyclePhase['label']) ?> — day <?= $cyclePhase['day'] ?>"></span>
-    <?php endif; ?>
   </div>
+<?php if (!empty($cyclePhase) && !empty($cyclePhases)): ?>
+<canvas id="cycle-dial-nav"
+        style="width:72px;height:72px;"
+        data-cycle-dial
+        data-day="<?= $cyclePhase['day'] ?>"
+        data-cycle="<?= $cyclePhase['cycle_length'] ?>"
+        data-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"
+        title="<?= htmlspecialchars($cyclePhase['label']) ?> — day <?= $cyclePhase['day'] ?> of <?= $cyclePhase['cycle_length'] ?>"></canvas>
 <?php endif; ?>
 
 <div id="scene-tint"></div>

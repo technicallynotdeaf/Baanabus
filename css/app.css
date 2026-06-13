@@ -531,14 +531,16 @@ body.scene-view #scene-total-pips { display: block; }
 .nav-checkin-select:hover  { color: #fff; }
 .nav-checkin-select:focus  { color: #fff; }
 .night-mode .nav-checkin-select { color: #b8b8d8; }
-.cycle-phase-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
+#cycle-dial-nav {
+    display: none;
+    position: fixed;
+    top: 48px;
+    right: 8px;
     cursor: default;
+    opacity: 0.92;
+}
+@media (min-width: 601px) {
+    #cycle-dial-nav { display: block; }
 }
 #scene-energy {
     display: none;

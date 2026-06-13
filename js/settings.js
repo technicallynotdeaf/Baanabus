@@ -315,6 +315,13 @@ window.initSettings = function() {
     cb.addEventListener('change', saveGamePrefs);
   });
 
+  // ── Wellness: cycle dial ──────────────────────────────────────────
+  document.querySelectorAll('#tab-wellness canvas[data-cycle-dial]').forEach(function (c) {
+    if (typeof drawCycleDial === 'function') {
+      drawCycleDial(c, parseInt(c.dataset.day, 10), parseInt(c.dataset.cycle, 10), JSON.parse(c.dataset.phases));
+    }
+  });
+
   // ── Wellness: check-in toggle ──────────────────────────────────────
   const checkinToggle = document.getElementById('checkin-enabled');
   if (checkinToggle) {

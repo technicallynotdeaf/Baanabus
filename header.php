@@ -55,6 +55,8 @@ require_once __DIR__ . '/init.php';
         try {
             $morningModeActive = !empty(getMorningModeDailies());
         } catch (Throwable $e) {}
+        $cyclePhase = null;
+        try { $cyclePhase = getCyclePhase(); } catch (Throwable $e) {}
     }
   ?>
   <ul class="navbar">
@@ -86,6 +88,12 @@ require_once __DIR__ . '/init.php';
       <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
       <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
     </select>
+    <?php if (!empty($cyclePhase)): ?>
+    <span class="nav-context-sep">|</span>
+    <span class="cycle-phase-dot"
+          style="background:<?= htmlspecialchars($cyclePhase['colour']) ?>;"
+          title="<?= htmlspecialchars($cyclePhase['label']) ?> — day <?= $cyclePhase['day'] ?>"></span>
+    <?php endif; ?>
   </div>
 <?php endif; ?>
 

@@ -1250,3 +1250,31 @@ function addPhysicalObject(string $label, string $location = '', ?int $roomId = 
     return $data;
 }
 
+// ─── Cycle phase ─────────────────────────────────────────────────────────────
+
+function getCyclePhase(): ?array {
+    $cfg = getConfig() ?? [];
+    $pt  = $cfg['period_tracking'] ?? [];
+    if (empty($pt['enabled']) || empty($pt['lmp'])) return null;
+
+    $min = (int)($pt['cycle_min'] ?? 28);
+    $max = (int)($pt['cycle_max'] ?? 28);
+    $avg = max(14, min(60, (int)round(($min + $max) / 2)));
+
+    try {
+        $elapsed = (int)(new DateTime($pt['lmp']))->diff(new DateTime(date('Y-m-d')))->days;
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    $day = ($elapsed % $avg) + 1;
+
+    if ($day <= 4)
+        return ['phase' => 'bleeding',     'label' => 'Bleeding',     'colour' => '#e74c3c', 'day' => $day, 'cycle_length' => $avg];
+    if ($avg - 14 > 4 && $day <= $avg - 14)
+        return ['phase' => 'follicular',   'label' => 'Follicular',   'colour' => '#f0ad00', 'day' => $day, 'cycle_length' => $avg];
+    if ($day <= $avg - 5)
+        return ['phase' => 'luteal',       'label' => 'Luteal',       'colour' => '#2ecc71', 'day' => $day, 'cycle_length' => $avg];
+    return     ['phase' => 'premenstrual', 'label' => 'Premenstrual', 'colour' => '#3498db', 'day' => $day, 'cycle_length' => $avg];
+}
+

@@ -25,6 +25,10 @@ $periodEnabled  = (bool)($periodTracking['enabled']   ?? false);
 $periodLmp      = $periodTracking['lmp']       ?? '';
 $periodCycleMin = (int)($periodTracking['cycle_min'] ?? 28);
 $periodCycleMax = (int)($periodTracking['cycle_max'] ?? 28);
+$cyclePhase     = null;
+if ($vaultOpen && $periodEnabled && $periodLmp) {
+    try { $cyclePhase = getCyclePhase(); } catch (Throwable $e) {}
+}
 
 // Game preferences
 $allGames = [
@@ -386,6 +390,12 @@ if ($database) {
         <span>Track menstrual cycle</span>
         <input type="checkbox" id="period-tracking-enabled" <?= $periodEnabled ? 'checked' : '' ?>>
       </label>
+      <?php if ($cyclePhase): ?>
+      <p style="margin:0 0 0.6rem;font-size:0.9em;">
+        Today: <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<?= htmlspecialchars($cyclePhase['colour']) ?>;vertical-align:middle;margin-right:3px;border:1px solid rgba(0,0,0,0.12);"></span>
+        <strong><?= htmlspecialchars($cyclePhase['label']) ?></strong> &mdash; day <?= $cyclePhase['day'] ?> of <?= $cyclePhase['cycle_length'] ?>
+      </p>
+      <?php endif; ?>
       <div id="period-fields" <?= $periodEnabled ? '' : 'hidden' ?> style="margin-top:0.25rem;">
         <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:0.5rem;">
           <div>

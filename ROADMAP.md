@@ -148,7 +148,7 @@ Cycle awareness woven into Baanabus's wellness layer — private, vault-only, no
 - [ ] **Cervical mucus pattern display**: timeline of mucus types mapped to cycle days; "egg-white" peak marks likely fertility window
 - [ ] **Fertility window estimate**: highlight days ~5 before to 1 after estimated ovulation; adjusts estimate once BBT shift is observed (overrides calendar-only estimate)
 - [ ] **Speech bubble integration**: phase-aware prompts — e.g. on premenstrual days: "You might want to have supplies handy in the next day or two"; on follicular days: "You're likely at higher energy this week"
-- [ ] **Nutrient focus by phase**: surface phase-relevant nutrition nudges (iron + vitamin C during bleeding; B vitamins + magnesium in luteal; omega-3 for premenstrual)
+- [ ] **Nutrient focus by phase**: surface phase-relevant nutrition nudges (iron + vitamin C during follicular, when the endometrium is rebuilding; B vitamins + magnesium in luteal; omega-3 for premenstrual)
 - [ ] **Retrospective LMP logging**: let user mark "period started today" from a prompt so LMP stays accurate without manual date entry
 
 ---

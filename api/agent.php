@@ -1336,6 +1336,26 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'save_period_pref') {
+        try {
+            $cfg = getConfig() ?? [];
+            $pt  = $cfg['period_tracking'] ?? [];
+            if (array_key_exists('enabled', $body))
+                $pt['enabled'] = (bool)$body['enabled'];
+            if (array_key_exists('lmp', $body))
+                $pt['lmp'] = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$body['lmp']) ? $body['lmp'] : ($pt['lmp'] ?? null);
+            if (array_key_exists('cycle_min', $body))
+                $pt['cycle_min'] = max(14, min(60, (int)$body['cycle_min']));
+            if (array_key_exists('cycle_max', $body))
+                $pt['cycle_max'] = max(14, min(60, (int)$body['cycle_max']));
+            $cfg['period_tracking'] = $pt;
+            saveConfig($cfg);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'add_person') {
         $name    = trim($body['name'] ?? '');
         if (!$name) json_response(['error' => 'name required'], 400);

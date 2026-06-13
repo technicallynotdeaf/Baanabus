@@ -332,6 +332,52 @@ window.initSettings = function() {
     });
   }
 
+  // ── Wellness: period tracking ──────────────────────────────────────
+  const periodToggle   = document.getElementById('period-tracking-enabled');
+  const periodFields   = document.getElementById('period-fields');
+  const periodStatus   = document.getElementById('period-status');
+  const periodLmp      = document.getElementById('period-lmp');
+  const periodCycleMin = document.getElementById('period-cycle-min');
+  const periodCycleMax = document.getElementById('period-cycle-max');
+
+  async function savePeriodPref(payload) {
+    try {
+      const resp = await fetch('api/save_period_pref.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.ok && periodStatus) {
+        periodStatus.textContent = 'Saved.';
+        setTimeout(() => { if (periodStatus) periodStatus.textContent = ''; }, 2000);
+      }
+    } catch(e) {}
+  }
+
+  if (periodToggle) {
+    periodToggle.addEventListener('change', function() {
+      if (periodFields) periodFields.hidden = !this.checked;
+      savePeriodPref({ enabled: this.checked });
+    });
+  }
+
+  if (periodLmp) {
+    periodLmp.addEventListener('change', () => savePeriodPref({ lmp: periodLmp.value }));
+  }
+
+  let periodCycleTimer = null;
+  function savePeriodCycle() {
+    clearTimeout(periodCycleTimer);
+    periodCycleTimer = setTimeout(() => {
+      const min = parseInt(periodCycleMin.value, 10);
+      const max = parseInt(periodCycleMax.value, 10);
+      if (min > 0 && max >= min) savePeriodPref({ cycle_min: min, cycle_max: max });
+    }, 600);
+  }
+  if (periodCycleMin) periodCycleMin.addEventListener('input', savePeriodCycle);
+  if (periodCycleMax) periodCycleMax.addEventListener('input', savePeriodCycle);
+
   // ── Trivia: import study questions ────────────────────────────────
   const impBtn = document.getElementById('imp-btn');
   if (impBtn) {

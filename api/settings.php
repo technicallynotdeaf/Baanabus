@@ -20,6 +20,12 @@ $habiticaUser = $cassowary['habitica']['user_id'] ?? '';
 $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
 $checkinOn    = $cfg['checkin_enabled'] ?? true;
 
+$periodTracking = $cfg['period_tracking'] ?? [];
+$periodEnabled  = (bool)($periodTracking['enabled']   ?? false);
+$periodLmp      = $periodTracking['lmp']       ?? '';
+$periodCycleMin = (int)($periodTracking['cycle_min'] ?? 28);
+$periodCycleMax = (int)($periodTracking['cycle_max'] ?? 28);
+
 // Game preferences
 $allGames = [
     'gemMatch'    => 'Gem Match',
@@ -369,6 +375,38 @@ if ($database) {
     <?php elseif ($vaultOpen): ?>
     <div class="card">
       <p class="muted">No check-in data yet. Start each session with a check-in and it will appear here.</p>
+    </div>
+    <?php endif; ?>
+
+
+    <?php if ($vaultOpen): ?>
+    <div class="card" style="margin-top:1rem;">
+      <h3 style="margin-bottom:0.75rem;">Menstrual cycle</h3>
+      <label class="settings-toggle-row" style="margin-bottom:0.75rem;">
+        <span>Track menstrual cycle</span>
+        <input type="checkbox" id="period-tracking-enabled" <?= $periodEnabled ? 'checked' : '' ?>>
+      </label>
+      <div id="period-fields" <?= $periodEnabled ? '' : 'hidden' ?> style="margin-top:0.25rem;">
+        <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+          <div>
+            <label style="font-size:0.82em;color:#555;display:block;margin-bottom:3px;">Last period started</label>
+            <input type="date" id="period-lmp" value="<?= htmlspecialchars($periodLmp) ?>"
+                   style="padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.95em;">
+          </div>
+          <div>
+            <label style="font-size:0.82em;color:#555;display:block;margin-bottom:3px;">Cycle length (days)</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="period-cycle-min" min="14" max="60" value="<?= $periodCycleMin ?>"
+                     style="width:60px;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.95em;">
+              <span style="color:#888;font-size:0.9em;">to</span>
+              <input type="number" id="period-cycle-max" min="14" max="60" value="<?= $periodCycleMax ?>"
+                     style="width:60px;padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.95em;">
+              <span style="color:#888;font-size:0.9em;">days</span>
+            </div>
+          </div>
+        </div>
+        <p id="period-status" class="muted" style="min-height:1.2em;font-size:0.85em;"></p>
+      </div>
     </div>
     <?php endif; ?>
 

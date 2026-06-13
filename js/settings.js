@@ -12,6 +12,14 @@ window.initSettings = function() {
     });
   });
 
+  // Activate a specific tab if requested (e.g. ?tab=wellness from scene click)
+  const _root       = document.querySelector('[data-init="initSettings"]');
+  const _defaultTab = _root && _root.dataset.defaultTab;
+  if (_defaultTab && _defaultTab !== 'account') {
+    const _btn = document.querySelector('.settings-tab[data-tab="' + _defaultTab + '"]');
+    if (_btn) _btn.click();
+  }
+
   // ── Account: Nickname ──────────────────────────────────────────────
   const nicknameForm = document.getElementById('nickname-form');
   if (nicknameForm) {

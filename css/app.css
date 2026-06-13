@@ -472,7 +472,7 @@ body.scene-view #scene-total-pips { display: block; }
 #scene-clock {
     position: fixed;
     left: calc(83% + 15px);
-    top: 28%;
+    top: 40%;
     transform: translateY(-50%);
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: clamp(1rem, 2.9vw, 2.9rem);

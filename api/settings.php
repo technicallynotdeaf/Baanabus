@@ -140,7 +140,7 @@ if ($database) {
     } catch (Throwable $e) {}
 }
 ?>
-<div data-init="initSettings">
+<div data-init="initSettings" data-default-tab="<?= htmlspecialchars($_GET['tab'] ?? 'account') ?>">
   <h2 style="margin-bottom:0.75rem;">Settings</h2>
 
   <div class="settings-tabs" role="tablist">

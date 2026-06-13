@@ -4,7 +4,18 @@ $storyStarted    = false;
 $badgeIds        = [];
 $storyBooksAvail = [];
 $objectsOut      = false;
+$cycleDay        = 0;
+$cycleLen        = 0;
+$cyclePhases     = [];
 if (isUnlocked()) {
+    try {
+        $cp = getCyclePhase();
+        if ($cp) {
+            $cycleDay    = $cp['day'];
+            $cycleLen    = $cp['cycle_length'];
+            $cyclePhases = getCyclePhases($cycleLen);
+        }
+    } catch (Throwable $e) {}
     try {
         $paperCount   = count(getInboxTasks());
         $storyStarted = true;
@@ -35,7 +46,10 @@ if (isUnlocked()) {
   data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"
   data-story-books-exist="<?= htmlspecialchars(json_encode($storyBooksExist ?? []), ENT_QUOTES) ?>"
   data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
-  data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"></canvas>
+  data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"
+  data-cycle-day="<?= $cycleDay ?>"
+  data-cycle-len="<?= $cycleLen ?>"
+  data-cycle-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"></canvas>
 
 <?php
 $pageCount    = 0;

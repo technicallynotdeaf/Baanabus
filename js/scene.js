@@ -9,6 +9,10 @@
     const STORY_BOOKS_EXIST   = JSON.parse(canvas.dataset.storyBooksExist || '[]');
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
+    const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
+    const CYCLE_LEN           = parseInt(canvas.dataset.cycleLen,  10) || 0;
+    const CYCLE_PHASES        = JSON.parse(canvas.dataset.cyclePhases || '[]');
+    const HAS_CYCLE           = CYCLE_DAY > 0 && CYCLE_LEN > 0 && CYCLE_PHASES.length > 0;
 
     const STORY_BOOKS = [
         { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
@@ -42,6 +46,8 @@
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
     let chestBounds       = null;
+    let calendarBounds    = null;
+    let cycleDial         = null; // { cx, cy, rx, ry, quad }
 
     function frand(s) { return ((Math.sin(s * 91.3 + 217.5) * 53758.5) % 1 + 1) % 1; }
 
@@ -368,7 +374,7 @@
     function drawNoticeBoard(ctx, iL, iW, iT, flY, h, w, earnedIds) {
         const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const t1  = 0.20, t2 = 0.58;
-        const v1  = 0.46, v2 = 0.67;
+        const v1  = 0.52, v2 = 0.74;
         const pad = 0.025;
 
         // Frame
@@ -699,6 +705,199 @@
         ctx.fillRect(bx - bw * 0.3, bodyY - 6, bw * 1.6, bh * 0.55);
     }
 
+    function drawWallMiniCalendar(ctx, iL, iW, iT, flY, h, w) {
+        const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
+        const t1  = 0.22, t2 = 0.58, v1 = 0.09, v2 = 0.26;
+        const pad = 0.025;
+
+        // Frame shadow
+        const fTL = rp(t1-pad, v1-pad), fTR = rp(t2+pad, v1-pad);
+        const fBL = rp(t1-pad, v2+pad), fBR = rp(t2+pad, v2+pad);
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        quadPath(ctx, [fTL[0]+2,fTL[1]+2],[fTR[0]+2,fTR[1]+2],[fBL[0]+2,fBL[1]+2],[fBR[0]+2,fBR[1]+2]);
+        ctx.fill();
+
+        // Wooden frame
+        ctx.fillStyle = '#5a3820';
+        quadPath(ctx, fTL, fTR, fBL, fBR);
+        ctx.fill();
+
+        // Paper background
+        const TL = rp(t1, v1), TR = rp(t2, v1);
+        const BL = rp(t1, v2), BR = rp(t2, v2);
+        ctx.fillStyle = '#f5f2e8';
+        quadPath(ctx, TL, TR, BL, BR);
+        ctx.fill();
+
+        calendarBounds = [TL, TR, BR, BL];
+
+        const bp = (s, t) => bilerp(TL, TR, BL, BR, s, t);
+
+        // Red header band
+        const hBL = rp(t1, v1 + 0.048), hBR = rp(t2, v1 + 0.048);
+        ctx.fillStyle = '#c0392b';
+        quadPath(ctx, TL, TR, hBL, hBR);
+        ctx.fill();
+
+        // Approximate frame size for font scaling
+        const frameW = Math.abs(TL[0] - TR[0]);
+        const frameH = Math.abs(BL[1] - TL[1]);
+        const fSize  = Math.max(5, Math.round(Math.min(frameW / 9, frameH / 11)));
+
+        // Month label in header
+        const now    = new Date();
+        const mLabel = now.toLocaleString('en-AU', { month: 'short' }).toUpperCase()
+                     + ' ' + String(now.getFullYear()).slice(-2);
+        const hCtr   = bp(0.5, 0.024);
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold ' + fSize + 'px sans-serif';
+        ctx.fillText(mLabel, hCtr[0], hCtr[1]);
+
+        // Day-of-week labels (Mon first)
+        const DLABELS = ['M','T','W','T','F','S','S'];
+        ctx.font = (fSize - 1) + 'px sans-serif';
+        ctx.fillStyle = '#888';
+        for (var c = 0; c < 7; c++) {
+            var lp = bp((c + 0.5) / 7, 0.26);
+            ctx.fillText(DLABELS[c], lp[0], lp[1]);
+        }
+
+        // Thin rule under day labels
+        var rL = bp(0.02, 0.33), rR = bp(0.98, 0.33);
+        ctx.strokeStyle = '#ddd9c8';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(rL[0], rL[1]); ctx.lineTo(rR[0], rR[1]); ctx.stroke();
+
+        // Date numbers
+        var year     = now.getFullYear();
+        var month    = now.getMonth();
+        var today    = now.getDate();
+        var firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // 0=Mon
+        var daysInM  = new Date(year, month + 1, 0).getDate();
+        var day      = 1;
+        ctx.font = (fSize - 1) + 'px sans-serif';
+        for (var row = 0; row < 6; row++) {
+            for (c = 0; c < 7; c++) {
+                if (row * 7 + c < firstDay || day > daysInM) continue;
+                var s  = (c + 0.5) / 7;
+                var tv = 0.38 + row * 0.104;
+                var dp = bp(s, tv);
+                if (day === today) {
+                    ctx.fillStyle = '#c0392b';
+                    ctx.beginPath();
+                    ctx.arc(dp[0], dp[1], Math.max(3, fSize * 0.6), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                } else {
+                    ctx.fillStyle = c >= 5 ? '#aaa' : '#333';
+                }
+                ctx.fillText(String(day), dp[0], dp[1]);
+                day++;
+            }
+        }
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+    }
+
+    function drawWallCycleDial(ctx, iL, iW, iT, flY, h, w) {
+        if (!HAS_CYCLE) { cycleDial = null; return; }
+        const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
+        const t1  = 0.60, t2 = 0.88, v1 = 0.09, v2 = 0.26;
+        const pad = 0.025;
+
+        // Frame shadow (circle implied)
+        const TL = rp(t1, v1), TR = rp(t2, v1);
+        const BL = rp(t1, v2), BR = rp(t2, v2);
+        const bp = (s, t) => bilerp(TL, TR, BL, BR, s, t);
+
+        const ctr = bp(0.5, 0.5);
+        const cx  = ctr[0], cy = ctr[1];
+        const rx  = Math.abs(bp(1, 0.5)[0] - bp(0, 0.5)[0]) / 2;
+        const ry  = Math.abs(bp(0.5, 1)[1] - bp(0.5, 0)[1]) / 2;
+
+        cycleDial = { cx: cx, cy: cy, rx: rx, ry: ry, quad: [TL, TR, BR, BL] };
+
+        const OUTER = 0.92, INNER = 0.58;
+        const iRatio = INNER / OUTER;
+
+        // Frame ring shadow
+        ctx.save();
+        ctx.translate(cx + 2, cy + 2);
+        ctx.scale(rx * OUTER, ry * OUTER);
+        ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+
+        // Background disc
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(rx * OUTER, ry * OUTER);
+        ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fillStyle = '#ede8e0';
+        ctx.fill();
+
+        // Phase donut arcs
+        var START = -Math.PI / 2;
+        CYCLE_PHASES.forEach(function (p) {
+            var a1 = START + (p.startDay - 1) / CYCLE_LEN * 2 * Math.PI;
+            var a2 = START + p.endDay        / CYCLE_LEN * 2 * Math.PI;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(rx * OUTER, ry * OUTER);
+            ctx.beginPath();
+            ctx.arc(0, 0, 1,       a1, a2);
+            ctx.arc(0, 0, iRatio,  a2, a1, true);
+            ctx.closePath();
+            ctx.restore();
+            ctx.fillStyle = p.colour;
+            ctx.fill();
+        });
+
+        // Inner cream disc
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(rx * INNER, ry * INNER);
+        ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fillStyle = '#f7f3ed';
+        ctx.fill();
+
+        // Outer border
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(rx * OUTER, ry * OUTER);
+        ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Hand
+        var handAngle = START + (CYCLE_DAY - 0.5) / CYCLE_LEN * 2 * Math.PI;
+        ctx.strokeStyle = '#2c2c2c';
+        ctx.lineWidth   = Math.max(1, Math.round(Math.min(rx, ry) * 0.10));
+        ctx.lineCap     = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + rx * 0.80 * Math.cos(handAngle),
+                   cy + ry * 0.80 * Math.sin(handAngle));
+        ctx.stroke();
+
+        // Centre dot
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(rx * 0.13, ry * 0.13);
+        ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2);
+        ctx.restore();
+        ctx.fillStyle = '#2c2c2c';
+        ctx.fill();
+    }
+
     function updateBackground() {
         const canvas = document.getElementById('sceneCanvas');
         const ctx    = canvas.getContext('2d');
@@ -772,13 +971,17 @@
         // Desktop-only decorations: window on left wall, table + lamp on right
         if (width > 640) {
             const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
-            drawWindow      (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
-            drawKitchenDoor (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
-            drawTableAndLamp(ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
-            drawNoticeBoard (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, BADGE_IDS);
+            drawWindow          (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
+            drawKitchenDoor     (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
+            drawTableAndLamp    (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
+            drawNoticeBoard     (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, BADGE_IDS);
+            drawWallMiniCalendar(ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
+            drawWallCycleDial   (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
         } else {
             boardBounds = null;
             kitchenDoorBounds = null;
+            calendarBounds = null;
+            cycleDial      = null;
         }
 
         drawPapers(ctx, PAPERS, width, height, floorY);
@@ -821,6 +1024,14 @@
             window.location.href = 'scene_kitchen.php';
             return;
         }
+        if (calendarBounds && ptInQuad(cx, cy, calendarBounds)) {
+            window.location.href = 'scene2.php';
+            return;
+        }
+        if (cycleDial && ptInQuad(cx, cy, cycleDial.quad)) {
+            loadOverlay('api/settings.php?tab=wellness');
+            return;
+        }
         if (ptInQuad(cx, cy, boardBounds)) {
             loadOverlay('api/badges.php');
             return;
@@ -843,6 +1054,8 @@
         const cy   = e.clientY - rect.top;
         const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
+            || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
+            || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))
             || inRect(cx, cy, toyboxBounds)
             || inRect(cx, cy, chestBounds)
             || onBook;

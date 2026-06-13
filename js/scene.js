@@ -256,88 +256,6 @@
         }
     }
 
-    function drawTableAndLamp(ctx, iL, iW, iT, flY, h, w, lampOn) {
-        const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
-
-        // v=1.0 is the floor. Table occupies the bottom ~12% of room height.
-        // Depth: t=0 is viewer's edge, t=1 is back wall. Table sits around t=0.35–0.65.
-        const t1 = 0.28, t2 = 0.62, tMid = (t1 + t2) * 0.5;
-        const vFloor   = 1.0;
-        const vTableTop = 0.88;  // table top = 12% of room height above floor
-        const vApron   = 0.905; // thin front apron below tabletop
-
-        // Shadow on floor
-        const fc = rp(tMid, vFloor);
-        ctx.fillStyle = 'rgba(0,0,0,0.10)';
-        ctx.beginPath();
-        ctx.ellipse(fc[0], fc[1], (rp(t1,vFloor)[0]-rp(t2,vFloor)[0])*0.4, 5, 0, 0, Math.PI*2);
-        ctx.fill();
-
-        // Front face: from apron to floor (the visible front panel + legs implied)
-        const apTL = rp(t1, vApron), apTR = rp(t2, vApron);
-        const apBL = rp(t1, vFloor), apBR = rp(t2, vFloor);
-        ctx.fillStyle = '#5a3c1e';
-        quadPath(ctx, apTL, apTR, apBL, apBR); ctx.fill();
-
-        // Legs (slightly darker, over the front face)
-        const legW = 5;
-        ctx.fillStyle = '#3d2410';
-        [t1, t2].forEach(t => {
-            const lt = rp(t, vApron), lb = rp(t, vFloor);
-            ctx.fillRect(lt[0] - legW, lt[1], legW * 2, lb[1] - lt[1]);
-        });
-
-        // Tabletop surface
-        const ttTL = rp(t1, vTableTop), ttTR = rp(t2, vTableTop);
-        const ttBL = rp(t1, vApron),    ttBR = rp(t2, vApron);
-        const tg = ctx.createLinearGradient(ttTL[0], ttTL[1], ttBL[0], ttBL[1]);
-        tg.addColorStop(0, '#9a7040'); tg.addColorStop(1, '#7a5828');
-        ctx.fillStyle = tg;
-        quadPath(ctx, ttTL, ttTR, ttBL, ttBR); ctx.fill();
-
-        // Tabletop edge highlight
-        ctx.fillStyle = '#b08848';
-        quadPath(ctx, ttTL, ttTR, [ttTL[0],ttTL[1]+3], [ttTR[0],ttTR[1]+3]); ctx.fill();
-
-        // --- Lamp ---
-        const lbase  = rp(tMid, vTableTop);
-        const vLampT = vTableTop - 0.065;        // lamp is 6.5% of room height tall
-        const ltop   = rp(tMid, vLampT);
-        const poleH  = lbase[1] - ltop[1];
-        const scale  = 0.7 + (1 - tMid) * 0.3;
-        const sw     = Math.round(42 * scale);
-        const sh     = Math.round(poleH * 0.42);
-        const shadeY = ltop[1];
-
-        ctx.fillStyle = '#3a3a3a';
-        ctx.fillRect(lbase[0] - 2, ltop[1], 4, poleH);
-
-        ctx.fillStyle = lampOn ? '#d9a84e' : '#7a7060';
-        ctx.beginPath();
-        ctx.moveTo(lbase[0] - sw*0.30, shadeY);
-        ctx.lineTo(lbase[0] + sw*0.30, shadeY);
-        ctx.lineTo(lbase[0] + sw*0.50, shadeY + sh);
-        ctx.lineTo(lbase[0] - sw*0.50, shadeY + sh);
-        ctx.closePath(); ctx.fill();
-
-        ctx.fillStyle = lampOn ? 'rgba(255,220,130,0.28)' : 'rgba(255,255,255,0.07)';
-        ctx.beginPath();
-        ctx.moveTo(lbase[0]-sw*0.30, shadeY);
-        ctx.lineTo(lbase[0]-sw*0.30+sw*0.14, shadeY);
-        ctx.lineTo(lbase[0]-sw*0.50+sw*0.13, shadeY+sh);
-        ctx.lineTo(lbase[0]-sw*0.50, shadeY+sh);
-        ctx.closePath(); ctx.fill();
-
-        if (lampOn) {
-            const gr = ctx.createRadialGradient(lbase[0], shadeY+sh, 0, lbase[0], shadeY+sh, sw*2.2);
-            gr.addColorStop(0, 'rgba(255,196,80,0.30)');
-            gr.addColorStop(0.5, 'rgba(255,196,80,0.10)');
-            gr.addColorStop(1, 'rgba(255,196,80,0)');
-            ctx.fillStyle = gr;
-            ctx.beginPath(); ctx.arc(lbase[0], shadeY+sh, sw*2.2, 0, Math.PI*2); ctx.fill();
-        }
-    }
-
     function drawKitchenDoor(ctx, iL, iW, iT, flY, h, w) {
         const rp = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const TL = rp(0, 0.28), TR = rp(0.13, 0.28);
@@ -968,12 +886,11 @@
         drawToybox(ctx, startX, itemY, itemW, itemH, OBJECTS_OUT);
         drawTreasureChest(ctx, startX + itemW + itemGap, itemY, itemW, itemH, OBJECTS_RESOLVED);
 
-        // Desktop-only decorations: window on left wall, table + lamp on right
+        // Desktop-only decorations: window on left wall
         if (width > 640) {
-            const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false, isLampOn: false };
+            const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false };
             drawWindow          (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isNight);
             drawKitchenDoor     (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
-            drawTableAndLamp    (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, info.isLampOn);
             drawNoticeBoard     (ctx, innerLeft, innerWidth, innerTop, floorY, height, width, BADGE_IDS);
             drawWallMiniCalendar(ctx, innerLeft, innerWidth, innerTop, floorY, height, width);
             drawWallCycleDial   (ctx, innerLeft, innerWidth, innerTop, floorY, height, width);

@@ -44,11 +44,12 @@ if ($dailyId !== null) {
     $isDone = in_array($dailyId, $done, true);
 
     $horizonOpts  = ['morning' => 'Morning', 'day' => 'Day', 'evening' => 'Evening'];
-    $locationOpts = ['' => 'Anywhere', 'home' => 'Home', 'work' => 'Work', 'shops' => 'Shops', 'phone' => 'Phone', 'online' => 'Online'];
+    $locationOpts = ['home' => 'Home', 'work' => 'Work', 'shops' => 'Shops', 'phone' => 'Phone', 'online' => 'Online'];
     $dayKeys      = ['m' => 'Mon', 't' => 'Tue', 'w' => 'Wed', 'th' => 'Thu', 'f' => 'Fri', 's' => 'Sat', 'su' => 'Sun'];
 
     $currentHorizon = $item['horizon'] ?? (($item['morning'] ?? false) ? 'morning' : 'day');
-    $currentLoc     = $item['location']        ?? '';
+    $raw            = $item['location'] ?? null;
+    $currentLocs    = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
     $currentFreq    = $item['frequency']       ?? 'daily';
     $currentRepeat  = $item['repeat']          ?? [];
     $currentRA      = $item['relevant_after']  ?? '';
@@ -100,13 +101,19 @@ if ($dailyId !== null) {
         </div>
       </div>
 
-      <div class="daily-field-row">
-        <label>Location</label>
-        <select id="dd-location">
+      <div class="daily-field-row" style="align-items:flex-start;">
+        <label style="padding-top:2px;">Location</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
           <?php foreach ($locationOpts as $val => $lbl): ?>
-            <option value="<?= $val ?>"<?= $currentLoc === $val ? ' selected' : '' ?>><?= $lbl ?></option>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;cursor:pointer;font-weight:normal;">
+              <input type="checkbox" data-location="<?= $val ?>"<?= in_array($val, $currentLocs, true) ? ' checked' : '' ?>>
+              <?= $lbl ?>
+            </label>
           <?php endforeach; ?>
-        </select>
+          <?php if (empty($currentLocs)): ?>
+            <span style="font-size:0.78em;color:#aaa;align-self:center;">(anywhere)</span>
+          <?php endif; ?>
+        </div>
       </div>
 
       <div class="daily-field-row">
@@ -160,7 +167,10 @@ if ($dailyId !== null) {
 
     $sep = "\xE2\x80\x93"; // en-dash UTF-8
     function dailyRowTags(array $d, array $locationLabels, string $sep): array {
-        $loc      = $locationLabels[$d['location'] ?? ''] ?? null;
+        $raw    = $d['location'] ?? null;
+        $locs   = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
+        $labels = array_filter(array_map(fn($l) => $locationLabels[$l] ?? null, $locs));
+        $loc    = $labels ? implode(', ', $labels) : null;
         $ra       = $d['relevant_after']   ?? '';
         $ia       = $d['irrelevant_after'] ?? '';
         $timeGate = ($ra || $ia) ? trim("{$ra}{$sep}{$ia}", $sep) : null;

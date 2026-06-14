@@ -25,7 +25,7 @@ try {
 
         $allowedHorizons = ['morning', 'day', 'evening'];
         $allowedFreqs    = ['daily', 'weekly'];
-        $allowedLocs     = ['', 'home', 'work', 'shops', 'phone', 'online'];
+        $allowedLocs     = ['home', 'work', 'shops', 'phone', 'online'];
         $dayKeys         = ['su', 'm', 't', 'w', 'th', 'f', 's'];
 
         if (isset($body['horizon']) && in_array($body['horizon'], $allowedHorizons, true)) {
@@ -43,8 +43,10 @@ try {
             foreach ($dayKeys as $k) $repeat[$k] = !empty($body['repeat'][$k]);
             $item['repeat'] = $repeat;
         }
-        if (array_key_exists('location', $body) && in_array($body['location'] ?? '', $allowedLocs, true)) {
-            $item['location'] = ($body['location'] !== '') ? $body['location'] : null;
+        if (array_key_exists('location', $body)) {
+            $raw  = $body['location'] ?? [];
+            $locs = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
+            $item['location'] = array_values(array_filter($locs, fn($l) => in_array($l, $allowedLocs, true)));
         }
         if (array_key_exists('relevant_after', $body)) {
             $ra = trim((string)($body['relevant_after'] ?? ''));

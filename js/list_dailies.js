@@ -61,6 +61,9 @@ window.initDailyDetail = function() {
     const raVal = document.getElementById('dd-relevant-after').value;
     const iaVal = document.getElementById('dd-irrelevant-after').value;
 
+    const locations = Array.from(document.querySelectorAll('[data-location]:checked'))
+                          .map(cb => cb.dataset.location);
+
     fetch('api/daily_action.php', {
       method:  'POST',
       headers: {'Content-Type': 'application/json'},
@@ -71,7 +74,7 @@ window.initDailyDetail = function() {
         frequency:        freq,
         everyX:           parseInt(document.getElementById('dd-everyx').value, 10) || 1,
         repeat:           freq === 'weekly' ? repeat : undefined,
-        location:         document.getElementById('dd-location').value,
+        location:         locations,
         relevant_after:   raVal || null,
         irrelevant_after: iaVal || null,
       }),

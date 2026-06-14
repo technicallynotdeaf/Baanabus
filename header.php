@@ -117,4 +117,5 @@ require_once __DIR__ . '/init.php';
   <div id="speechBubble-body" class="speechBubble-content"></div>
   <span id="close-speechBubble" class="close-button">&times;</span>
 </div>
+<?php endif; ?>
 

@@ -84,9 +84,7 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
             <button style="<?= $btnStyle ?>color:#4a7c59;border-color:#c3d9c9;"
                     onclick="window._doneFromDay(<?= $id ?>, this)">Done</button>
             <button style="<?= $btnStyle ?>"
-                    onclick="window._snoozeFromDay(<?= $id ?>, this, 'tomorrow')">Tomorrow</button>
-            <button style="<?= $btnStyle ?>"
-                    onclick="window._snoozeFromDay(<?= $id ?>, this, 'week')">Next week</button>
+                    onclick="window._showSnoozePicker(<?= $id ?>, this)">Snooze</button>
             <?php if (!$isPast && !$isWoke): ?>
               <button style="<?= $btnStyle ?>color:#c06060;border-color:#e8cccc;"
                       onclick="window._removeFromDay(<?= $id ?>, '<?= $date ?>')">Remove</button>

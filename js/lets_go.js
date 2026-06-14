@@ -90,10 +90,9 @@ window.initLetsGo = function() {
     c.innerHTML = `
       <p style="font-size:0.8em;color:#aaa;margin-bottom:0.4rem;">Woke from snooze today${more}</p>
       <p style="margin-bottom:0.85rem;">${esc(d.title)}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="action-button" onclick="_mrToday(${d.id})">On today's list</button>
-        <button class="action-button" onclick="_mrSnooze(${d.id},'tomorrow')">Tomorrow</button>
-        <button class="action-button" onclick="_mrSnooze(${d.id},'week')">Next week</button>
+        <button class="action-button" onclick="_mrShowSnooze(${d.id}, this)">Snooze</button>
         <button class="action-button" onclick="_mrDone(${d.id})">Done</button>
       </div>`;
     window._mrToday = function(id) {
@@ -102,10 +101,46 @@ window.initLetsGo = function() {
         body: JSON.stringify({task_id: id, scheduled_date: today})})
         .then(() => loadSpeechBubble('lets-go.php'));
     };
-    window._mrSnooze = function(id, when) {
-      fetch('api/task_action.php', {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({task_id: id, action: 'snooze', when})})
-        .then(() => loadSpeechBubble('lets-go.php'));
+    window._mrShowSnooze = function(id, btn) {
+      document.querySelectorAll('.mr-snooze-picker').forEach(p => p.remove());
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const fmtISO   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const fmtShort = d => `${dayNames[d.getDay()]} ${d.getDate()}`;
+      const opts = [];
+      for (let i = 1; i <= 4; i++) {
+        const dt = new Date(today); dt.setDate(today.getDate() + i);
+        opts.push([fmtShort(dt), fmtISO(dt)]);
+      }
+      const nextMon = new Date(today); nextMon.setDate(today.getDate() + 5);
+      while (nextMon.getDay() !== 1) nextMon.setDate(nextMon.getDate() + 1);
+      opts.push([`Mon ${nextMon.getDate()}`, fmtISO(nextMon)]);
+      opts.push(['In a month', '1month']);
+      opts.push(['After payday', 'payday']);
+      opts.push(['In 2 months', '2months']);
+      opts.push(['Someday/maybe', 'someday']);
+      const picker = document.createElement('div');
+      picker.className = 'mr-snooze-picker';
+      picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;';
+      opts.forEach(([label, when]) => {
+        const b = document.createElement('button');
+        b.className = 'action-button';
+        b.style.cssText = when === 'someday'
+          ? 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;'
+          : 'padding:3px 8px;font-size:0.75em;min-height:28px;';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          picker.querySelectorAll('button').forEach(x => x.disabled = true);
+          const body = when === 'someday'
+            ? {task_id: id, action: 'someday'}
+            : {task_id: id, action: 'snooze', when};
+          fetch('api/task_action.php', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(body)})
+            .then(() => loadSpeechBubble('lets-go.php'));
+        });
+        picker.appendChild(b);
+      });
+      btn.closest('div').after(picker);
     };
     window._mrDone = function(id) {
       fetch('api/mark_complete.api.php?task_id=' + id, {method:'POST'})

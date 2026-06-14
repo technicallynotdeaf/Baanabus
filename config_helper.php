@@ -252,7 +252,18 @@ function getTasks(): array {
     if (!$nonce || !$ct) throw new Exception('Tasks: corrupt file');
     $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
     if ($plain === false) throw new Exception('Tasks decrypt failed');
-    return json_decode($plain, true) ?? _defaultTasks();
+    $data = json_decode($plain, true) ?? _defaultTasks();
+    $now  = time();
+    $dirty = false;
+    foreach ($data['tasks'] as &$t) {
+        if (!empty($t['snoozed_until']) && strtotime($t['snoozed_until']) <= $now) {
+            $t['snoozed_until'] = null;
+            $dirty = true;
+        }
+    }
+    unset($t);
+    if ($dirty) saveTasks($data);
+    return $data;
 }
 
 function saveTasks(array $data): void {

@@ -36,6 +36,7 @@ window.initLetsGo = function() {
       case 'task':           renderTask(d);          break;
       case 'return_welcome':   renderReturnWelcome(d);   break;
       case 'comeback_callout': renderComebackCallout(d); break;
+      case 'morning_review':   renderMorningReview(d);   break;
       case 'fun_task':       renderFunTask(d);       break;
       case 'easy_task':      renderEasyTask(d);      break;
       case 'joke':           renderJoke(d);          break;
@@ -82,6 +83,38 @@ window.initLetsGo = function() {
           <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
         </div>${pagesHint}`;
     }
+  }
+
+  function renderMorningReview(d) {
+    const more = d.remaining > 1 ? ` <span style="font-size:0.82em;color:#aaa;">(${d.remaining} to review)</span>` : '';
+    c.innerHTML = `
+      <p style="font-size:0.8em;color:#aaa;margin-bottom:0.4rem;">Woke from snooze today${more}</p>
+      <p style="margin-bottom:0.85rem;">${esc(d.title)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" onclick="_mrToday(${d.id})">On today's list</button>
+        <button class="action-button" onclick="_mrSnooze(${d.id},'tomorrow')">Tomorrow</button>
+        <button class="action-button" onclick="_mrSnooze(${d.id},'week')">Next week</button>
+        <button class="action-button" onclick="_mrDone(${d.id})">Done</button>
+      </div>`;
+    window._mrToday = function(id) {
+      const today = new Date().toISOString().slice(0,10);
+      fetch('api/schedule_task.php', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({task_id: id, scheduled_date: today})})
+        .then(() => loadSpeechBubble('lets-go.php'));
+    };
+    window._mrSnooze = function(id, when) {
+      fetch('api/task_action.php', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({task_id: id, action: 'snooze', when})})
+        .then(() => loadSpeechBubble('lets-go.php'));
+    };
+    window._mrDone = function(id) {
+      fetch('api/mark_complete.api.php?task_id=' + id, {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) updateProgressBar(data.pages, data.pages_target, data.total_pages);
+          loadSpeechBubble('lets-go.php');
+        });
+    };
   }
 
   function renderReturnWelcome(d) {

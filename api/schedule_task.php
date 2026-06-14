@@ -27,7 +27,9 @@ try {
         ));
         if ($dayCount >= 3) json_response(['error' => 'Day is full (3 tasks max)'], 409);
     }
-    vaultUpdateTask($taskId, ['scheduled_date' => $date]);
+    $updates = ['scheduled_date' => $date];
+    if ($date !== null) $updates['woke_date'] = null;
+    vaultUpdateTask($taskId, $updates);
     json_response(['ok' => true]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);

@@ -208,6 +208,30 @@ if (!empty($morningDailies) && ($_SESSION['last_activity'] ?? '') !== 'morning_d
     // All morning dailies skipped — fall through to normal pool
 }
 
+// Morning review: show tasks that woke from snooze today, one at a time, before the normal pool
+// Fires while session is fresh (actCount ≤ 5) so it doesn't interrupt mid-session activity
+if ($actCount <= 5 && ($_SESSION['last_activity'] ?? '') !== 'morning_review') {
+    try {
+        $allTasks = getTasks()['tasks'];
+        $todayDate = date('Y-m-d');
+        $wokeToday = array_values(array_filter($allTasks, fn($t) =>
+            ($t['woke_date'] ?? '') === $todayDate &&
+            $t['status'] === 'active'
+        ));
+        if (!empty($wokeToday)) {
+            $t = $wokeToday[0];
+            $remaining = count($wokeToday);
+            $_SESSION['last_activity'] = 'morning_review';
+            json_response([
+                'type'      => 'morning_review',
+                'id'        => (int)$t['id'],
+                'title'     => $t['title'],
+                'remaining' => $remaining,
+            ]);
+        }
+    } catch (Throwable $e) { /* non-fatal */ }
+}
+
 // While inbox has items: force triage window scales with pile size (larger pile = longer forced run)
 // (fill-tasks only: force 2–4, then normal pool)
 $triageForceEnd   = $inboxCount > 20 ? 10 : 6;

@@ -19,14 +19,17 @@ try {
     $scheduled  = array_values(array_filter($all, fn($t) =>
         ($t['scheduled_date'] ?? '') === $date && $t['status'] !== 'deleted'
     ));
-    $snoozedHere = array_values(array_filter($all, fn($t) =>
+    // Tasks that woke from snooze on this date
+    $wokeHere = array_values(array_filter($all, fn($t) =>
         $t['status'] === 'active' &&
-        !empty($t['snoozed_until']) &&
-        substr($t['snoozed_until'], 0, 10) === $date
+        ($t['woke_date'] ?? '') === $date
     ));
-    foreach ($snoozedHere as $t) {
-        $t['_snoozed'] = true;
-        $scheduled[] = $t;
+    $scheduledIds = array_column($scheduled, 'id');
+    foreach ($wokeHere as $t) {
+        if (!in_array($t['id'], $scheduledIds)) {
+            $t['_woke'] = true;
+            $scheduled[] = $t;
+        }
     }
     $unscheduled = array_values(array_filter($all, fn($t) =>
         empty($t['scheduled_date']) &&
@@ -37,13 +40,15 @@ try {
     echo '<p class="muted">Could not load tasks.</p>'; exit;
 }
 
-$canAdd = !$isPast && count($scheduled) < 3;
+$canAdd = !$isPast && count(array_filter($scheduled, fn($t) => empty($t['_woke']))) < 3;
 
 $mealPlan = [];
 try {
     $diaryEntry = getDiaryEntry($date);
     $mealPlan   = $diaryEntry['meal_plan'] ?? [];
 } catch (Throwable $e) {}
+
+$btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transparent;color:#888;border:1px solid #ddd;border-radius:4px;cursor:pointer;';
 ?>
 <div data-init="initDayTasks">
   <h2 style="margin-bottom:1rem;"><?= htmlspecialchars($label) ?></h2>
@@ -67,19 +72,26 @@ try {
   <?php else: ?>
     <ul id="day-task-list" style="list-style:none;margin:0 0 1rem;padding:0;">
       <?php foreach ($scheduled as $t): ?>
-        <li data-id="<?= (int)$t['id'] ?>"
-            style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
-          <span style="flex:1;line-height:1.4;">
+        <?php $id = (int)$t['id']; $isWoke = !empty($t['_woke']); ?>
+        <li data-id="<?= $id ?>" style="padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
+          <div style="line-height:1.4;margin-bottom:0.35rem;">
             <?= htmlspecialchars($t['title']) ?>
-            <?php if (!empty($t['_snoozed'])): ?>
-              <span style="font-size:0.78em;color:#bbb;margin-left:6px;">snoozed</span>
+            <?php if ($isWoke): ?>
+              <span style="font-size:0.75em;color:#bbb;margin-left:6px;">woke from snooze</span>
             <?php endif; ?>
-          </span>
-          <?php if (!$isPast && empty($t['_snoozed'])): ?>
-            <button class="action-button"
-                    style="font-size:0.78em;padding:4px 10px;min-height:32px;background:transparent;color:#888;border:1px solid #ddd;"
-                    onclick="window._removeFromDay(<?= (int)$t['id'] ?>, '<?= $date ?>')">Remove</button>
-          <?php endif; ?>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button style="<?= $btnStyle ?>color:#4a7c59;border-color:#c3d9c9;"
+                    onclick="window._doneFromDay(<?= $id ?>, this)">Done</button>
+            <button style="<?= $btnStyle ?>"
+                    onclick="window._snoozeFromDay(<?= $id ?>, this, 'tomorrow')">Tomorrow</button>
+            <button style="<?= $btnStyle ?>"
+                    onclick="window._snoozeFromDay(<?= $id ?>, this, 'week')">Next week</button>
+            <?php if (!$isPast && !$isWoke): ?>
+              <button style="<?= $btnStyle ?>color:#c06060;border-color:#e8cccc;"
+                      onclick="window._removeFromDay(<?= $id ?>, '<?= $date ?>')">Remove</button>
+            <?php endif; ?>
+          </div>
         </li>
       <?php endforeach; ?>
     </ul>
@@ -103,7 +115,7 @@ try {
         <?php endif; ?>
       </div>
     </div>
-  <?php elseif (!$isPast && count($scheduled) >= 3): ?>
+  <?php elseif (!$isPast && count(array_filter($scheduled, fn($t) => empty($t['_woke']))) >= 3): ?>
     <p class="muted" style="margin-top:0.75rem;font-size:0.85em;">Day is full — 3 tasks max.</p>
   <?php endif; ?>
 </div>

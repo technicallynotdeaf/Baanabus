@@ -255,9 +255,11 @@ function getTasks(): array {
     $data = json_decode($plain, true) ?? _defaultTasks();
     $now  = time();
     $dirty = false;
+    $today = date('Y-m-d');
     foreach ($data['tasks'] as &$t) {
         if (!empty($t['snoozed_until']) && strtotime($t['snoozed_until']) <= $now) {
             $t['snoozed_until'] = null;
+            if (empty($t['woke_date'])) $t['woke_date'] = $today;
             $dirty = true;
         }
     }

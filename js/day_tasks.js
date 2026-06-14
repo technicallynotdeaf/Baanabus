@@ -51,4 +51,40 @@ window.initDayTasks = function() {
     })
     .catch(() => { if (li) li.style.opacity = '1'; });
   };
+
+  window._doneFromDay = function(taskId, btn) {
+    const li = btn.closest('li');
+    if (li) li.style.opacity = '0.4';
+    fetch('api/mark_complete.api.php?task_id=' + taskId, {method: 'POST'})
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          if (li) li.remove();
+          if (typeof updateProgressBar === 'function')
+            updateProgressBar(data.pages, data.pages_target, data.total_pages);
+        } else {
+          if (li) li.style.opacity = '1';
+        }
+      })
+      .catch(() => { if (li) li.style.opacity = '1'; });
+  };
+
+  window._snoozeFromDay = function(taskId, btn, when) {
+    const li = btn.closest('li');
+    if (li) li.style.opacity = '0.4';
+    fetch('api/task_action.php', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({task_id: taskId, action: 'snooze', when}),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        if (li) li.remove();
+      } else {
+        if (li) li.style.opacity = '1';
+      }
+    })
+    .catch(() => { if (li) li.style.opacity = '1'; });
+  };
 };

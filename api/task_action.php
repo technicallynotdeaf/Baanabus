@@ -94,7 +94,7 @@ try {
                     $until = strtotime('tomorrow 08:00');
                 }
             }
-            vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until)]);
+            vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until), 'woke_date' => null]);
             json_response(['ok' => true]);
 
         case 'someday':

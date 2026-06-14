@@ -170,11 +170,13 @@ try {
             'is_active'   => true,
         ];
         if (isset($dailyHabIndex[$habId])) {
-            $k            = $dailyHabIndex[$habId];
-            $def['id']    = $dailyData['items'][$k]['id'];
-            $def['order'] = $dailyData['items'][$k]['order'] ?? 0;
-            if (isset($dailyData['items'][$k]['horizon'])) {
-                $def['horizon'] = $dailyData['items'][$k]['horizon'];
+            $k        = $dailyHabIndex[$habId];
+            $existing = $dailyData['items'][$k];
+            $def['id']    = $existing['id'];
+            $def['order'] = $existing['order'] ?? 0;
+            // Preserve fields the user can set in Baanabus that Habitica doesn't know about
+            foreach (['horizon', 'location', 'relevant_after', 'irrelevant_after', 'is_active'] as $f) {
+                if (array_key_exists($f, $existing)) $def[$f] = $existing[$f];
             }
             $dailyData['items'][$k] = $def;
         } else {

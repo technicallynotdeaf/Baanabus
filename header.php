@@ -27,7 +27,6 @@ require_once __DIR__ . '/init.php';
   <script src="js/food_log.js?v=<?= filemtime(__DIR__ . '/js/food_log.js') ?>" defer></script>
   <script src="js/nutrition_progress.js?v=<?= filemtime(__DIR__ . '/js/nutrition_progress.js') ?>" defer></script>
   <script src="js/list_dailies.js?v=<?= filemtime(__DIR__ . '/js/list_dailies.js') ?>" defer></script>
-  <script src="js/cycle_dial.js?v=<?= filemtime(__DIR__ . '/js/cycle_dial.js') ?>" defer></script>
 </head>
 <body<?php
   $bodyClasses = [];
@@ -55,12 +54,6 @@ require_once __DIR__ . '/init.php';
         } catch (Throwable $e) {}
         try {
             $morningModeActive = !empty(getMorningModeDailies());
-        } catch (Throwable $e) {}
-        $cyclePhase  = null;
-        $cyclePhases = [];
-        try {
-            $cyclePhase = getCyclePhase();
-            if ($cyclePhase) $cyclePhases = getCyclePhases($cyclePhase['cycle_length']);
         } catch (Throwable $e) {}
     }
   ?>
@@ -94,15 +87,7 @@ require_once __DIR__ . '/init.php';
       <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
     </select>
   </div>
-<?php if (!empty($cyclePhase) && !empty($cyclePhases)): ?>
-<canvas id="cycle-dial-nav"
-        style="width:72px;height:72px;"
-        data-cycle-dial
-        data-day="<?= $cyclePhase['day'] ?>"
-        data-cycle="<?= $cyclePhase['cycle_length'] ?>"
-        data-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"
-        title="<?= htmlspecialchars($cyclePhase['label']) ?> — day <?= $cyclePhase['day'] ?> of <?= $cyclePhase['cycle_length'] ?>"></canvas>
-<?php endif; ?>
+<?php require __DIR__ . '/partials/cycle_dial_nav.php'; ?>
 
 <div id="scene-tint"></div>
 <script src="js/scene_tint.js?v=<?= filemtime(__DIR__ . '/js/scene_tint.js') ?>"></script>

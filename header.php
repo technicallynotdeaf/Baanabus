@@ -105,7 +105,16 @@ require_once __DIR__ . '/init.php';
       <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
     </select>
   </div>
-<?php require __DIR__ . '/partials/cycle_dial_nav.php'; ?>
+<?php
+// Load cycle_dial.js when period tracking is active so drawCycleDial is
+// available for the Settings overlay (the wall dial is drawn by scene.js directly).
+if (function_exists('isUnlocked') && isUnlocked()) {
+    try { $navCyclePhase = getCyclePhase(); } catch (Throwable $e) { $navCyclePhase = null; }
+    if ($navCyclePhase) {
+        echo '<script src="js/cycle_dial.js?v=' . filemtime(__DIR__ . '/js/cycle_dial.js') . '"></script>';
+    }
+}
+?>
 
 <div id="scene-tint"></div>
 <script src="js/scene_tint.js?v=<?= filemtime(__DIR__ . '/js/scene_tint.js') ?>"></script>

@@ -64,6 +64,7 @@ if (isUnlocked()) {
         $totalPages = (int)($t['total_pages'] ?? 0);
         $pageTarget = todayPagesTarget();
         $nowTs = time();
+        $today = date('Y-m-d');
         $completedIds = [];
         foreach ($t['tasks'] ?? [] as $task) {
             if (($task['status'] ?? '') === 'complete') $completedIds[(int)$task['id']] = true;
@@ -73,15 +74,19 @@ if (isUnlocked()) {
         foreach ($t['tasks'] ?? [] as $task) {
             if (($task['status'] ?? '') !== 'active') continue;
             if (!empty($task['parent_id'])) continue;
-            $type      = $task['task_type'] ?? 'next_action';
-            $isSnoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
-            if ($type === 'inbox')                                   { $buckets['inbox']++; }
-            elseif ($isSnoozed)                                      { $buckets['snoozed']++; }
-            elseif ($type === 'next_action' && $prereqsMet($task))   { $buckets['ready']++; }
-            elseif ($type === 'next_action' && !$prereqsMet($task))  { $buckets['blocked']++; }
-            elseif ($type === 'someday')                             { $buckets['someday']++; }
-            elseif ($type === 'waiting')                             { $buckets['waiting']++; }
-            elseif ($type === 'project')                             { $buckets['project']++; }
+            $type          = $task['task_type'] ?? '';
+            $isSnoozed     = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
+            $isFutureSched = !empty($task['scheduled_date']) && $task['scheduled_date'] > $today;
+            // reference is not actionable — intentionally excluded from the bar
+            if      ($type === 'reference')                                  { /* skip */ }
+            elseif  ($type === 'inbox')                                      { $buckets['inbox']++; }
+            elseif  ($isSnoozed || $isFutureSched)                          { $buckets['snoozed']++; }
+            elseif  ($type === 'next_action' && $prereqsMet($task))          { $buckets['ready']++; }
+            elseif  ($type === 'next_action' && !$prereqsMet($task))         { $buckets['blocked']++; }
+            elseif  ($type === 'someday')                                    { $buckets['someday']++; }
+            elseif  ($type === 'waiting')                                    { $buckets['waiting']++; }
+            elseif  ($type === 'project')                                    { $buckets['project']++; }
+            // unknown types also intentionally excluded rather than shown as noise
         }
         $buckets['routine'] = count(getActiveDailies());
         $snoozedCount = $buckets['snoozed'];
@@ -96,7 +101,7 @@ $bucketDefs = [
     'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
     'waiting' => ['label' => 'waiting',      'color' => '#553c87', 'filter' => 'waiting'],
-    'project' => ['label' => 'projects',      'color' => '#2a2a2a', 'filter' => 'project'],
+    'project' => ['label' => 'projects',     'color' => '#2a2a2a', 'filter' => 'project'],
 ];
 $scoreboardSegs = [];
 foreach ($bucketDefs as $key => $def) {

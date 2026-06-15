@@ -25,37 +25,51 @@ if ($database) {
 }
 
 if (($_GET['filter'] ?? '') === 'snoozed') {
-    $snoozed = [];
+    $today   = date('Y-m-d');
+    $deferred = [];
     foreach ($all as $t) {
         if (($t['status'] ?? '') !== 'active') continue;
-        if (empty($t['snoozed_until'])) continue;
-        if (strtotime($t['snoozed_until']) <= $now) continue;
-        $snoozed[] = $t;
+        if (!empty($t['parent_id'])) continue;
+        $isSnoozed     = !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now;
+        $isFutureSched = !empty($t['scheduled_date']) && $t['scheduled_date'] > $today;
+        if (!$isSnoozed && !$isFutureSched) continue;
+        // Canonical "when" for sorting: scheduled_date takes priority, else snoozed_until
+        $t['_when'] = $isFutureSched ? $t['scheduled_date'] : date('Y-m-d', strtotime($t['snoozed_until']));
+        $t['_type'] = $isFutureSched ? 'scheduled' : 'snoozed';
+        $deferred[] = $t;
     }
-    usort($snoozed, fn($a, $b) => strtotime($a['snoozed_until']) <=> strtotime($b['snoozed_until']));
+    usort($deferred, fn($a, $b) => $a['_when'] <=> $b['_when']);
     ?>
 <div data-init="initSnoozedTasks" style="padding-bottom:1rem;">
-  <h2 style="margin:0 0 0.25rem;">Snoozed <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($snoozed) ?></span></h2>
-  <p class="muted" style="font-size:0.85em;margin-bottom:1rem;">Parked until a specific date. Wake anything that's ready now.</p>
-  <?php if (empty($snoozed)): ?>
-    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing snoozed.</p>
+  <h2 style="margin:0 0 0.25rem;">Deferred <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($deferred) ?></span></h2>
+  <p class="muted" style="font-size:0.85em;margin-bottom:1rem;">Parked for later — snoozed or placed on a specific day.</p>
+  <?php if (empty($deferred)): ?>
+    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing deferred.</p>
   <?php else: ?>
-    <?php foreach ($snoozed as $t):
-        $wakeTs   = strtotime($t['snoozed_until']);
-        $wakeDate = date('D j M', $wakeTs);
-        $isToday  = date('Y-m-d', $wakeTs) === date('Y-m-d');
-        $isTomorrow = date('Y-m-d', $wakeTs) === date('Y-m-d', strtotime('+1 day'));
-        $wakeLabel = $isToday ? 'today' : ($isTomorrow ? 'tomorrow' : $wakeDate);
+    <?php foreach ($deferred as $t):
+        $when   = $t['_when'];
+        $whenTs = strtotime($when);
+        $isToday    = $when === date('Y-m-d');
+        $isTomorrow = $when === date('Y-m-d', strtotime('+1 day'));
+        $whenLabel  = $isToday ? 'today' : ($isTomorrow ? 'tomorrow' : date('D j M', $whenTs));
+        $typeLabel  = $t['_type'] === 'scheduled' ? 'scheduled' : 'snoozed until';
     ?>
     <div class="task-row snooze-task-row" data-id="<?= (int)$t['id'] ?>"
+         data-defer-type="<?= $t['_type'] ?>"
          style="display:flex;align-items:flex-start;gap:8px;padding:0.6rem 0;border-bottom:1px solid #f0f0f0;">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
-        <div style="font-size:0.78em;color:#aaa;margin-top:2px;">wakes <?= htmlspecialchars($wakeLabel) ?></div>
+        <div style="font-size:0.78em;color:#aaa;margin-top:2px;"><?= $typeLabel ?> <?= htmlspecialchars($whenLabel) ?></div>
       </div>
+      <?php if ($t['_type'] === 'snoozed'): ?>
       <button class="task-wake-btn action-button"
               data-id="<?= (int)$t['id'] ?>"
               style="padding:3px 10px;font-size:0.75em;min-height:28px;flex-shrink:0;background:transparent;color:hsl(210,100%,30%);border:1px solid hsl(210,100%,30%);">Wake now</button>
+      <?php else: ?>
+      <button class="task-unschedule-btn action-button"
+              data-id="<?= (int)$t['id'] ?>"
+              style="padding:3px 10px;font-size:0.75em;min-height:28px;flex-shrink:0;background:transparent;color:#888;border:1px solid #ccc;">Unschedule</button>
+      <?php endif; ?>
     </div>
     <?php endforeach; ?>
   <?php endif; ?>

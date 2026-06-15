@@ -228,4 +228,37 @@ window.initSnoozedTasks = function() {
     .catch(() => { btn.disabled = false; btn.textContent = 'Wake now'; });
   });
 
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.task-unschedule-btn');
+    if (!btn) return;
+    const taskId = parseInt(btn.dataset.id);
+    const row    = btn.closest('.snooze-task-row');
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('api/schedule_task.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ task_id: taskId, scheduled_date: null }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        row.style.transition = 'opacity 0.2s';
+        row.style.opacity = '0';
+        setTimeout(() => {
+          row.remove();
+          const remaining = document.querySelectorAll('.snooze-task-row').length;
+          if (remaining === 0) {
+            const list = document.querySelector('[data-init="initSnoozedTasks"]');
+            if (list) list.innerHTML += '<p class="muted" style="text-align:center;padding:2rem 0;">Nothing deferred.</p>';
+          }
+        }, 220);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Unschedule';
+      }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Unschedule'; });
+  });
+
 };

@@ -52,14 +52,13 @@ if (($_GET['filter'] ?? '') === 'snoozed') {
         $isToday    = $when === date('Y-m-d');
         $isTomorrow = $when === date('Y-m-d', strtotime('+1 day'));
         $whenLabel  = $isToday ? 'today' : ($isTomorrow ? 'tomorrow' : date('D j M', $whenTs));
-        $typeLabel  = $t['_type'] === 'scheduled' ? 'scheduled' : 'snoozed until';
     ?>
     <div class="task-row snooze-task-row" data-id="<?= (int)$t['id'] ?>"
          data-defer-type="<?= $t['_type'] ?>"
          style="display:flex;align-items:flex-start;gap:8px;padding:0.6rem 0;border-bottom:1px solid #f0f0f0;">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
-        <div style="font-size:0.78em;color:#aaa;margin-top:2px;"><?= $typeLabel ?> <?= htmlspecialchars($whenLabel) ?></div>
+        <div style="font-size:0.78em;color:#aaa;margin-top:2px;">snoozed until <?= htmlspecialchars($whenLabel) ?></div>
       </div>
       <?php if ($t['_type'] === 'snoozed'): ?>
       <button class="task-wake-btn action-button"

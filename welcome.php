@@ -15,10 +15,12 @@ $hasHabitica = array_key_exists('uses_habitica', $prefs);
 $usesHabitica = $prefs['uses_habitica'] ?? false;
 $habUser     = $cassowary['habitica']['user_id'] ?? '';
 $habKey      = $cassowary['habitica']['api_key']  ?? '';
+$hasWeeklySchedule = isset($cfg['weekly_schedule']);
 
-if (!$hasPb)       $startStep = 1;
-elseif (!$hasHabitica) $startStep = 3;
-else               $startStep = 4;
+if (!$hasPb)               $startStep = 1;
+elseif (!$hasHabitica)     $startStep = 3;
+elseif (!$hasWeeklySchedule) $startStep = 4;
+else                       $startStep = 5;
 
 $state = json_encode([
     'startStep'    => $startStep,
@@ -35,7 +37,8 @@ $state = json_encode([
     <span class="wiz-dot active" data-step="1" title="Welcome"></span>
     <span class="wiz-dot" data-step="2" title="Peanut butter"></span>
     <span class="wiz-dot" data-step="3" title="Habitica"></span>
-    <span class="wiz-dot" data-step="4" title="Game"></span>
+    <span class="wiz-dot" data-step="4" title="Your week"></span>
+    <span class="wiz-dot" data-step="5" title="Game"></span>
   </div>
 
   <!-- Step 1: Welcome -->
@@ -81,19 +84,42 @@ $state = json_encode([
     <button class="btn" id="hab-next" style="display:none; margin-top:0.75rem;" onclick="wizTo(4)">Next &rarr;</button>
   </div>
 
-  <!-- Step 4: Tic-tac-toe -->
+  <!-- Step 4: Typical week -->
   <div class="wiz-step" id="wiz-4" style="display:none">
+    <div class="wiz-sheep">🐑</div>
+    <h2>What's your typical week?</h2>
+    <p class="muted">Tap each day to set it — helps me suggest good days to schedule tasks.</p>
+    <div id="wiz-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:1.25rem 0;text-align:center;">
+      <?php foreach ([['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0]] as [$lbl,$dow]): ?>
+      <div>
+        <div style="font-size:0.72em;color:#888;margin-bottom:4px;"><?= $lbl ?></div>
+        <button class="wiz-day-btn" data-dow="<?= $dow ?>" data-val=""
+                onclick="wizCycleDay(this)"
+                style="width:100%;padding:5px 2px;border:1px solid #ddd;border-radius:6px;background:#f9f6f0;font-size:0.72em;color:#aaa;cursor:pointer;min-height:42px;line-height:1.2;">
+          —
+        </button>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn" onclick="wizSaveSchedule(this)">Save &amp; continue &rarr;</button>
+      <button class="btn btn-secondary" onclick="wizTo(5)" style="font-size:0.9em;">Skip for now</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Tic-tac-toe -->
+  <div class="wiz-step" id="wiz-5" style="display:none">
     <div class="wiz-sheep" id="ttt-sheep">🐑</div>
     <p class="muted">One more thing.</p>
     <h2>Play me.</h2>
     <p class="muted" id="ttt-msg">I'm a sheep. I'm not great at this.</p>
     <div id="ttt-board"></div>
     <button class="btn btn-secondary" id="ttt-reset" style="display:none; margin-right:0.5rem;" onclick="tttReset()">Play again</button>
-    <button class="btn" id="ttt-next" style="display:none;" onclick="wizTo(5)">Almost done &rarr;</button>
+    <button class="btn" id="ttt-next" style="display:none;" onclick="wizTo(6)">Almost done &rarr;</button>
   </div>
 
-  <!-- Step 5: Done -->
-  <div class="wiz-step" id="wiz-5" style="display:none">
+  <!-- Step 6: Done -->
+  <div class="wiz-step" id="wiz-6" style="display:none">
     <div class="wiz-sheep">🐑✨</div>
     <h2>You're all set!</h2>
     <p>Your workspace is ready.</p>

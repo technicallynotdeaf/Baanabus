@@ -44,6 +44,31 @@ switch ($step) {
         }
         respond(['ok' => true]);
 
+    case 'weekly_schedule':
+        $sched = $input['schedule'] ?? [];
+        $clean = [];
+        foreach (range(0, 6) as $dow) {
+            $v = $sched[$dow] ?? null;
+            $clean[$dow] = ($v !== null && $v !== '' && in_array((int)$v, [1,2,3,4,5], true)) ? (int)$v : null;
+        }
+        $cfg = getConfig() ?? [];
+        $cfg['weekly_schedule'] = $clean;
+        saveConfig($cfg);
+        // Pre-populate diary for the next 8 weeks based on the schedule
+        // (only sets dates that have no existing day_type or location)
+        try {
+            $diary = getDiary();
+            for ($i = 1; $i <= 56; $i++) {
+                $date = date('Y-m-d', strtotime("+$i days"));
+                $dow  = (int)date('w', strtotime($date));
+                if (!isset($clean[$dow]) || $clean[$dow] === null) continue;
+                if (!empty($diary[$date]['day_type']) || !empty($diary[$date]['location'])) continue;
+                $diary[$date] = array_merge($diary[$date] ?? [], ['day_type' => $clean[$dow]]);
+            }
+            saveDiary($diary);
+        } catch (Throwable $e) { /* non-fatal */ }
+        respond(['ok' => true]);
+
     case 'complete':
         $cfg = getConfig() ?? [];
         $cfg['onboarding_complete'] = true;

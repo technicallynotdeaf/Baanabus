@@ -28,7 +28,7 @@ window.initWelcome = function() {
     document.querySelectorAll('.wiz-dot').forEach(d => {
       d.classList.toggle('active', parseInt(d.dataset.step) <= n);
     });
-    if (n === 4) tttInit();
+    if (n === 5) tttInit();
   };
 
   window.pickPb = function(choice, btn) {
@@ -59,6 +59,36 @@ window.initWelcome = function() {
     err.textContent = '';
     await apiPost({ step: 'habitica', uses_habitica: true, user_id: userId, api_key: apiKey });
     wizTo(4);
+  };
+
+  const _dayTypes = [
+    {val: '',  label: '—',    bg: '#f9f6f0', color: '#aaa',    border: '#ddd'},
+    {val: '1', label: 'Home', bg: '#eaf2ea', color: '#2a5a2a', border: '#7ab87a'},
+    {val: '2', label: 'Work', bg: '#e8eef8', color: '#1a3a6a', border: '#7a9ad0'},
+    {val: '5', label: 'WFH',  bg: '#e8f4f8', color: '#1a5060', border: '#7abccc'},
+    {val: '4', label: 'Rest', bg: '#f8f0e8', color: '#6a3a1a', border: '#d0987a'},
+    {val: '3', label: 'Out',  bg: '#f2eaf8', color: '#4a2a6a', border: '#b09ad0'},
+  ];
+
+  window.wizCycleDay = function(btn) {
+    const idx  = _dayTypes.findIndex(t => t.val === btn.dataset.val);
+    const next = _dayTypes[(idx + 1) % _dayTypes.length];
+    btn.dataset.val      = next.val;
+    btn.textContent      = next.label;
+    btn.style.background = next.bg;
+    btn.style.color      = next.color;
+    btn.style.borderColor = next.border;
+  };
+
+  window.wizSaveSchedule = async function(btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const schedule = {};
+    document.querySelectorAll('.wiz-day-btn').forEach(b => {
+      schedule[b.dataset.dow] = b.dataset.val !== '' ? parseInt(b.dataset.val) : null;
+    });
+    await apiPost({ step: 'weekly_schedule', schedule });
+    wizTo(5);
   };
 
   let board, gameOver;

@@ -41,50 +41,64 @@ try {
     $hasFillTasks = false;
 }
 
-// Reset mode — find the single smallest task, or a quote/tip for grounding
+// Reset mode — grounding prompts and the smallest task are both valid responses
 if (!empty($_GET['reset'])) {
-    try { $tasks = getDoableTasks(); } catch (Throwable $e) { $tasks = []; }
-    if (!empty($tasks)) {
-        // Sort by time (shortest first), then by energy level (lowest first)
-        $energyOrder = ['low' => 0, 'medium' => 1, 'high' => 2];
-        usort($tasks, function($a, $b) use ($energyOrder) {
-            $ta = (int)($a['time'] ?? 999);
-            $tb = (int)($b['time'] ?? 999);
-            if ($ta !== $tb) return $ta <=> $tb;
-            return ($energyOrder[$a['energy'] ?? 'medium'] ?? 1) <=> ($energyOrder[$b['energy'] ?? 'medium'] ?? 1);
-        });
-        $t = $tasks[0];
-        $resetNow = time();
-        $allTasks = getTasks()['tasks'];
-        $subtasks = array_values(array_filter($allTasks, fn($s) =>
-            !empty($s['parent_id']) &&
-            (int)$s['parent_id'] === (int)$t['id'] &&
-            $s['status'] === 'active' &&
-            (!$s['snoozed_until'] || strtotime($s['snoozed_until']) <= $resetNow)
-        ));
-        usort($subtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
-        $subtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $subtasks);
-        json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks, 'reset_context' => true]);
+    $resetPool = [];
+
+    // Grounding prompts (weighted 2x — regulation is the primary purpose of Reset)
+    try {
+        $p1 = pickRegulationPrompt();
+        if ($p1) $resetPool[] = ['_type' => 'regulation', 'prompt' => $p1];
+        $p2 = pickRegulationPrompt();
+        if ($p2) $resetPool[] = ['_type' => 'regulation', 'prompt' => $p2];
+    } catch (Throwable $e) {}
+
+    // Smallest task
+    try {
+        $resetTasks = getDoableTasks();
+        if (!empty($resetTasks)) {
+            $energyOrder = ['low' => 0, 'medium' => 1, 'high' => 2];
+            usort($resetTasks, function($a, $b) use ($energyOrder) {
+                $ta = (int)($a['time'] ?? 999);
+                $tb = (int)($b['time'] ?? 999);
+                if ($ta !== $tb) return $ta <=> $tb;
+                return ($energyOrder[$a['energy'] ?? 'medium'] ?? 1) <=> ($energyOrder[$b['energy'] ?? 'medium'] ?? 1);
+            });
+            $resetPool[] = ['_type' => 'task', 'task' => $resetTasks[0]];
+        }
+    } catch (Throwable $e) {}
+
+    if (!empty($resetPool)) {
+        $pick = $resetPool[array_rand($resetPool)];
+        if ($pick['_type'] === 'regulation') {
+            $p = $pick['prompt'];
+            json_response([
+                'type'          => 'regulation',
+                'prompt_id'     => $p['id'],
+                'text'          => $p['text'],
+                'category'      => $p['category'],
+                'is_custom'     => !empty($p['is_custom']),
+                'reset_context' => true,
+            ]);
+        } else {
+            $t       = $pick['task'];
+            $resetNow = time();
+            $allTasks = getTasks()['tasks'];
+            $subtasks = array_values(array_filter($allTasks, fn($s) =>
+                !empty($s['parent_id']) &&
+                (int)$s['parent_id'] === (int)$t['id'] &&
+                $s['status'] === 'active' &&
+                (!$s['snoozed_until'] || strtotime($s['snoozed_until']) <= $resetNow)
+            ));
+            usort($subtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+            $subtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $subtasks);
+            json_response(['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'],
+                           'subtasks' => $subtasks, 'reset_context' => true]);
+        }
     }
     $q = pick_quote(); if ($q) json_response($q);
     $t = pick_tip();   if ($t) json_response($t);
     json_response(['type' => 'tip', 'id' => 0, 'text' => "Take a breath. You don't have to fix everything right now. One small thing is enough."]);
-}
-
-// Regulation mode — when active, always serve a grounding prompt
-if (!empty($_SESSION['regulation_mode'])) {
-    try {
-        $prompt = pickRegulationPrompt();
-        if ($prompt) {
-            json_response([
-                'type'      => 'regulation',
-                'prompt_id' => $prompt['id'],
-                'text'      => $prompt['text'],
-                'category'  => $prompt['category'],
-                'is_custom' => !empty($prompt['is_custom']),
-            ]);
-        }
-    } catch (Throwable $e) { /* non-fatal — fall through */ }
 }
 
 // Fatigue counter — increments each call, resets with the PHP session

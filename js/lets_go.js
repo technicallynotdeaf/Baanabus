@@ -82,15 +82,8 @@ window.initLetsGo = function() {
           <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
           <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
           <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
-        </div>${pagesHint}
-        <p style="margin-top:0.75rem;"><a href="#" style="font-size:0.78em;color:#aaa;text-decoration:none;" onclick="event.preventDefault();_enterRegulationMode()">Need a moment first?</a></p>`;
+        </div>${pagesHint}`;
     }
-  }
-
-  function _enterRegulationMode() {
-    fetch('api/regulation_mode.php', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({on: true})})
-      .then(() => loadSpeechBubble('lets-go.php'));
   }
 
   function renderRegulation(d) {
@@ -98,25 +91,21 @@ window.initLetsGo = function() {
       movement: 'movement', breath: 'breath', sensory: 'sensory',
       cognitive: 'thinking', self_compassion: 'self-compassion', somatic: 'body', custom: 'yours'
     };
-    const cat = catLabels[d.category] || d.category;
+    const cat     = catLabels[d.category] || d.category;
+    const nextUrl = d.reset_context ? 'lets-go.php?reset=1' : 'lets-go.php';
     c.innerHTML = `
       <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">${esc(cat)}</p>
       <p style="margin-bottom:0.85rem;line-height:1.5;">${esc(d.text)}</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.6rem;">
-        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Try another</button>
-        <button class="action-button" onclick="_regulationNotForMe(${d.prompt_id}, ${d.is_custom ? 'true' : 'false'})">Not for me</button>
-        <button class="action-button" style="background:transparent;color:#888;border:1px solid #ccc;" onclick="_exitRegulationMode()">Done</button>
+        <button class="action-button" onclick="loadSpeechBubble('${nextUrl}')">Try another</button>
+        <button class="action-button" onclick="_regulationNotForMe(${d.prompt_id}, ${d.is_custom ? 'true' : 'false'}, '${nextUrl}')">Not for me</button>
+        <button class="action-button" style="background:transparent;color:#888;border:1px solid #ccc;" onclick="loadSpeechBubble('lets-go.php')">Done</button>
       </div>`;
-    window._regulationNotForMe = function(promptId, isCustom) {
+    window._regulationNotForMe = function(promptId, isCustom, reloadUrl) {
       const action = isCustom ? 'delete_custom' : 'disable';
       fetch('api/regulation_prompt.php', {method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({action, id: promptId})})
-        .then(() => loadSpeechBubble('lets-go.php'));
-    };
-    window._exitRegulationMode = function() {
-      fetch('api/regulation_mode.php', {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({on: false})})
-        .then(() => loadSpeechBubble('lets-go.php'));
+        .then(() => loadSpeechBubble(reloadUrl));
     };
   }
 

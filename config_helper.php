@@ -1322,3 +1322,55 @@ function getCyclePhases(int $avg): array {
     return $phases;
 }
 
+// ---------- Regulation vault ----------
+
+function regulationPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/regulation.enc";
+}
+
+function getRegulation(): array {
+    $path = regulationPath();
+    if (!is_file($path)) return ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Regulation: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Regulation decrypt failed');
+    return json_decode($plain, true) ?? ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+}
+
+function saveRegulation(array $data): void {
+    $path = regulationPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+function pickRegulationPrompt(): ?array {
+    $defaults = require __DIR__ . '/content/regulation_prompts.php';
+    $reg      = getRegulation();
+    $disabled = $reg['disabled_defaults'] ?? [];
+    $custom   = $reg['custom'] ?? [];
+    $available = array_values(array_filter($defaults, fn($p) => !in_array($p['id'], $disabled)));
+    $customMapped = array_map(fn($c) => array_merge($c, ['category' => 'custom', 'is_custom' => true]), $custom);
+    $pool = array_merge($available, $customMapped);
+    if (empty($pool)) return null;
+    return $pool[array_rand($pool)];
+}
+

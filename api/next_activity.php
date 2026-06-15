@@ -71,6 +71,22 @@ if (!empty($_GET['reset'])) {
     json_response(['type' => 'tip', 'id' => 0, 'text' => "Take a breath. You don't have to fix everything right now. One small thing is enough."]);
 }
 
+// Regulation mode — when active, always serve a grounding prompt
+if (!empty($_SESSION['regulation_mode'])) {
+    try {
+        $prompt = pickRegulationPrompt();
+        if ($prompt) {
+            json_response([
+                'type'      => 'regulation',
+                'prompt_id' => $prompt['id'],
+                'text'      => $prompt['text'],
+                'category'  => $prompt['category'],
+                'is_custom' => !empty($prompt['is_custom']),
+            ]);
+        }
+    } catch (Throwable $e) { /* non-fatal — fall through */ }
+}
+
 // Fatigue counter — increments each call, resets with the PHP session
 $actCount = (int)($_SESSION['activity_count'] ?? 0);
 $_SESSION['activity_count'] = $actCount + 1;

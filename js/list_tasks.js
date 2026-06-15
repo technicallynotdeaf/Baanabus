@@ -250,7 +250,7 @@ window.initSnoozedTasks = function() {
           const remaining = document.querySelectorAll('.snooze-task-row').length;
           if (remaining === 0) {
             const list = document.querySelector('[data-init="initSnoozedTasks"]');
-            if (list) list.innerHTML += '<p class="muted" style="text-align:center;padding:2rem 0;">Nothing deferred.</p>';
+            if (list) list.innerHTML += '<p class="muted" style="text-align:center;padding:2rem 0;">Nothing snoozed.</p>';
           }
         }, 220);
       } else {

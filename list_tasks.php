@@ -41,10 +41,10 @@ if (($_GET['filter'] ?? '') === 'snoozed') {
     usort($deferred, fn($a, $b) => $a['_when'] <=> $b['_when']);
     ?>
 <div data-init="initSnoozedTasks" style="padding-bottom:1rem;">
-  <h2 style="margin:0 0 0.25rem;">Deferred <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($deferred) ?></span></h2>
+  <h2 style="margin:0 0 0.25rem;">Snoozed <span class="muted" style="font-size:0.7em;font-weight:400;"><?= count($deferred) ?></span></h2>
   <p class="muted" style="font-size:0.85em;margin-bottom:1rem;">Parked for later — snoozed or placed on a specific day.</p>
   <?php if (empty($deferred)): ?>
-    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing deferred.</p>
+    <p class="muted" style="text-align:center;padding:2rem 0;">Nothing snoozed.</p>
   <?php else: ?>
     <?php foreach ($deferred as $t):
         $when   = $t['_when'];

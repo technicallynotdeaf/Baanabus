@@ -8,20 +8,15 @@ if (!$database) { json_response(['error' => 'DB unavailable'], 500); }
 
 $date = $_GET['date'] ?? date('Y-m-d');
 
-// Load RDIs
-$rdis = $database->query("SELECT * FROM nutrient_rdis ORDER BY display_order")
-                 ->fetchAll(PDO::FETCH_ASSOC);
-
-// Nutrient column map: rdi nutrient key → SQL column in foods table + key in foodLogNutrientTotals output
+// Map RDI nutrient keys → foods table column + foodLogNutrientTotals key
+// Limit nutrients (sodium, sat fat, trans fat, sugars) are intentionally absent —
+// they can't improve a gap score.
 $colMap = [
     'energy_kj'             => ['foods_col' => 'energy_kj',             'totals_key' => 'energy_kj'],
     'protein_g'             => ['foods_col' => 'protein_g',             'totals_key' => 'protein_g'],
     'fibre'                 => ['foods_col' => 'fibre_g',               'totals_key' => 'fibre'],
     'fibre_soluble'         => ['foods_col' => 'fibre_soluble_g',       'totals_key' => 'fibre_soluble'],
     'fibre_insoluble'       => ['foods_col' => 'fibre_insoluble_g',     'totals_key' => 'fibre_insoluble'],
-    'fat_saturated_g'       => ['foods_col' => 'fat_saturated_g',       'totals_key' => 'fat_saturated_g'],
-    'fat_trans_g'           => ['foods_col' => 'fat_trans_g',           'totals_key' => 'fat_trans_g'],
-    'sugars_g'              => ['foods_col' => 'sugars_g',              'totals_key' => 'sugars_g'],
     'omega3_ala_mg'         => ['foods_col' => 'omega3_ala_mg',         'totals_key' => 'omega3_ala'],
     'omega3_epa_mg'         => ['foods_col' => 'omega3_epa_mg',         'totals_key' => 'omega3_epa'],
     'omega3_dha_mg'         => ['foods_col' => 'omega3_dha_mg',         'totals_key' => 'omega3_dha'],
@@ -52,124 +47,96 @@ $colMap = [
     'vitamin_b12_mcg'       => ['foods_col' => 'vitamin_b12_mcg',       'totals_key' => 'vitamin_b12'],
     'choline_mg'            => ['foods_col' => 'choline_mg',            'totals_key' => 'choline'],
     'lutein_zeaxanthin_mcg' => ['foods_col' => 'lutein_zeaxanthin_mcg', 'totals_key' => 'lutein_zeaxanthin'],
-    'sodium'               => ['foods_col' => 'sodium_mg',             'totals_key' => 'sodium'],
 ];
+
+$rdis = $database->query("SELECT * FROM nutrient_rdis ORDER BY display_order")
+                 ->fetchAll(PDO::FETCH_ASSOC);
 
 try { $log = getFoodLog(); } catch (Throwable $e) { $log = ['next_id' => 1, 'entries' => []]; }
 
-// Get today's totals (for daily nutrients)
 $todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
+$weekStart   = date('Y-m-d', strtotime($date . ' -6 days'));
+$weekTotals  = foodLogNutrientTotals($database, $log, $weekStart, $date);
 
-// Get 7-day rolling totals (for weekly nutrients — rolling average vs daily RDI)
-$weekStart  = date('Y-m-d', strtotime($date . ' -6 days'));
-$weekTotals = foodLogNutrientTotals($database, $log, $weekStart, $date);
-
-// Calculate progress per nutrient
-$progress = [];
+// Build gap map: only uncovered, non-limit nutrients
+$gaps = [];
 foreach ($rdis as $rdi) {
     $n   = $rdi['nutrient'];
     $col = $colMap[$n]['totals_key'] ?? null;
-    if (!$col) continue;
+    if (!$col || !empty($rdi['is_limit'])) continue;
 
     if ($rdi['period'] === 'weekly') {
-        // 7-day rolling sum vs weekly target (daily_rdi × 7)
-        $target  = ($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7);
-        $actual  = $weekTotals[$col] ?? 0;
-        $note    = '7-day total';
+        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7);
+        $actual = (float)($weekTotals[$col] ?? 0);
     } else {
-        $target = $rdi['daily_rdi'];
-        $actual = $todayTotals[$col] ?? 0;
-        $note   = 'today';
+        $target = (float)$rdi['daily_rdi'];
+        $actual = (float)($todayTotals[$col] ?? 0);
     }
 
-    $pct      = $target > 0 ? round($actual / $target, 3) : 0;
-    $isLimit  = !empty($rdi['is_limit']);
     $goodEnough = (float)$rdi['good_enough'];
-    // Limit nutrients: covered when intake is LOW (pct <= good_enough threshold)
-    // Regular nutrients: covered when intake is HIGH (pct >= good_enough threshold)
-    $covered  = $isLimit ? ($pct <= $goodEnough) : ($pct >= $goodEnough);
-    $progress[$n] = [
-        'label'       => $rdi['label'],
-        'unit'        => $rdi['unit'],
-        'actual'      => round($actual, 2),
-        'target'      => $target,
-        'pct'         => $pct,
-        'good_enough' => $goodEnough,
-        'period'      => $rdi['period'],
-        'note'        => $note,
-        'covered'     => $covered,
-        'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] * ($rdi['period'] === 'weekly' ? 7 : 1) : null,
-        'is_limit'    => $isLimit,
+    if ($target <= 0 || ($actual / $target) >= $goodEnough) continue;
+
+    $gaps[$n] = [
+        'label'     => $rdi['label'],
+        'unit'      => $rdi['unit'],
+        'target'    => $target,
+        'remaining' => max(0.0, $target - $actual),
+        'foods_col' => $colMap[$n]['foods_col'],
     ];
 }
 
-// Find gaps: uncovered nutrients that need MORE intake (exclude limit nutrients)
-$gaps = array_filter($progress, fn($p) => !$p['covered'] && !$p['is_limit']);
-uasort($gaps, fn($a, $b) => $a['pct'] <=> $b['pct']);
+if (empty($gaps)) {
+    json_response(['foods' => [], 'date' => $date]);
+}
 
-// Build suggestions for each gap nutrient (up to 4 gaps, 4 foods each)
-$suggestions = [];
-$maxSuggestions = min(12, (int)($_GET['limit'] ?? 4));
-foreach (array_slice(array_keys($gaps), 0, $maxSuggestions) as $n) {
-    $foodsCol = $colMap[$n]['foods_col'] ?? null;
-    if (!$foodsCol) continue;
+// Load all non-meal foods with their default serving
+$allFoods = $database->query("
+    SELECT f.*, fs.unit_label AS serving_label, fs.weight_g AS serving_g
+    FROM foods f
+    JOIN food_servings fs ON fs.food_id = f.food_id AND fs.is_default = 1
+    WHERE f.category != 'meal'
+    ORDER BY f.name
+")->fetchAll(PDO::FETCH_ASSOC);
 
-    $remaining = max(0, $gaps[$n]['target'] - $gaps[$n]['actual']);
-    $unit      = $gaps[$n]['unit'];
-    $label     = $gaps[$n]['label'];
+// Score each food: for every gap nutrient, calculate % of full RDI the default
+// serving provides, capped at the remaining gap percentage. Contributions below
+// 5% are too small to mention. Score = sum of per-nutrient contributions.
+$scored = [];
+foreach ($allFoods as $food) {
+    $servingG = (float)$food['serving_g'];
+    if ($servingG <= 0) continue;
 
-    // Get top foods for this nutrient, excluding prepared meals
-    $stmt = $database->prepare("
-        SELECT f.food_id, f.name, f.category, f.suggested_serving_g,
-               fs.unit_label, fs.weight_g,
-               ROUND(f.suggested_serving_g / 100.0 * f.$foodsCol, 1) AS per_serving
-        FROM foods f
-        JOIN food_servings fs ON fs.food_id = f.food_id AND fs.is_default = 1
-        WHERE f.$foodsCol IS NOT NULL AND f.$foodsCol > 0 AND f.category != 'meal'
-        ORDER BY per_serving DESC
-        LIMIT 40
-    ");
-    $stmt->execute();
-    $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $score         = 0.0;
+    $contributions = [];
 
-    // Pick one from each of: fruit, vegetable, legume/grain, nut/seed/dairy/protein
-    $buckets  = ['fruit' => null, 'vegetable' => null, 'legume' => null, 'other' => null];
-    $catGroup = fn($cat) => match($cat) {
-        'fruit'     => 'fruit',
-        'vegetable' => 'vegetable',
-        'legume'    => 'legume',
-        'grain'     => 'legume',
-        default     => 'other',
-    };
-    foreach ($candidates as $c) {
-        $bucket = $catGroup($c['category']);
-        if ($buckets[$bucket] === null) $buckets[$bucket] = $c;
-        if (!in_array(null, $buckets, true)) break;
+    foreach ($gaps as $n => $gap) {
+        $nutrientPer100 = isset($food[$gap['foods_col']]) ? (float)$food[$gap['foods_col']] : 0.0;
+        if ($nutrientPer100 <= 0.0) continue;
+
+        $perServing   = $servingG / 100.0 * $nutrientPer100;
+        $pctOfRdi     = $perServing / $gap['target'] * 100.0;
+        $remainingPct = $gap['remaining'] / $gap['target'] * 100.0;
+        $pct          = min($pctOfRdi, $remainingPct);
+
+        if ($pct < 5.0) continue;
+
+        $score           += $pct;
+        $contributions[]  = ['label' => $gap['label'], 'pct' => (int)round($pct)];
     }
 
-    $picks = [];
-    foreach (array_filter($buckets) as $pick) {
-        $perServing = (float)$pick['per_serving'];
-        $servings   = $perServing > 0 ? ceil($remaining / $perServing) : null;
-        $pctOfRdi   = $gaps[$n]['target'] > 0 ? round($perServing / $gaps[$n]['target'] * 100) : null;
-        $picks[] = [
-            'food_id'           => (int)$pick['food_id'],
-            'name'              => $pick['name'],
-            'serving'           => "1 {$pick['unit_label']}",
-            'per_serving'       => $perServing,
-            'unit'              => $unit,
-            'pct_of_rdi'        => $pctOfRdi,
-            'servings_to_cover' => $servings,
-        ];
-    }
-    usort($picks, fn($a, $b) => $b['per_serving'] <=> $a['per_serving']);
+    if (empty($contributions)) continue;
 
-    $suggestions[$n] = [
-        'label'     => $label,
-        'unit'      => $unit,
-        'remaining' => round($remaining, 1),
-        'picks'     => $picks,
+    usort($contributions, fn($a, $b) => $b['pct'] <=> $a['pct']);
+
+    $scored[] = [
+        'food_id'       => (int)$food['food_id'],
+        'name'          => $food['name'],
+        'serving'       => '1 ' . $food['serving_label'],
+        'score'         => (int)round($score),
+        'contributions' => $contributions,
     ];
 }
 
-json_response(['progress' => $progress, 'suggestions' => $suggestions, 'date' => $date]);
+usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+
+json_response(['foods' => array_slice($scored, 0, 10), 'date' => $date]);

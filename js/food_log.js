@@ -141,27 +141,21 @@ window.initFoodLog = function () {
     const data = await res.json();
     const gapsCard = document.getElementById('fl-gaps-card');
     const gapsEl   = document.getElementById('fl-gaps');
-    const keys     = Object.keys(data.suggestions || {});
-    if (!keys.length) { gapsCard.style.display = 'none'; return; }
+    if (!data.foods || !data.foods.length) { gapsCard.style.display = 'none'; return; }
     gapsCard.style.display = 'block';
-    gapsEl.innerHTML = keys.map(n => {
-      const s = data.suggestions[n];
-      const picks = s.picks.map(p => `
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:0.85em;">
-          <span><strong>${esc(p.name)}</strong>
-            <span style="color:#aaa;margin-left:4px;">${esc(p.serving)}</span>
-          </span>
-          <span style="color:#27ae60;white-space:nowrap;margin-left:8px;">
-            +${p.per_serving}${esc(s.unit)}${p.pct_of_rdi != null ? ` <span style="color:#aaa;">(${p.pct_of_rdi}%)</span>` : ''}
-          </span>
-        </div>`).join('');
+    gapsEl.innerHTML = data.foods.map(f => {
+      const nutrients = f.contributions.map(c => `${esc(c.label)} ${c.pct}%`).join(', ');
       return `
-        <div style="margin-bottom:1rem;">
-          <p style="font-size:0.82em;font-weight:600;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">
-            ${esc(s.label)} — ${s.remaining}${esc(s.unit)} still to go
-          </p>
-          ${picks}
+        <div style="display:flex;justify-content:space-between;align-items:baseline;
+                    padding:6px 0;border-bottom:1px solid #f5f5f5;">
+          <span style="font-size:0.85em;">
+            <strong>${esc(f.name)}</strong>
+            <span style="color:#aaa;margin-left:4px;font-size:0.9em;">${esc(f.serving)}</span><br>
+            <span style="color:#777;font-size:0.82em;">${esc(nutrients)}</span>
+          </span>
+          <span style="color:#27ae60;white-space:nowrap;margin-left:12px;font-weight:600;font-size:0.9em;">
+            ${f.score}%
+          </span>
         </div>`;
     }).join('');
   }

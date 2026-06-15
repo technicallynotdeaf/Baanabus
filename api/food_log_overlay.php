@@ -48,7 +48,7 @@ $today = date('Y-m-d');
   <!-- Gap suggestions -->
   <div id="fl-gaps-card" class="card" style="display:none;">
     <h3 style="margin-bottom:0.75rem;">What else today?</h3>
-    <p class="muted" style="font-size:0.85em;margin-bottom:0.75rem;">Foods that would cover your biggest gaps.</p>
+    <p class="muted" style="font-size:0.85em;margin-bottom:0.75rem;">Ranked by how much of your remaining gaps one serving covers.</p>
     <div id="fl-gaps"></div>
   </div>
 

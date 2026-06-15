@@ -42,16 +42,53 @@ try {
 
 $canAdd = !$isPast && count(array_filter($scheduled, fn($t) => empty($t['_woke']))) < 3;
 
-$mealPlan = [];
+$mealPlan      = [];
+$diaryDayType  = null;
 try {
-    $diaryEntry = getDiaryEntry($date);
-    $mealPlan   = $diaryEntry['meal_plan'] ?? [];
+    $diaryEntry   = getDiaryEntry($date);
+    $mealPlan     = $diaryEntry['meal_plan'] ?? [];
+    $diaryDayType = $diaryEntry['location'] ?? $diaryEntry['day_type'] ?? null;
+    if ($diaryDayType) $diaryDayType = (int)$diaryDayType;
 } catch (Throwable $e) {}
+
+// Resolve day type: diary entry wins; fall back to weekly_schedule default
+$dow = (int)date('w', strtotime($date)); // 0=Sun … 6=Sat
+$weeklySchedule = [];
+try { $weeklySchedule = (getConfig() ?? [])['weekly_schedule'] ?? []; } catch (Throwable $e) {}
+$scheduledDayType = $weeklySchedule[$dow] ?? null;
+$effectiveDayType = $diaryDayType ?? ($scheduledDayType ? (int)$scheduledDayType : null);
+$dtLabels = [1 => 'Home', 2 => 'Work', 3 => 'Out', 4 => 'Rest', 5 => 'WFH'];
 
 $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transparent;color:#888;border:1px solid #ddd;border-radius:4px;cursor:pointer;';
 ?>
 <div data-init="initDayTasks">
-  <h2 style="margin-bottom:1rem;"><?= htmlspecialchars($label) ?></h2>
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+    <h2 style="margin:0;"><?= htmlspecialchars($label) ?></h2>
+    <?php if (!$isPast): ?>
+      <span id="day-type-badge" style="font-size:0.8em;color:#888;cursor:pointer;"
+            onclick="window._toggleDayTypePicker()"
+            title="Set day type">
+        <?= $effectiveDayType ? htmlspecialchars($dtLabels[$effectiveDayType]) : '+ day type' ?>
+        <?php if ($diaryDayType && $scheduledDayType && $diaryDayType != $scheduledDayType): ?>
+          <span title="Differs from your usual <?= $dtLabels[$scheduledDayType] ?> on this weekday" style="color:#c8a84b;">*</span>
+        <?php endif; ?>
+      </span>
+    <?php endif; ?>
+  </div>
+  <div id="day-type-picker" data-date="<?= $date ?>" style="display:none;margin-bottom:0.75rem;">
+    <div style="font-size:0.8em;color:#888;margin-bottom:5px;">
+      <?= $scheduledDayType ? 'Usual: ' . htmlspecialchars($dtLabels[$scheduledDayType]) . ' — change for this day:' : 'What kind of day is this?' ?>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <?php foreach ($dtLabels as $val => $name): ?>
+        <button class="action-button"
+                style="padding:4px 10px;font-size:0.8em;min-height:28px;<?= $effectiveDayType === $val ? 'background:#5a4a1e;color:#fff;' : 'background:transparent;color:#666;border:1px solid #ccc;' ?>"
+                onclick="window._setDayType(<?= $val ?>, '<?= $name ?>', this)">
+          <?= $name ?>
+        </button>
+      <?php endforeach; ?>
+    </div>
+  </div>
 
   <?php if (!empty($mealPlan)): ?>
     <div style="background:#fdf6e3;border-left:3px solid #c8a84b;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:1rem;">
@@ -73,7 +110,7 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
     <ul id="day-task-list" style="list-style:none;margin:0 0 1rem;padding:0;">
       <?php foreach ($scheduled as $t): ?>
         <?php $id = (int)$t['id']; $isWoke = !empty($t['_woke']); ?>
-        <li data-id="<?= $id ?>" style="padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
+        <li data-id="<?= $id ?>" data-location="<?= htmlspecialchars($t['location'] ?? '') ?>" style="padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
           <div style="line-height:1.4;margin-bottom:0.35rem;">
             <?= htmlspecialchars($t['title']) ?>
             <?php if ($isWoke): ?>

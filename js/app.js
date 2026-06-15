@@ -1,5 +1,65 @@
 // ===========================
-// global consts for things we reference... 
+// Snooze picker option builder — used by list_tasks, day_tasks, lets_go
+// Returns {suggested: [[label,when],...], rest: [[label,when],...]}
+// 'suggested' = upcoming days whose scheduled type matches the task's location
+window.buildSnoozeOpts = function(taskLocation) {
+  const compatMap = {
+    work:  [2, 5],
+    home:  [1, 4, 5],
+    shops: [1, 3],
+    phone: [1, 2, 4, 5],
+    // online/null/anywhere: no preference — skip suggested
+  };
+  const compatible = compatMap[taskLocation] || null;
+  const schedule   = window._weeklySchedule || {};
+  const upcoming   = window._upcomingDayTypes || {};
+  const hasData    = compatible !== null && (
+    Object.values(schedule).some(v => v != null) ||
+    Object.keys(upcoming).length > 0
+  );
+
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const fmtISO   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fmtShort = d => `${dayNames[d.getDay()]} ${d.getDate()}`;
+
+  function dtypeFor(d) {
+    const iso = fmtISO(d);
+    if (upcoming[iso] != null) return parseInt(upcoming[iso]);   // diary override
+    if (schedule[d.getDay()] != null) return parseInt(schedule[d.getDay()]); // weekly default
+    return null;
+  }
+
+  const suggested = [], rest = [];
+  const seen = new Set();
+
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const iso = fmtISO(d); seen.add(iso);
+    const dtype = dtypeFor(d);
+    const fits  = hasData && compatible !== null && dtype !== null && compatible.includes(dtype);
+    (fits ? suggested : rest).push([fmtShort(d), iso]);
+  }
+  // Next Monday beyond the 7-day window if not already seen
+  const nextMon = new Date(today); nextMon.setDate(today.getDate() + 8);
+  while (nextMon.getDay() !== 1) nextMon.setDate(nextMon.getDate() + 1);
+  const nextMonIso = fmtISO(nextMon);
+  if (!seen.has(nextMonIso)) {
+    const dtype = dtypeFor(nextMon);
+    const fits  = hasData && compatible !== null && dtype !== null && compatible.includes(dtype);
+    (fits ? suggested : rest).push([`Mon ${nextMon.getDate()}`, nextMonIso]);
+  }
+
+  rest.push(['In a month',   '1month']);
+  rest.push(['After payday', 'payday']);
+  rest.push(['In 2 months',  '2months']);
+  rest.push(['Someday/maybe','someday']);
+
+  return { suggested, rest };
+};
+
+// ===========================
+// global consts for things we reference...
 //
 const letsGoLink = document.getElementById('lets-go');
 const speechBubble = document.getElementById('speechBubble');

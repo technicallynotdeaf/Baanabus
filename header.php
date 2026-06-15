@@ -55,8 +55,26 @@ require_once __DIR__ . '/init.php';
         try {
             $morningModeActive = !empty(getMorningModeDailies());
         } catch (Throwable $e) {}
+        try {
+            $headerCfg         = getConfig() ?? [];
+            $navWeeklySchedule = $headerCfg['weekly_schedule'] ?? [];
+        } catch (Throwable $e) { $navWeeklySchedule = []; }
+        $navUpcomingDayTypes = [];
+        try {
+            $navDiary = getDiary();
+            for ($i = 0; $i <= 14; $i++) {
+                $d = date('Y-m-d', strtotime("+$i days"));
+                $entry = $navDiary[$d] ?? [];
+                $dt = $entry['location'] ?? $entry['day_type'] ?? null;
+                if ($dt) $navUpcomingDayTypes[$d] = (int)$dt;
+            }
+        } catch (Throwable $e) {}
     }
   ?>
+  <script>
+    window._weeklySchedule    = <?= json_encode((object)($navWeeklySchedule ?? [])) ?>;
+    window._upcomingDayTypes  = <?= json_encode((object)($navUpcomingDayTypes ?? [])) ?>;
+  </script>
   <ul class="navbar">
     <li><a href="index.php">🏠<span class="nav-text"> Library</span></a></li>
     <li><a href="scene2.php">📅<span class="nav-text"> Calendar</span></a></li>

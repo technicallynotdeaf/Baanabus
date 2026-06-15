@@ -330,6 +330,31 @@ window.initSettings = function() {
     }
   });
 
+  // ── Wellness: typical week schedule ───────────────────────────────
+  const saveWeekBtn = document.getElementById('save-weekly-schedule');
+  if (saveWeekBtn) {
+    saveWeekBtn.addEventListener('click', async function() {
+      const statusEl = document.getElementById('weekly-schedule-status');
+      const schedule = {};
+      [0,1,2,3,4,5,6].forEach(dow => {
+        const sel = document.getElementById('week-' + dow);
+        schedule[dow] = sel && sel.value !== '' ? parseInt(sel.value) : null;
+      });
+      try {
+        const resp = await fetch('api/save_weekly_schedule.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ schedule })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          window._weeklySchedule = schedule;
+          if (statusEl) { statusEl.textContent = 'Saved.'; setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000); }
+        }
+      } catch(e) { if (statusEl) statusEl.textContent = 'Save failed.'; }
+    });
+  }
+
   // ── Wellness: check-in toggle ──────────────────────────────────────
   const checkinToggle = document.getElementById('checkin-enabled');
   if (checkinToggle) {

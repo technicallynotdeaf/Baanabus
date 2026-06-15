@@ -18,7 +18,8 @@ if ($vaultOpen) {
 $nickname     = $cfg['nickname'] ?? '';
 $habiticaUser = $cassowary['habitica']['user_id'] ?? '';
 $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
-$checkinOn    = $cfg['checkin_enabled'] ?? true;
+$checkinOn      = $cfg['checkin_enabled'] ?? true;
+$weeklySchedule = $cfg['weekly_schedule'] ?? [];
 
 $periodTracking = $cfg['period_tracking'] ?? [];
 $periodEnabled  = (bool)($periodTracking['enabled']   ?? false);
@@ -343,6 +344,31 @@ if ($database) {
 
   <!-- ===== WELLNESS ===== -->
   <div id="tab-wellness" class="settings-panel" hidden>
+
+    <?php if ($vaultOpen):
+      $dtNames = ['' => '—', '1' => 'Home', '2' => 'Work', '3' => 'Out', '4' => 'Rest', '5' => 'WFH'];
+      $weekDays = [['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0]];
+    ?>
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.4rem;">Typical week</h3>
+      <p class="muted" style="font-size:0.85em;margin-bottom:0.75rem;">Used for smarter snooze suggestions — days that match where a task can be done are shown first.</p>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;">
+        <?php foreach ($weekDays as [$lbl,$dow]): ?>
+          <div style="font-size:0.75em;color:#888;padding-bottom:3px;"><?= $lbl ?></div>
+        <?php endforeach; ?>
+        <?php foreach ($weekDays as [$lbl,$dow]): ?>
+          <select id="week-<?= $dow ?>"
+                  style="font-size:0.72em;padding:3px 1px;border:1px solid #ddd;border-radius:4px;width:100%;text-align:center;">
+            <?php foreach ($dtNames as $val => $name): ?>
+              <option value="<?= $val ?>" <?= ($weeklySchedule[$dow] ?? '') == $val ? 'selected' : '' ?>><?= $name ?></option>
+            <?php endforeach; ?>
+          </select>
+        <?php endforeach; ?>
+      </div>
+      <button class="action-button" id="save-weekly-schedule" style="margin-top:0.75rem;font-size:0.9em;">Save typical week</button>
+      <p id="weekly-schedule-status" class="muted" style="margin-top:0.4rem;min-height:1.2em;font-size:0.85em;"></p>
+    </div>
+    <?php endif; ?>
 
     <div class="card" style="margin-bottom:1rem;">
       <h3 style="margin-bottom:0.75rem;">Morning check-in</h3>

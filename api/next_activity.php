@@ -573,7 +573,7 @@ try {
     $subtasks  = [];
     $pagesLeft = null;
 }
-$taskResp = ['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks];
+$taskResp = ['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks, 'location' => $t['location'] ?? null];
 if ($pagesLeft !== null && $pagesLeft > 0 && $pagesLeft <= 3) {
     $taskResp['pages_remaining'] = $pagesLeft;
 }

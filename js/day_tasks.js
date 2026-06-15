@@ -69,31 +69,64 @@ window.initDayTasks = function() {
       .catch(() => { if (li) li.style.opacity = '1'; });
   };
 
+  window._toggleDayTypePicker = function() {
+    const p = document.getElementById('day-type-picker');
+    if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window._setDayType = function(val, name, btn) {
+    const picker = document.getElementById('day-type-picker');
+    const badge  = document.getElementById('day-type-badge');
+    // Highlight the active button
+    if (picker) picker.querySelectorAll('button').forEach(b => {
+      b.style.background = ''; b.style.color = '#666'; b.style.border = '1px solid #ccc';
+    });
+    if (btn) { btn.style.background = '#5a4a1e'; btn.style.color = '#fff'; btn.style.border = ''; }
+
+    // Read the date from the overlay URL or data attribute
+    const overlay = document.getElementById('overlay-body');
+    const dateEl  = overlay ? overlay.querySelector('[data-date]') : null;
+    const date    = dateEl ? dateEl.dataset.date : null;
+    if (!date) return;
+
+    fetch('api/checkin.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field: 'day_type', value: val, date}),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        if (badge) badge.firstChild.textContent = name + ' ';
+        // Update client-side cache so snooze picker sees new day type immediately
+        if (window._upcomingDayTypes) window._upcomingDayTypes[date] = val;
+        if (picker) picker.style.display = 'none';
+      }
+    });
+  };
+
   window._showSnoozePicker = function(taskId, btn) {
     document.querySelectorAll('.day-snooze-picker').forEach(p => p.remove());
     const li = btn.closest('li');
+    const taskLocation = li ? (li.dataset.location || null) : null;
 
-    const today = new Date(); today.setHours(0,0,0,0);
-    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const fmtISO   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const fmtShort = d => `${dayNames[d.getDay()]} ${d.getDate()}`;
-    const opts = [];
-    for (let i = 1; i <= 4; i++) {
-      const d = new Date(today); d.setDate(today.getDate() + i);
-      opts.push([fmtShort(d), fmtISO(d)]);
-    }
-    const nextMon = new Date(today); nextMon.setDate(today.getDate() + 5);
-    while (nextMon.getDay() !== 1) nextMon.setDate(nextMon.getDate() + 1);
-    opts.push([`Mon ${nextMon.getDate()}`, fmtISO(nextMon)]);
-    opts.push(['In a month',   '1month']);
-    opts.push(['After payday', 'payday']);
-    opts.push(['In 2 months',  '2months']);
-    opts.push(['Someday/maybe', 'someday']);
+    const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(taskLocation);
+    const allOpts = suggested.length
+      ? [['-- suits this task --', null], ...suggested, ['-- other days --', null], ...rest]
+      : rest;
 
     const picker = document.createElement('div');
     picker.className = 'day-snooze-picker';
     picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;padding:4px 0;';
-    opts.forEach(([label, when]) => {
+
+    allOpts.forEach(([label, when]) => {
+      if (when === null) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'width:100%;font-size:0.72em;color:#aaa;padding:2px 0 1px;';
+        sep.textContent = label;
+        picker.appendChild(sep);
+        return;
+      }
       const b = document.createElement('button');
       b.className = 'action-button';
       b.style.cssText = when === 'someday'

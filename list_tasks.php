@@ -120,6 +120,7 @@ if (isset($bucketFilters[$filter])) {
     <div class="task-row" data-id="<?= (int)$t['id'] ?>"
          data-title="<?= htmlspecialchars(strtolower($t['title'])) ?>"
          data-context="<?= htmlspecialchars($ctx) ?>"
+         data-location="<?= htmlspecialchars($t['location'] ?? '') ?>"
          style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
@@ -297,6 +298,7 @@ $typeLabels = [
         <div class="task-row" data-id="<?= (int)$t['id'] ?>"
              data-title="<?= htmlspecialchars(strtolower($t['title']) . ' ' . $subSearch) ?>"
              data-context="<?= htmlspecialchars(trim($t['context'] ?? '')) ?>"
+             data-location="<?= htmlspecialchars($t['location'] ?? '') ?>"
              style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
           <div style="flex:1;min-width:0;">
             <span style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></span>

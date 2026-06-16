@@ -160,6 +160,7 @@ function _ensureSchema(PDO $db): void {
             (2,'💼 Work','Work day'),
             (3,'🛍️ Out','Out and about'),
             (4,'🌿 Rest','Rest and recovery'),
+            (5,'WFH','Working from home'),
             (6,'🚌 Transit','Commuting or travelling');
 
         INSERT OR IGNORE INTO contexts (context) VALUES

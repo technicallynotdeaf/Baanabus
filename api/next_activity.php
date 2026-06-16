@@ -162,16 +162,23 @@ try {
             'What does today look like for you?',
             'Home day, work day, or something else?',
         ];
+        $dayTypeOpts = [
+            ['value' => 1, 'label' => 'Home'],
+            ['value' => 2, 'label' => 'Work'],
+            ['value' => 3, 'label' => 'Out'],
+            ['value' => 4, 'label' => 'Rest'],
+        ];
+        if ($database) {
+            try {
+                $dtRows = $database->query("SELECT day_type, label FROM day_types ORDER BY day_type")->fetchAll(PDO::FETCH_ASSOC);
+                if ($dtRows) $dayTypeOpts = array_map(fn($r) => ['value' => (int)$r['day_type'], 'label' => $r['label']], $dtRows);
+            } catch (Throwable $e) {}
+        }
         $missing = [
             'type'    => 'missing_info',
             'field'   => 'day_type',
             'prompt'  => $prompts[array_rand($prompts)],
-            'options' => [
-                ['value' => 1, 'label' => 'Home'],
-                ['value' => 2, 'label' => 'Work'],
-                ['value' => 3, 'label' => 'Out'],
-                ['value' => 4, 'label' => 'Rest'],
-            ],
+            'options' => $dayTypeOpts,
         ];
     } else {
         $energy  = max(1, min(5, (int)$row['energy_level']));

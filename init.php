@@ -90,6 +90,12 @@ function _ensureSchema(PDO $db): void {
             description TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS locations (
+            location_id INTEGER PRIMARY KEY,
+            label       TEXT NOT NULL,
+            description TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS tags (
             tag_id    TEXT PRIMARY KEY,
             name      TEXT NOT NULL,
@@ -165,6 +171,13 @@ function _ensureSchema(PDO $db): void {
 
         INSERT OR IGNORE INTO contexts (context) VALUES
             ('home'),('work'),('shops'),('online'),('phone'),('anywhere');
+
+        INSERT OR IGNORE INTO locations VALUES
+            (1,'Home','At home'),
+            (2,'Work','At the office'),
+            (3,'Out','Out and about'),
+            (4,'Rest','Resting'),
+            (6,'Transit','Commuting or travelling');
 
         INSERT OR IGNORE INTO love_languages VALUES
             ('service', 'Acts of Service',  'This person feels loved when I do things for them'),

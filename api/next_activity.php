@@ -180,11 +180,31 @@ try {
             'prompt'  => $prompts[array_rand($prompts)],
             'options' => $dayTypeOpts,
         ];
+    } elseif (empty($row['location'])) {
+        $energy  = max(1, min(5, (int)$row['energy_level']));
+        $locOpts = [
+            ['value' => 1, 'label' => 'Home'],
+            ['value' => 2, 'label' => 'Work'],
+            ['value' => 3, 'label' => 'Out'],
+            ['value' => 4, 'label' => 'Rest'],
+            ['value' => 6, 'label' => 'Transit'],
+        ];
+        if ($database) {
+            try {
+                $locRows = $database->query("SELECT location_id, label FROM locations ORDER BY location_id")->fetchAll(PDO::FETCH_ASSOC);
+                if ($locRows) $locOpts = array_map(fn($r) => ['value' => (int)$r['location_id'], 'label' => $r['label']], $locRows);
+            } catch (Throwable $e) {}
+        }
+        $missing = [
+            'type'    => 'missing_info',
+            'field'   => 'location',
+            'prompt'  => 'Where are you right now?',
+            'options' => $locOpts,
+        ];
     } else {
         $energy  = max(1, min(5, (int)$row['energy_level']));
         $dayType = (int)($row['day_type'] ?? 0);
-        // physical location overrides day_type for where-am-I-now logic
-        $physicalLocation = isset($row['location']) ? (int)$row['location'] : $dayType;
+        $physicalLocation = (int)$row['location'];
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
 $dayType          = $dayType ?? 0;

@@ -40,15 +40,14 @@ require_once __DIR__ . '/init.php';
   <!-- Navigation Bar (only when logged in) -->
   <?php
     $navEnergy         = null;
-    $navDayType        = null;
+    $navLocation       = null;
     $morningModeActive = false;
     require_once __DIR__ . '/config_helper.php';
     if (isUnlocked()) {
         try {
-            $todayEntry = getDiaryEntry(date('Y-m-d'));
-            $navEnergy  = !empty($todayEntry['energy_level']) ? (int)$todayEntry['energy_level'] : null;
-            // location = current physical location (overrides day_type); falls back to day_type for existing data
-            $navDayType = !empty($todayEntry['location'])
+            $todayEntry  = getDiaryEntry(date('Y-m-d'));
+            $navEnergy   = !empty($todayEntry['energy_level']) ? (int)$todayEntry['energy_level'] : null;
+            $navLocation = !empty($todayEntry['location'])
                 ? (int)$todayEntry['location']
                 : (!empty($todayEntry['day_type']) ? (int)$todayEntry['day_type'] : null);
         } catch (Throwable $e) {}
@@ -97,12 +96,28 @@ require_once __DIR__ . '/init.php';
     </select>
     <span class="nav-context-sep">|</span>
     <select id="nav-daytype" class="nav-checkin-select">
-      <option value=""<?= $navDayType === null ? ' selected disabled' : '' ?>>Location</option>
-      <option value="1"<?= $navDayType === 1 ? ' selected' : '' ?>>Home</option>
-      <option value="2"<?= $navDayType === 2 ? ' selected' : '' ?>>Work</option>
-      <option value="3"<?= $navDayType === 3 ? ' selected' : '' ?>>Out</option>
-      <option value="4"<?= $navDayType === 4 ? ' selected' : '' ?>>Rest</option>
-      <option value="6"<?= $navDayType === 6 ? ' selected' : '' ?>>Transit</option>
+      <option value=""<?= $navLocation === null ? ' selected disabled' : '' ?>>Location</option>
+      <?php
+        $navLocationRows = [];
+        if (isset($database)) {
+            try {
+                $navLocationRows = $database->query("SELECT location_id, label FROM locations ORDER BY location_id")->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Throwable $e) {}
+        }
+        if (empty($navLocationRows)) {
+            $navLocationRows = [
+                ['location_id' => 1, 'label' => 'Home'],
+                ['location_id' => 2, 'label' => 'Work'],
+                ['location_id' => 3, 'label' => 'Out'],
+                ['location_id' => 4, 'label' => 'Rest'],
+                ['location_id' => 6, 'label' => 'Transit'],
+            ];
+        }
+        foreach ($navLocationRows as $loc):
+            $sel = $navLocation === (int)$loc['location_id'] ? ' selected' : '';
+      ?>
+      <option value="<?= (int)$loc['location_id'] ?>"<?= $sel ?>><?= htmlspecialchars($loc['label']) ?></option>
+      <?php endforeach; ?>
     </select>
   </div>
 <?php

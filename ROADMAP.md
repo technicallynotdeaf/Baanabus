@@ -286,3 +286,17 @@ Process physical objects that are left out as visual reminders — without requi
 **Current priority: M6.1 — Habitica bidirectional sync.** Tasks deleted in Habitica should be removed from Baanabus; tasks created in Baanabus should push to Habitica; metadata (urgency, context, snooze state) should write to Habitica notes; `doable`/`snoozed` and `location:*` tags applied at sync time.
 
 After that: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), M4.5 food cost tracking + recipe storage, or M2.5 trivia expansion.
+
+---
+
+## Maybe One Day
+
+Features that are worth remembering but not prioritising. No commitments — just a place to park ideas so they don't get lost.
+
+- **Fitbit / Pebble sleep tracking**: ingest sleep data via Fitbit webhook or Pebble timeline API → store sleep duration + quality in vault (`sleep.enc`) → use as a G6 signal (did the user sleep adequately?) and as context for activity pool weighting (don't surface high-energy tasks after a bad night). Pebble is community-maintained post-Fitbit acquisition; worth checking current webhook support before building.
+- **Gmail / iCloud as vault storage**: for non-technical users, storing the encrypted vault in their existing cloud storage rather than on the Baanabus server removes the single-point-of-failure and makes the app self-hostable in spirit. Vault files are already opaque encrypted blobs — they're safe to store anywhere. Would require OAuth flows for Gmail Drive / iCloud Drive APIs.
+- **Android SMS triage**: read incoming SMS and surface unread threads as inbox items for triage ("Reply to Mum?"). Requires READ_SMS permission on Android — worth checking GrapheneOS/Vanadium behaviour.
+- **Contact sync (CardDAV / Android contacts)**: import device contacts into `people.enc` as a starting point for the people directory, rather than requiring manual entry.
+- **CalDAV sync**: pull calendar events from a self-hosted CalDAV server (Radicale) or device calendar → surface as context on the focus card ("you have X at 2pm").
+- **Proton Mail IMAP triage**: pull unread emails into inbox for GTD processing.
+- **Food cost tracking**: record approximate cost per food item or serving; weight gap suggestions toward affordable options.

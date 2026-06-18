@@ -1484,11 +1484,28 @@ window.initLetsGo = function() {
   }
 
   function renderQuote(d) {
-    const acks = ['Got it', 'I hear this', 'Cool', 'OK', 'Next'];
-    const btn  = acks[Math.floor(Math.random() * acks.length)];
     c.innerHTML = `
-      <p style="font-style:italic;line-height:1.6;margin-bottom:0.75rem;">"${esc(d.text)}"</p>
-      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">${btn}</button>`;
+      <p style="font-size:0.72em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.6rem;">A moment</p>
+      <p style="font-style:italic;line-height:1.65;margin-bottom:1.2rem;">"${esc(d.text)}"</p>
+      <div id="quote-bar-wrap" style="height:3px;background:rgba(255,255,255,0.12);border-radius:2px;overflow:hidden;cursor:pointer;" title="Tap to skip">
+        <div id="quote-bar" style="height:100%;width:0%;background:rgba(255,255,255,0.45);transition:width 10s linear;"></div>
+      </div>`;
+
+    const advance = () => {
+      clearTimeout(quoteTimer);
+      loadSpeechBubble('lets-go.php');
+    };
+
+    document.getElementById('quote-bar-wrap').addEventListener('click', advance);
+    c.addEventListener('click', advance, { once: true });
+
+    // Kick off the bar animation on next frame so the transition fires
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const bar = document.getElementById('quote-bar');
+      if (bar) bar.style.width = '100%';
+    }));
+
+    const quoteTimer = setTimeout(advance, 10000);
   }
 
   function renderMissingInfo(d) {

@@ -203,7 +203,31 @@ Full two-way sync so Habitica and Baanabus stay in lockstep, plus Habitica tags 
 
 ## M7 — Android Companion
 
-- [ ] Android WebView wrapper (PWA-style, fullscreen, no browser chrome)
+### M7.0 — Authentication
+
+Two paths depending on whether the user already has a web account:
+
+**Path A — Existing user (QR link)**
+1. Web settings page generates a short-lived one-time token (5 min TTL), renders it as a QR code
+2. User scans QR with the Android app
+3. App exchanges the token at a server endpoint → server generates a BSK key scoped to that user, returns it once
+4. Token is invalidated immediately after exchange
+5. App stores BSK key in Android Keystore via `flutter_secure_storage`
+6. All subsequent API calls use the BSK key as Bearer auth
+
+Server-side needed: `api/generate_qr_token.php` (creates short-lived token in vault or SQLite), `api/exchange_qr_token.php` (validates token, generates + returns BSK key, invalidates token). QR contains a deep link: `baanabus://setup?token=XXXX` or `https://baanabus.app/setup?token=XXXX`.
+
+**Path B — New user (device passkey)**
+1. App checks device can support passkeys (Android 9+, Android Credential Manager API, platform authenticator available)
+2. If requirements not met: clear human-readable explanation of what's needed, no dead ends
+3. If met: trigger WebAuthn registration via Android Credential Manager → creates a passkey on the device
+4. Server registers the credential, bootstraps a new vault for the user
+5. PRF extension used to derive vault DEK if available (Chrome on Android supports it; Vanadium/GrapheneOS may not — need a fallback for non-PRF devices, probably a server-held DEK wrapped with the credential's public key, which is weaker but functional for non-power users)
+
+This is the path for alpha/beta testers who have never used the web app — they onboard entirely from the phone without ever needing to visit baanabus.app.
+
+### M7.1 — Core Features
+
 - [ ] Share target: receive text/URLs from other apps → lands in inbox
 - [ ] Push notifications: due tasks / overdue reviews
 - [ ] Contact call prompts: before a call, app surfaces person notes + last contact date
@@ -300,3 +324,4 @@ Features that are worth remembering but not prioritising. No commitments — jus
 - **CalDAV sync**: pull calendar events from a self-hosted CalDAV server (Radicale) or device calendar → surface as context on the focus card ("you have X at 2pm").
 - **Proton Mail IMAP triage**: pull unread emails into inbox for GTD processing.
 - **Food cost tracking**: record approximate cost per food item or serving; weight gap suggestions toward affordable options.
+- **Formal REST API + OpenAPI spec**: restructure `api/agent.php` into proper REST endpoints (`GET /api/tasks`, `PATCH /api/tasks/{id}`, etc.) with an OpenAPI/Swagger spec so third-party agents can consume it without needing source access. Pre-requisite for opening the API to external developers. Not needed while Alison is the only user.

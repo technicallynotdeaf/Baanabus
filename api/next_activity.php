@@ -453,6 +453,7 @@ $pool = array_merge(
     array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
     array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
+    array_fill(0, $dayType !== 3 ? 2 : 0,             'dance'),
     array_fill(0, 1,                                   'fun_task'),
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),
@@ -479,6 +480,9 @@ if ($lastActivity && count(array_unique($pool)) > 1) {
 $choice = $pool[array_rand($pool)];
 $_SESSION['last_activity'] = $choice;
 
+if ($choice === 'dance') {
+    json_response(pick_dance());
+}
 if ($choice === 'quote') {
     $q = pick_quote();
     if ($q) json_response($q);
@@ -851,6 +855,17 @@ function pick_quote(): ?array {
     if (empty($pool)) return null;
     $pick = $pool[array_rand($pool)];
     return ['type' => 'quote', 'id' => $pick['id'], 'text' => $pick['text']];
+}
+
+function pick_dance(): array {
+    $prompts = [
+        "Put on one song you love and actually dance to it. Move — don't just sway.",
+        "One song. Actually dance. Not in your head — with your body.",
+        "Put on the song that always gets you and dance to it properly.",
+        "This is a prescription: one song, full dancing. The research is unambiguous.",
+        "Find a song and dance to it. Not later. Now.",
+    ];
+    return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)]];
 }
 
 function pick_fun_task(): array {

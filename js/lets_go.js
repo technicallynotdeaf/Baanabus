@@ -58,6 +58,7 @@ window.initLetsGo = function() {
       case 'regulation':     renderRegulation(d);    break;
       case 'reset_msg':      renderResetMsg(d);      break;
       case 'quote':          renderQuote(d);         break;
+      case 'dance':          renderDance(d);         break;
       case 'tip':            renderTip(d);           break;
       case 'missing_info':   renderMissingInfo(d);   break;
       case 'onboarding_step': renderOnboarding(d);   break;
@@ -287,6 +288,17 @@ window.initLetsGo = function() {
       next.addEventListener('click', () => loadSpeechBubble('lets-go.php'));
       c.appendChild(next);
     });
+  }
+
+  function renderDance(d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Move</p>
+      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      <button class="action-button" onclick="window._danceDown()">Done it</button>`;
+    window._danceDown = function() {
+      earnPip();
+      if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+    };
   }
 
   function renderEasyTask(d) {

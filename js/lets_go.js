@@ -291,14 +291,74 @@ window.initLetsGo = function() {
   }
 
   function renderDance(d) {
-    c.innerHTML = `
-      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Move</p>
-      <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.text)}</p>
-      <button class="action-button" onclick="window._danceDown()">Done it</button>`;
-    window._danceDown = function() {
+    let startTime = null;
+    let timerInterval = null;
+    let todaySeconds = d.today_seconds || 0;
+
+    function fmtSeconds(s) {
+      const m = Math.floor(s / 60), sec = s % 60;
+      return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+    }
+
+    function todayLine(total) {
+      if (total <= 0) return '';
+      return `<p id="dance-today" style="font-size:0.8em;color:#aaa;margin-top:0.5rem;">${fmtSeconds(total)} today</p>`;
+    }
+
+    function render(state) {
+      if (state === 'ready') {
+        c.innerHTML = `
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Move</p>
+          <p style="line-height:1.6;margin-bottom:0.75rem;">${esc(d.text)}</p>
+          ${todayLine(todaySeconds)}
+          <button class="action-button" style="margin-top:0.75rem;" onclick="window._danceStart()">Start</button>`;
+      } else if (state === 'dancing') {
+        c.innerHTML = `
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Move</p>
+          <p id="dance-timer" style="font-size:2rem;font-weight:bold;color:#fff;margin:0.5rem 0 1rem;letter-spacing:0.04em;">0s</p>
+          ${todayLine(todaySeconds)}
+          <button class="action-button" onclick="window._danceStop()">Done</button>`;
+      }
+    }
+
+    window._danceStart = function() {
+      startTime = Date.now();
+      render('dancing');
+      timerInterval = setInterval(() => {
+        const el = document.getElementById('dance-timer');
+        if (el) el.textContent = fmtSeconds(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    };
+
+    window._danceStop = function() {
+      clearInterval(timerInterval);
+      const elapsed = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
+      fetch('api/log_dance.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({seconds: elapsed}),
+      })
+      .then(r => r.json())
+      .then(data => {
+        const total = data.today_total || (todaySeconds + elapsed);
+        c.innerHTML = `
+          <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Move</p>
+          <p style="line-height:1.6;margin-bottom:0.25rem;">Nice — ${fmtSeconds(elapsed)}.</p>
+          <p style="font-size:0.85em;color:#aaa;margin-bottom:0.75rem;">${fmtSeconds(total)} today total.</p>
+          <button class="action-button" onclick="window._danceNext()">Next</button>`;
+      })
+      .catch(() => {
+        earnPip();
+        if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+      });
+    };
+
+    window._danceNext = function() {
       earnPip();
       if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
     };
+
+    render('ready');
   }
 
   function renderEasyTask(d) {

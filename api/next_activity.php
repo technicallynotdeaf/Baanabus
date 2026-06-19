@@ -865,7 +865,12 @@ function pick_dance(): array {
         "This is a prescription: one song, full dancing. The research is unambiguous.",
         "Find a song and dance to it. Not later. Now.",
     ];
-    return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)]];
+    $todayTotal = 0;
+    try {
+        $cfg = getConfig();
+        $todayTotal = (int)($cfg['dance_log'][date('Y-m-d')] ?? 0);
+    } catch (Throwable $e) {}
+    return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)], 'today_seconds' => $todayTotal];
 }
 
 function pick_fun_task(): array {

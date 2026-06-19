@@ -220,9 +220,10 @@ Server-side needed: `api/generate_qr_token.php` (creates short-lived token in va
 **Path B — New user (device passkey)**
 1. App checks device supports passkeys (Android 9+, Android Credential Manager API, platform authenticator available)
 2. If not supported: clear message explaining the requirement, graceful stop — no fallback needed at this stage
-3. If supported: trigger WebAuthn registration via Android Credential Manager → creates a FIDO2 passkey on the device
-4. Server registers the credential, bootstraps a new vault for the user
-5. PRF extension derives the vault DEK
+3. If supported: attempt registration via Android Credential Manager, defaulting to Google Password Manager / device keychain (the platform authenticator most users will have)
+4. PRF support depends on the authenticator — Google Password Manager supports PRF from Android 14. If PRF is unavailable, onboarding checks what authenticator apps are installed and attempts each in turn (1Password, Bitwarden, etc. all have varying PRF support)
+5. If no available authenticator supports PRF: clear message explaining what's needed and why — graceful stop, no silent fallback to a weaker scheme
+6. If PRF available: server registers the credential, bootstraps a new vault, DEK derived via PRF
 
 User never needs to visit baanabus.app. The phone is their only device and the passkey is their only credential.
 

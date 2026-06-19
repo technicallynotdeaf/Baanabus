@@ -218,13 +218,13 @@ Two paths depending on whether the user already has a web account:
 Server-side needed: `api/generate_qr_token.php` (creates short-lived token in vault or SQLite), `api/exchange_qr_token.php` (validates token, generates + returns BSK key, invalidates token). QR contains a deep link: `baanabus://setup?token=XXXX` or `https://baanabus.app/setup?token=XXXX`.
 
 **Path B — New user (device passkey)**
-1. App checks device can support passkeys (Android 9+, Android Credential Manager API, platform authenticator available)
-2. If requirements not met: clear human-readable explanation of what's needed, no dead ends
-3. If met: trigger WebAuthn registration via Android Credential Manager → creates a passkey on the device
+1. App checks device supports passkeys (Android 9+, Android Credential Manager API, platform authenticator available)
+2. If not supported: clear message explaining the requirement, graceful stop — no fallback needed at this stage
+3. If supported: trigger WebAuthn registration via Android Credential Manager → creates a FIDO2 passkey on the device
 4. Server registers the credential, bootstraps a new vault for the user
-5. PRF extension used to derive vault DEK if available (Chrome on Android supports it; Vanadium/GrapheneOS may not — need a fallback for non-PRF devices, probably a server-held DEK wrapped with the credential's public key, which is weaker but functional for non-power users)
+5. PRF extension derives the vault DEK
 
-This is the path for alpha/beta testers who have never used the web app — they onboard entirely from the phone without ever needing to visit baanabus.app.
+User never needs to visit baanabus.app. The phone is their only device and the passkey is their only credential.
 
 ### M7.1 — Core Features
 

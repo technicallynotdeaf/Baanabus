@@ -17,7 +17,8 @@ try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
 $gamePref     = $cfg['game_prefs']      ?? [];
 $gamesEnabled = $gamePref['enabled']    ?? true;
 $gameToggles  = $gamePref['minigames']  ?? [];
-$checkinOn    = $cfg['checkin_enabled'] ?? true;
+$checkinOn        = $cfg['checkin_enabled'] ?? true;
+$danceTodaySeconds = (int)($cfg['dance_log'][date('Y-m-d')] ?? 0);
 
 try {
     $tasks      = getDoableTasks();
@@ -453,7 +454,7 @@ $pool = array_merge(
     array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
     array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
-    array_fill(0, $dayType !== 3 ? 2 : 0,             'dance'),
+    array_fill(0, ($dayType !== 3 && $danceTodaySeconds < 900) ? 2 : 0, 'dance'),
     array_fill(0, 1,                                   'fun_task'),
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),
@@ -865,12 +866,8 @@ function pick_dance(): array {
         "This is a prescription: one song, full dancing. The research is unambiguous.",
         "Find a song and dance to it. Not later. Now.",
     ];
-    $todayTotal = 0;
-    try {
-        $cfg = getConfig();
-        $todayTotal = (int)($cfg['dance_log'][date('Y-m-d')] ?? 0);
-    } catch (Throwable $e) {}
-    return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)], 'today_seconds' => $todayTotal];
+    global $danceTodaySeconds;
+    return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)], 'today_seconds' => $danceTodaySeconds];
 }
 
 function pick_fun_task(): array {

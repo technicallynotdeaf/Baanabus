@@ -82,33 +82,26 @@ window.initNutritionProgress = function () {
     </div>`;
   }
 
-  function renderSuggestions(suggestions) {
-    const keys = Object.keys(suggestions || {});
-    if (!keys.length) return '';
-    const rows = keys.map(n => {
-      const s    = suggestions[n];
-      const picks = (s.picks || []).map(p => `
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:0.84em;">
-          <span><strong>${esc(p.name)}</strong>
-            <span style="color:#aaa;margin-left:4px;">${esc(p.serving)}</span></span>
-          <span style="color:#27ae60;white-space:nowrap;margin-left:8px;">
-            +${fmt(p.per_serving)}${esc(s.unit)}${p.pct_of_rdi != null ? ` <span style="color:#aaa;">(${p.pct_of_rdi}%)</span>` : ''}
-          </span>
-        </div>`).join('');
-      return `<div style="margin-bottom:1.1rem;">
-        <p style="font-size:0.79em;font-weight:600;color:#555;margin-bottom:4px;
-                  text-transform:uppercase;letter-spacing:0.05em;">
-          ${esc(s.label)} — ${fmt(s.remaining)}${esc(s.unit)} short
-        </p>
-        ${picks}
+  function renderGapFoods(foods) {
+    if (!foods || !foods.length) return '';
+    const rows = foods.map(f => {
+      const nutrients = (f.contributions || []).map(c => `${esc(c.label)} ${c.pct}%`).join(', ');
+      return `<div style="display:flex;justify-content:space-between;align-items:baseline;
+                          padding:6px 0;border-bottom:1px solid #f5f5f5;">
+        <span style="font-size:0.85em;">
+          <strong>${esc(f.name)}</strong>
+          <span style="color:#aaa;margin-left:4px;font-size:0.9em;">${esc(f.serving)}</span><br>
+          <span style="color:#777;font-size:0.82em;">${esc(nutrients)}</span>
+        </span>
+        <span style="color:#27ae60;white-space:nowrap;margin-left:12px;font-weight:600;font-size:0.9em;">
+          ${f.score}%
+        </span>
       </div>`;
     }).join('');
-
     return `<div style="margin-top:1.5rem;padding-top:1.25rem;border-top:2px solid #eee;">
       <h3 style="margin-bottom:0.1rem;">What would help most today?</h3>
       <p class="muted" style="font-size:0.83em;margin-bottom:0.9rem;">
-        Foods that move your biggest gaps.
+        Ranked by how much of your remaining gaps one serving covers.
       </p>
       ${rows}
     </div>`;
@@ -126,12 +119,12 @@ window.initNutritionProgress = function () {
   fetch('api/food_gaps.php?date=' + today + '&limit=8')
     .then(r => r.json())
     .then(data => {
-      const progress    = data.progress    || {};
-      const suggestions = data.suggestions || {};
-      const body        = document.getElementById('np-body');
+      const progress = data.progress || {};
+      const foods    = data.foods    || [];
+      const body     = document.getElementById('np-body');
       if (!body) return;
       const html = SECTIONS.map(s => renderSection(s, progress)).join('') +
-                   renderSuggestions(suggestions);
+                   renderGapFoods(foods);
       body.innerHTML = html || '<p class="muted">No nutrient data yet today.</p>';
     })
     .catch(() => {

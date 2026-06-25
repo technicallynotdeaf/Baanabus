@@ -8,9 +8,8 @@ if (!$database) { json_response(['error' => 'DB unavailable'], 500); }
 
 $date = $_GET['date'] ?? date('Y-m-d');
 
-// Map RDI nutrient keys → foods table column + foodLogNutrientTotals key
-// Limit nutrients (sodium, sat fat, trans fat, sugars) are intentionally absent —
-// they can't improve a gap score.
+// Gap scoring map: nutrient RDI key → foods table column + foodLogNutrientTotals key.
+// Limit nutrients and sodium are excluded — they can't improve a gap score.
 $colMap = [
     'energy_kj'             => ['foods_col' => 'energy_kj',             'totals_key' => 'energy_kj'],
     'protein_g'             => ['foods_col' => 'protein_g',             'totals_key' => 'protein_g'],
@@ -49,6 +48,49 @@ $colMap = [
     'lutein_zeaxanthin_mcg' => ['foods_col' => 'lutein_zeaxanthin_mcg', 'totals_key' => 'lutein_zeaxanthin'],
 ];
 
+// Full map of ALL RDI nutrient keys → foodLogNutrientTotals key (includes limits).
+// Used to build the progress bars in the Nutrients overlay.
+$progressTotalsMap = [
+    'energy_kj'             => 'energy_kj',
+    'protein_g'             => 'protein_g',
+    'fibre'                 => 'fibre',
+    'fibre_soluble'         => 'fibre_soluble',
+    'fibre_insoluble'       => 'fibre_insoluble',
+    'potassium'             => 'potassium',
+    'sodium'                => 'sodium',
+    'vitamin_c'             => 'vitamin_c',
+    'folate'                => 'vitamin_b9',
+    'calcium'               => 'calcium',
+    'iron'                  => 'iron',
+    'magnesium'             => 'magnesium',
+    'vitamin_k'             => 'vitamin_k',
+    'vitamin_a'             => 'vitamin_a',
+    'retinol'               => 'retinol',
+    'vitamin_d'             => 'vitamin_d',
+    'omega3_ala_mg'         => 'omega3_ala',
+    'omega3_epa_mg'         => 'omega3_epa',
+    'omega3_dha_mg'         => 'omega3_dha',
+    'omega6_la_mg'          => 'omega6_la',
+    'vitamin_b1_mg'         => 'vitamin_b1',
+    'vitamin_b2_mg'         => 'vitamin_b2',
+    'vitamin_b3_mg'         => 'vitamin_b3',
+    'vitamin_b5_mg'         => 'vitamin_b5',
+    'vitamin_b6_mg'         => 'vitamin_b6',
+    'vitamin_b7_mcg'        => 'vitamin_b7',
+    'vitamin_b12_mcg'       => 'vitamin_b12',
+    'vitamin_e_mg'          => 'vitamin_e',
+    'vitamin_k2_mcg'        => 'vitamin_k2',
+    'choline_mg'            => 'choline',
+    'lutein_zeaxanthin_mcg' => 'lutein_zeaxanthin',
+    'zinc_mg'               => 'zinc',
+    'selenium_mcg'          => 'selenium',
+    'iodine_mcg'            => 'iodine',
+    'copper_mg'             => 'copper',
+    'fat_saturated_g'       => 'fat_saturated_g',
+    'fat_trans_g'           => 'fat_trans_g',
+    'sugars_g'              => 'sugars_g',
+];
+
 $rdis = $database->query("SELECT * FROM nutrient_rdis ORDER BY display_order")
                  ->fetchAll(PDO::FETCH_ASSOC);
 
@@ -58,7 +100,34 @@ $todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
 $weekStart   = date('Y-m-d', strtotime($date . ' -6 days'));
 $weekTotals  = foodLogNutrientTotals($database, $log, $weekStart, $date);
 
-// Build gap map: only uncovered, non-limit nutrients
+// Build progress bars for ALL RDI nutrients (including limits).
+$progress = [];
+foreach ($rdis as $rdi) {
+    $n      = $rdi['nutrient'];
+    $totKey = $progressTotalsMap[$n] ?? null;
+    if (!$totKey) continue;
+
+    if ($rdi['period'] === 'weekly') {
+        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7);
+        $actual = (float)($weekTotals[$totKey] ?? 0);
+    } else {
+        $target = (float)$rdi['daily_rdi'];
+        $actual = (float)($todayTotals[$totKey] ?? 0);
+    }
+
+    $progress[$n] = [
+        'label'       => $rdi['label'],
+        'actual'      => round($actual, 3),
+        'target'      => round($target, 3),
+        'unit'        => $rdi['unit'],
+        'pct'         => $target > 0 ? round($actual / $target, 4) : 0.0,
+        'is_limit'    => !empty($rdi['is_limit']),
+        'upper_limit' => isset($rdi['upper_limit']) ? (float)$rdi['upper_limit'] : null,
+        'note'        => $rdi['notes'] ?? null,
+    ];
+}
+
+// Build gap map: only uncovered, non-limit nutrients (used for food suggestions).
 $gaps = [];
 foreach ($rdis as $rdi) {
     $n   = $rdi['nutrient'];
@@ -86,7 +155,7 @@ foreach ($rdis as $rdi) {
 }
 
 if (empty($gaps)) {
-    json_response(['foods' => [], 'date' => $date]);
+    json_response(['foods' => [], 'progress' => $progress, 'suggestions' => new stdClass(), 'date' => $date]);
 }
 
 // Load all non-meal foods with their default serving
@@ -139,4 +208,41 @@ foreach ($allFoods as $food) {
 
 usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
 
-json_response(['foods' => array_slice($scored, 0, 10), 'date' => $date]);
+// Build per-nutrient suggestions for the top 4 biggest gaps.
+// Each entry lists the top 3 foods for that specific nutrient.
+$sortedGaps = $gaps;
+uasort($sortedGaps, fn($a, $b) =>
+    ($b['remaining'] / max(0.001, $b['target'])) <=> ($a['remaining'] / max(0.001, $a['target']))
+);
+$suggestions = new stdClass();
+$suggCount   = 0;
+foreach ($sortedGaps as $n => $gap) {
+    if ($suggCount >= 4) break;
+    $col      = $gap['foods_col'];
+    $picks    = [];
+    foreach ($allFoods as $food) {
+        $servingG       = (float)$food['serving_g'];
+        $nutrientPer100 = isset($food[$col]) ? (float)$food[$col] : 0.0;
+        if ($servingG <= 0 || $nutrientPer100 <= 0.0) continue;
+        $perServing = $servingG / 100.0 * $nutrientPer100;
+        if ($perServing <= 0) continue;
+        $picks[] = [
+            'name'        => $food['name'],
+            'serving'     => '1 ' . $food['serving_label'],
+            'per_serving' => round($perServing, 3),
+            'pct_of_rdi'  => (int)round($perServing / $gap['target'] * 100),
+        ];
+    }
+    usort($picks, fn($a, $b) => $b['per_serving'] <=> $a['per_serving']);
+    $picks = array_slice($picks, 0, 3);
+    if (empty($picks)) continue;
+    $suggestions->$n = [
+        'label'     => $gap['label'],
+        'unit'      => $progress[$n]['unit'] ?? $gap['unit'],
+        'remaining' => round($gap['remaining'], 3),
+        'picks'     => $picks,
+    ];
+    $suggCount++;
+}
+
+json_response(['foods' => array_slice($scored, 0, 10), 'progress' => $progress, 'suggestions' => $suggestions, 'date' => $date]);

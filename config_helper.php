@@ -723,7 +723,7 @@ function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): a
         'vitamin_a', 'retinol', 'vitamin_b1', 'vitamin_b2', 'vitamin_b3', 'vitamin_b5', 'vitamin_b6',
         'vitamin_b7', 'vitamin_b9', 'vitamin_b12', 'vitamin_c', 'vitamin_d', 'vitamin_e', 'vitamin_k', 'vitamin_k2',
         'choline', 'lutein_zeaxanthin',
-        'calcium', 'copper', 'iodine', 'iron', 'magnesium', 'potassium', 'selenium', 'sodium', 'zinc',
+        'calcium', 'copper', 'iodine', 'iron', 'magnesium', 'phosphorus', 'potassium', 'selenium', 'sodium', 'zinc',
     ];
     $totals = array_fill_keys($keys, 0.0);
 

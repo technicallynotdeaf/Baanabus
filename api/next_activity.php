@@ -3,6 +3,30 @@ require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
+// Must be defined before any pick_quote() call — const at file scope is runtime, not hoisted.
+const AFFIRMATIONS = [
+    "I am capable even when I don't feel like it.",
+    "I can learn new things.",
+    "I can get things done without having to feel like it first.",
+    "I am not less valuable than anyone else.",
+    "I don't talk to myself in ways I wouldn't talk to other people.",
+    "Feelings are not facts.",
+    "Action comes before motivation, not after.",
+    "I am allowed to take up space.",
+    "Small steps count.",
+    "I don't have to earn rest.",
+    "What I do today is enough.",
+    "Getting it done imperfectly is better than not at all.",
+    "My worth is not conditional on my productivity.",
+    "I am more resilient than I feel right now.",
+    "I can be kind to myself.",
+    "I don't have to have it all figured out.",
+    "One thing at a time is a valid strategy.",
+    "It's okay to ask for help.",
+    "Progress is not linear and that is normal.",
+    "I am the kind of person who keeps going.",
+];
+
 if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
 if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
 
@@ -817,30 +841,6 @@ function pick_tip(): ?array {
         return null;
     }
 }
-
-// App-supplied affirmations — always in the pool regardless of user quotes
-const AFFIRMATIONS = [
-    "I am capable even when I don't feel like it.",
-    "I can learn new things.",
-    "I can get things done without having to feel like it first.",
-    "I am not less valuable than anyone else.",
-    "I don't talk to myself in ways I wouldn't talk to other people.",
-    "Feelings are not facts.",
-    "Action comes before motivation, not after.",
-    "I am allowed to take up space.",
-    "Small steps count.",
-    "I don't have to earn rest.",
-    "What I do today is enough.",
-    "Getting it done imperfectly is better than not at all.",
-    "My worth is not conditional on my productivity.",
-    "I am more resilient than I feel right now.",
-    "I can be kind to myself.",
-    "I don't have to have it all figured out.",
-    "One thing at a time is a valid strategy.",
-    "It's okay to ask for help.",
-    "Progress is not linear and that is normal.",
-    "I am the kind of person who keeps going.",
-];
 
 function pick_quote(): ?array {
     // Build a pool: all affirmations + user's personal quotes

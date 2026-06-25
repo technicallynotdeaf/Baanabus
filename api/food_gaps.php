@@ -208,11 +208,6 @@ foreach ($allFoods as $food) {
 
 usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
 
-// Cap displayed score at 100 after sorting (raw score can exceed 100 when a food
-// covers small fractions of many nutrients simultaneously).
-foreach ($scored as &$f) { $f['score'] = min(100, $f['score']); }
-unset($f);
-
 // Build per-nutrient suggestions for the top 4 biggest gaps.
 // Each entry lists the top 3 foods for that specific nutrient.
 $sortedGaps = $gaps;

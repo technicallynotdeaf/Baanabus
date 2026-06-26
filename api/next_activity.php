@@ -809,6 +809,18 @@ function pick_person_review(): ?array {
             $p = $active[array_rand($active)];
         }
 
+        // Include recent notes so the card can show them
+        $recentNotes = [];
+        try {
+            $notesData = getPeopleNotes();
+            $pNotes = array_values(array_filter(
+                $notesData['notes'] ?? [],
+                fn($n) => (int)$n['person_id'] === (int)$p['person_id']
+            ));
+            usort($pNotes, fn($a, $b) => strcmp($b['date_added'] ?? '', $a['date_added'] ?? ''));
+            $recentNotes = array_slice($pNotes, 0, 5);
+        } catch (Throwable $e) {}
+
         return [
             'type'            => 'person_review',
             'person_id'       => (int)$p['person_id'],
@@ -817,6 +829,7 @@ function pick_person_review(): ?array {
             'char2'           => $p['char2'] ?? '',
             'char3'           => $p['char3'] ?? '',
             'review_interval' => (int)($p['review_interval'] ?? 30),
+            'recent_notes'    => $recentNotes,
         ];
     } catch (Throwable $e) {
         return null;

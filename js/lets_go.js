@@ -1394,6 +1394,40 @@ window.initLetsGo = function() {
 
   function renderPersonReview(d) {
     const hasQ = d.char1 && d.char2 && d.char3;
+
+    function relDate(s) {
+      if (!s) return '';
+      const diff = Math.floor((Date.now() - new Date(s).getTime()) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      if (diff < 7)  return diff + ' days ago';
+      const wk = Math.floor(diff / 7);
+      if (diff < 30) return wk + ' week' + (wk > 1 ? 's' : '') + ' ago';
+      return s.slice(0, 10);
+    }
+
+    const existingNotes = d.recent_notes || [];
+    const notesListHtml = existingNotes.length
+      ? existingNotes.map(n => `
+          <div style="padding:3px 0;border-bottom:1px solid #f5f5f5;">
+            <p style="margin:0 0 1px;font-size:0.84em;line-height:1.4;">${esc(n.contents)}</p>
+            <span style="font-size:0.75em;color:#bbb;">${relDate(n.date_added)}</span>
+          </div>`).join('')
+      : '<p style="color:#ccc;font-size:0.83em;margin:0 0 0.4rem;">No notes yet.</p>';
+
+    const notesSection = `
+      <div style="font-size:0.71em;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;
+                  margin-bottom:0.45rem;padding-bottom:3px;border-bottom:1px solid #f0f0f0;">Notes</div>
+      <div id="pr-notes-list" style="margin-bottom:0.4rem;">${notesListHtml}</div>
+      <div style="display:flex;gap:6px;margin-bottom:0.35rem;">
+        <textarea id="pr-note" placeholder="Add a note…" rows="2"
+          style="flex:1;resize:vertical;font-size:0.88em;"></textarea>
+        <button class="action-button"
+          style="flex-shrink:0;align-self:flex-end;padding:5px 10px;font-size:0.82em;"
+          onclick="window._prSaveNote()">Save</button>
+      </div>
+      <p id="pr-note-status" class="muted" style="font-size:0.82em;min-height:1em;margin-bottom:0.3rem;"></p>`;
+
     const intervalChoices = [
       [2,  'Every 2 days — household'],
       [7,  'Weekly — close friends'],
@@ -1433,8 +1467,7 @@ window.initLetsGo = function() {
           <input id="pr-char2" type="text" placeholder="Quality 2" value="${esc(d.char2)}" style="margin-bottom:0.3rem;">
           <input id="pr-char3" type="text" placeholder="Quality 3" value="${esc(d.char3)}" style="margin-bottom:0.4rem;">
         </div>
-        <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
-          style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${notesSection}
         ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
@@ -1451,8 +1484,7 @@ window.initLetsGo = function() {
         <input id="pr-char1" type="text" placeholder="Quality 1" style="margin-bottom:0.3rem;">
         <input id="pr-char2" type="text" placeholder="Quality 2" style="margin-bottom:0.3rem;">
         <input id="pr-char3" type="text" placeholder="Quality 3" style="margin-bottom:0.5rem;">
-        <textarea id="pr-note" placeholder="Anything going on in their life? (optional)" rows="2"
-          style="margin-bottom:0.5rem;resize:vertical;"></textarea>
+        ${notesSection}
         ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
@@ -1472,6 +1504,37 @@ window.initLetsGo = function() {
     window._prEdit = function() {
       const form = document.getElementById('pr-edit-form');
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window._prSaveNote = function() {
+      const textarea = document.getElementById('pr-note');
+      const status   = document.getElementById('pr-note-status');
+      const contents = textarea.value.trim();
+      if (!contents) return;
+      textarea.disabled = true;
+      status.textContent = 'Saving…';
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ person_id: d.person_id, action: 'add_note', note_content: contents }),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          const list    = document.getElementById('pr-notes-list');
+          const noNotes = list.querySelector('p');
+          if (noNotes) list.innerHTML = '';
+          const newEl = document.createElement('div');
+          newEl.style.cssText = 'padding:3px 0;border-bottom:1px solid #f5f5f5;';
+          newEl.innerHTML = `<p style="margin:0 0 1px;font-size:0.84em;line-height:1.4;">${esc(contents)}</p><span style="font-size:0.75em;color:#bbb;">Today</span>`;
+          list.insertBefore(newEl, list.firstChild);
+          textarea.value = '';
+          status.textContent = '';
+        } else {
+          status.textContent = res.error || 'Could not save.';
+        }
+        textarea.disabled = false;
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        textarea.disabled = false;
+      });
     };
 
     window._prAddTask = function() {

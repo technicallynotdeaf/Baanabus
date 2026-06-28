@@ -133,7 +133,102 @@ try {
     }
     unset($task);
 
-    if ($synced > 0 || $deleted > 0) saveTasks($data);
+    // --- Apply managed doable/snoozed and location tags to active parent todos ---
+    // Tag IDs are cached in cassowary.enc; only fetched from Habitica when missing.
+    // Each task stores _hab_tags (last-known applied set) so only diffs hit the API.
+    $managedTagIds   = $cass['habitica']['tag_ids'] ?? [];
+    $allManagedNames = ['doable', 'snoozed', 'location:home', 'location:work',
+                        'location:shops', 'location:phone', 'location:online', 'location:anywhere'];
+    $missingNames    = array_values(array_filter($allManagedNames, fn($n) => empty($managedTagIds[$n])));
+
+    if ($missingNames) {
+        $allHabTags     = habiticaRequest('GET', '/tags', $userId, $apiKey);
+        $existingByName = [];
+        foreach ((array)$allHabTags as $tag) {
+            $existingByName[$tag['name'] ?? ''] = (string)($tag['id'] ?? '');
+        }
+        foreach ($missingNames as $tn) {
+            if (!empty($existingByName[$tn])) {
+                $managedTagIds[$tn] = $existingByName[$tn];
+            } else {
+                try {
+                    $created = habiticaRequest('POST', '/tags', $userId, $apiKey, ['name' => $tn]);
+                    if (!empty($created['id'])) $managedTagIds[$tn] = (string)$created['id'];
+                } catch (Throwable $e) {}
+            }
+        }
+        $cass['habitica']['tag_ids'] = $managedTagIds;
+        saveCassowary($cass);
+    }
+
+    $tagBudget    = 50; // max API calls for tag sync per run (prevents timeout on first run)
+    $tagCallsUsed = 0;
+    $tagsUpdated  = 0;
+    $tasksDirty   = false;
+    $nowTs        = time();
+
+    // Build a prioritised list: tasks never tagged (no _hab_tags) come first
+    $tagQueue = [];
+    foreach ($data['tasks'] as $k => $t) {
+        if (empty($t['habitica_id']) || !empty($t['habitica_item_id'])) continue;
+        if (($t['status'] ?? '') !== 'active') continue;
+        $tagQueue[] = [$k, !array_key_exists('_hab_tags', $t)];
+    }
+    usort($tagQueue, fn($a, $b) => $b[1] <=> $a[1]); // never-tagged first
+
+    foreach ($tagQueue as [$k, $_]) {
+        if ($tagCallsUsed >= $tagBudget) break;
+
+        $task  = &$data['tasks'][$k];
+        $habId = $task['habitica_id'];
+
+        $snoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
+        $locTag  = match($task['location'] ?? null) {
+            'home'   => 'location:home',
+            'work'   => 'location:work',
+            'shops'  => 'location:shops',
+            'phone'  => 'location:phone',
+            'online' => 'location:online',
+            default  => 'location:anywhere',
+        };
+        $desired = [$snoozed ? 'snoozed' : 'doable', $locTag];
+        sort($desired);
+
+        $stored = $task['_hab_tags'] ?? [];
+        sort($stored);
+
+        if ($desired === $stored) { unset($task); continue; }
+
+        $toAdd    = array_values(array_diff($desired, $stored));
+        $toRemove = array_values(array_diff($stored,  $desired));
+
+        $callOk = true;
+        try {
+            foreach ($toRemove as $tn) {
+                if (empty($managedTagIds[$tn])) continue;
+                habiticaRequest('DELETE', "/tasks/$habId/tags/{$managedTagIds[$tn]}", $userId, $apiKey);
+                $tagCallsUsed++;
+            }
+            foreach ($toAdd as $tn) {
+                if (empty($managedTagIds[$tn])) continue;
+                habiticaRequest('POST', "/tasks/$habId/tags/{$managedTagIds[$tn]}", $userId, $apiKey);
+                $tagCallsUsed++;
+            }
+        } catch (Throwable $e) {
+            $callOk = false;
+            error_log('Habitica tag sync (task ' . ($task['id'] ?? '?') . '): ' . $e->getMessage());
+        }
+
+        if ($callOk) {
+            $task['_hab_tags'] = $desired;
+            $tasksDirty = true;
+            $tagsUpdated++;
+        }
+        unset($task);
+    }
+    // --- end tag sync ---
+
+    if ($synced > 0 || $deleted > 0 || $tasksDirty) saveTasks($data);
 
     $cfg['habitica_sync_date'] = $today;
     $cfg['habitica_sync_last_count'] = $synced;
@@ -199,7 +294,8 @@ try {
     saveDailies($dailyData);
 
     json_response(['synced' => $synced, 'deleted' => $deleted, 'daily_synced' => $dailySynced,
-                   'parents' => count($existingParents), 'items_checked' => count($existingItems)]);
+                   'parents' => count($existingParents), 'items_checked' => count($existingItems),
+                   'tags_updated' => $tagsUpdated, 'tag_calls' => $tagCallsUsed]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

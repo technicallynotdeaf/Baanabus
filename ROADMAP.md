@@ -190,9 +190,9 @@ Full two-way sync so Habitica and Baanabus stay in lockstep, plus Habitica tags 
 - ✅ Task metadata (urgency, context/location, task_type, snoozed_until) written to Habitica `notes` field on create, triage, and `update_task`; Baanabus delete propagates to Habitica DELETE
 
 **Habitica tags for in-app filtering:**
-- [ ] All synced tasks should be tagged in Habitica: `doable` (task is active + unsnoozed + context matches) vs `snoozed` (currently deferred). Habitica tags can only filter tasks *in* — they cannot hide tasks — so the strategy is: create a `doable` tag and use it as the "show me what I can do now" filter in Habitica directly.
-- [ ] Location tags: `location:home`, `location:work`, `location:out`, `location:any` (or `location:anywhere`) — lets Habitica be filtered by location even though it can't suppress tasks. A user filtering by `location:home` gets only home-context tasks; the absence of a location tag means "any".
-- [ ] Tag application happens at sync time (push) and should be re-evaluated on each Baanabus sync cycle.
+- ✅ `doable`/`snoozed` tags: applied at sync time; `doable` = active + not snoozed, `snoozed` = active + snoozed_until in future
+- ✅ Location tags: `location:home`, `location:work`, `location:shops`, `location:phone`, `location:online`, `location:anywhere` applied at sync time based on task's location field
+- ✅ Tag IDs cached in `cassowary.enc`; each task stores `_hab_tags` so only diffs hit the API; 50-call budget per sync run (never-tagged tasks prioritised)
 
 **Remaining M6 integrations (lower priority):**
 - [ ] CalDAV (Radicale): pull calendar events → show upcoming events as tasks/reminders
@@ -311,9 +311,9 @@ Process physical objects that are left out as visual reminders — without requi
 
 ## Next up
 
-**Current priority: M6.1 — Habitica tags.** Sync correctness is done (bidirectional delete, metadata notes). Remaining: apply `doable`/`snoozed` and `location:*` tags to Habitica tasks at sync time so Habitica can be filtered by context directly.
+**M6.1 complete.** Habitica bidirectional sync is fully done: deletion both ways, metadata notes, doable/snoozed and location tags at sync time.
 
-After that: remaining M4 scene polish (sheep click trigger, new-book animation), M3.5 warmth features (morning mode, bunting), M4.5 food cost tracking + recipe storage, M2.5 trivia expansion, or writing quilt quest books.
+**Up next:** remaining M4 scene polish (sheep click trigger, new-book animation), M3.5 warmth features (morning mode, bunting), M4.5 food cost tracking + recipe storage, M2.5 trivia expansion, or writing quilt quest books.
 
 ---
 

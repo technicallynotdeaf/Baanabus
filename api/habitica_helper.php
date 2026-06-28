@@ -18,6 +18,9 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST,       true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body !== null ? json_encode($body) : '{}');
+    } elseif ($method === 'PATCH' || $method === 'PUT') {
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body !== null ? json_encode($body) : '{}');
     } elseif ($method === 'DELETE') {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
     }
@@ -82,4 +85,26 @@ function habiticaGetOrCreateTag(string $name, string $userId, string $apiKey): s
     }
     $tag = habiticaRequest('POST', '/tags', $userId, $apiKey, ['name' => $name]);
     return (string)($tag['id'] ?? '');
+}
+
+// Format Baanabus task metadata as structured notes for Habitica
+function habiticaMetaNotes(array $task): string {
+    $lines = ['[baanabus]'];
+    if (!empty($task['urgency']))      $lines[] = 'urgency: '  . $task['urgency'];
+    if (!empty($task['task_type']))    $lines[] = 'type: '     . $task['task_type'];
+    if (!empty($task['context']))      $lines[] = 'context: '  . $task['context'];
+    if (!empty($task['location']))     $lines[] = 'location: ' . $task['location'];
+    if (!empty($task['snoozed_until'])) $lines[] = 'snoozed: ' . substr($task['snoozed_until'], 0, 10);
+    return implode("\n", $lines);
+}
+
+// Push metadata notes to Habitica (non-fatal — logs errors, never throws)
+function habiticaPushNotes(string $habId, array $task, string $userId, string $apiKey): void {
+    try {
+        habiticaRequest('PATCH', "/tasks/$habId", $userId, $apiKey, [
+            'notes' => habiticaMetaNotes($task),
+        ]);
+    } catch (Throwable $e) {
+        error_log('Habitica notes push failed (' . $habId . '): ' . $e->getMessage());
+    }
 }

@@ -553,6 +553,26 @@ if ($method === 'POST') {
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
         try {
             vaultUpdateTask($taskId, $fields);
+            // Push metadata notes to Habitica when relevant fields change
+            $metaFields = ['urgency', 'context', 'task_type', 'location', 'snoozed_until'];
+            if (array_intersect_key($fields, array_flip($metaFields))) {
+                try {
+                    $cfg = getConfig() ?? [];
+                    if (!empty($cfg['preferences']['uses_habitica'])) {
+                        $allData = getTasks();
+                        foreach ($allData['tasks'] as $t) {
+                            if ((int)$t['id'] !== $taskId) continue;
+                            if (empty($t['habitica_id']) || !empty($t['habitica_item_id'])) break;
+                            require_once __DIR__ . '/habitica_helper.php';
+                            $cass = getCassowary();
+                            $habUser = $cass['habitica']['user_id'] ?? '';
+                            $habKey  = $cass['habitica']['api_key']  ?? '';
+                            if ($habUser && $habKey) habiticaPushNotes($t['habitica_id'], $t, $habUser, $habKey);
+                            break;
+                        }
+                    }
+                } catch (Throwable $e) {}
+            }
             json_response(['ok' => true, 'updated' => $fields]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
@@ -623,9 +643,11 @@ if ($method === 'POST') {
                         $habUser = $cass['habitica']['user_id'] ?? '';
                         $habKey  = $cass['habitica']['api_key']  ?? '';
                         if ($habUser && $habKey) {
+                            $newTask = end($data['tasks']);
                             $created = habiticaRequest('POST', '/tasks/user', $habUser, $habKey, [
-                                'type' => 'todo',
-                                'text' => $title,
+                                'type'  => 'todo',
+                                'text'  => $title,
+                                'notes' => habiticaMetaNotes($newTask),
                             ]);
                             if (!empty($created['id'])) {
                                 vaultUpdateTask($taskId, ['habitica_id' => $created['id']]);
@@ -954,18 +976,47 @@ if ($method === 'POST') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
         try {
-            vaultUpdateTask($taskId, ['status' => 'deleted']);
-            // Cascade-delete active children
-            $allData = getTasks();
-            $changed = false;
-            foreach ($allData['tasks'] as &$child) {
-                if ((int)($child['parent_id'] ?? 0) === $taskId && ($child['status'] ?? '') === 'active') {
-                    $child['status'] = 'deleted';
+            // Read before deleting so we can propagate to Habitica
+            $allData     = getTasks();
+            $taskToDelete = null;
+            $changed      = false;
+            foreach ($allData['tasks'] as $t) {
+                if ((int)$t['id'] === $taskId) { $taskToDelete = $t; break; }
+            }
+            foreach ($allData['tasks'] as &$t) {
+                if ((int)$t['id'] === $taskId && ($t['status'] ?? '') === 'active') {
+                    $t['status'] = 'deleted';
+                    $changed = true;
+                } elseif (!empty($t['parent_id']) && (int)$t['parent_id'] === $taskId && ($t['status'] ?? '') === 'active') {
+                    $t['status'] = 'deleted';
                     $changed = true;
                 }
             }
-            unset($child);
+            unset($t);
             if ($changed) saveTasks($allData);
+
+            // Delete from Habitica (best-effort)
+            if ($taskToDelete && !empty($taskToDelete['habitica_id'])) {
+                try {
+                    $cfg = getConfig() ?? [];
+                    if (!empty($cfg['preferences']['uses_habitica'])) {
+                        require_once __DIR__ . '/habitica_helper.php';
+                        $cass    = getCassowary();
+                        $habUser = $cass['habitica']['user_id'] ?? '';
+                        $habKey  = $cass['habitica']['api_key']  ?? '';
+                        if ($habUser && $habKey) {
+                            if (!empty($taskToDelete['habitica_item_id'])) {
+                                habiticaRequest('DELETE', "/tasks/{$taskToDelete['habitica_id']}/checklist/{$taskToDelete['habitica_item_id']}", $habUser, $habKey);
+                            } else {
+                                habiticaRequest('DELETE', "/tasks/{$taskToDelete['habitica_id']}", $habUser, $habKey);
+                            }
+                        }
+                    }
+                } catch (Throwable $e) {
+                    error_log('Habitica delete failed for task ' . $taskId . ': ' . $e->getMessage());
+                }
+            }
+
             json_response(['ok' => true]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

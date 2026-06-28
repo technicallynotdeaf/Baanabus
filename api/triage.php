@@ -68,10 +68,37 @@ try {
         if (!empty($fields)) vaultUpdateTask($taskId, $fields);
 
     } elseif ($action === 'delete') {
+        // Read task before deleting so we can propagate to Habitica
+        $dataForDel  = getTasks();
+        $taskForDel  = null;
+        foreach ($dataForDel['tasks'] as $t) {
+            if ((int)$t['id'] === $taskId) { $taskForDel = $t; break; }
+        }
         $fields = ['status' => 'deleted'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         vaultUpdateTask($taskId, $fields);
+        // Delete from Habitica (best-effort)
+        if ($taskForDel && !empty($taskForDel['habitica_id'])) {
+            try {
+                $cfg = getConfig() ?? [];
+                if (!empty($cfg['preferences']['uses_habitica'])) {
+                    require_once __DIR__ . '/habitica_helper.php';
+                    $cass    = getCassowary();
+                    $habUser = $cass['habitica']['user_id'] ?? '';
+                    $habKey  = $cass['habitica']['api_key']  ?? '';
+                    if ($habUser && $habKey) {
+                        if (!empty($taskForDel['habitica_item_id'])) {
+                            habiticaRequest('DELETE', "/tasks/{$taskForDel['habitica_id']}/checklist/{$taskForDel['habitica_item_id']}", $habUser, $habKey);
+                        } else {
+                            habiticaRequest('DELETE', "/tasks/{$taskForDel['habitica_id']}", $habUser, $habKey);
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                // non-fatal
+            }
+        }
 
     } elseif ($action === 'someday') {
         $fields = ['task_type' => 'someday'];
@@ -161,12 +188,19 @@ try {
                         }
                         if ($isPushCandidate && !$habId && empty($task['parent_id'])) {
                             $created = habiticaRequest('POST', '/tasks/user', $habUser, $habKey, [
-                                'type' => 'todo',
-                                'text' => $task['title'],
+                                'type'  => 'todo',
+                                'text'  => $task['title'],
+                                'notes' => habiticaMetaNotes($task),
                             ]);
                             if (!empty($created['id'])) {
                                 vaultUpdateTask($taskId, ['habitica_id' => $created['id']]);
                             }
+                        }
+                        // Push metadata notes for existing tasks when relevant fields change
+                        $notesActions = ['save_urgency', 'save_context', 'next_action', 'someday',
+                                         'waiting', 'project', 'quick_win', 'save_time', 'mark_actionable'];
+                        if ($habId && empty($task['habitica_item_id']) && in_array($action, $notesActions, true)) {
+                            habiticaPushNotes($habId, $task, $habUser, $habKey);
                         }
                     }
                 }

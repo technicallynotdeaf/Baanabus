@@ -185,9 +185,9 @@ Connect to services Alison already uses.
 Full two-way sync so Habitica and Baanabus stay in lockstep, plus Habitica tags that make Habitica itself more useful when working directly in it.
 
 **Sync correctness:**
-- [ ] Tasks deleted in Habitica should be removed from Baanabus on the next sync (currently they linger)
-- [ ] Tasks added to Baanabus as `next_action` / `someday` / etc. should be pushed up to Habitica (currently sync is one-way: Habitica → Baanabus only)
-- [ ] Task metadata (urgency, context/location, task_type, snoozed_until) should be written to Habitica — the `notes` field on the todo is the most natural place; tags are also available. Notes allow structured key:value lines that won't clutter the task title.
+- ✅ Tasks deleted in Habitica should be removed from Baanabus on the next sync
+- ✅ Tasks added to Baanabus as `next_action` should be pushed up to Habitica (via `add_task` in agent API and `quick_win`/`next_action` in triage); Habitica `id` stored back in vault
+- ✅ Task metadata (urgency, context/location, task_type, snoozed_until) written to Habitica `notes` field on create, triage, and `update_task`; Baanabus delete propagates to Habitica DELETE
 
 **Habitica tags for in-app filtering:**
 - [ ] All synced tasks should be tagged in Habitica: `doable` (task is active + unsnoozed + context matches) vs `snoozed` (currently deferred). Habitica tags can only filter tasks *in* — they cannot hide tasks — so the strategy is: create a `doable` tag and use it as the "show me what I can do now" filter in Habitica directly.
@@ -311,9 +311,9 @@ Process physical objects that are left out as visual reminders — without requi
 
 ## Next up
 
-**Current priority: M6.1 — Habitica bidirectional sync.** Tasks deleted in Habitica should be removed from Baanabus; tasks created in Baanabus should push to Habitica; metadata (urgency, context, snooze state) should write to Habitica notes; `doable`/`snoozed` and `location:*` tags applied at sync time.
+**Current priority: M6.1 — Habitica tags.** Sync correctness is done (bidirectional delete, metadata notes). Remaining: apply `doable`/`snoozed` and `location:*` tags to Habitica tasks at sync time so Habitica can be filtered by context directly.
 
-After that: remaining M4 scene polish (sheep click trigger, new-book animation), M3 context filtering (day type → passive task suppression), M3.5 warmth features (effort acknowledgement, comeback callout), M4.5 food cost tracking + recipe storage, or M2.5 trivia expansion.
+After that: remaining M4 scene polish (sheep click trigger, new-book animation), M3.5 warmth features (morning mode, bunting), M4.5 food cost tracking + recipe storage, M2.5 trivia expansion, or writing quilt quest books.
 
 ---
 

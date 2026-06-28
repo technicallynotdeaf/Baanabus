@@ -478,7 +478,7 @@ $pool = array_merge(
     array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
     array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
-    array_fill(0, ($dayType !== 3 && $danceTodaySeconds < 900) ? 2 : 0, 'dance'),
+    array_fill(0, (!in_array($physicalLocation, [3, 6], true) && $danceTodaySeconds < 900) ? 2 : 0, 'dance'),
     array_fill(0, 1,                                   'fun_task'),
     array_fill(0, $easySlots,                          'easy_task'),
     array_fill(0, 1,                                   'joke'),

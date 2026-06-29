@@ -33,6 +33,8 @@ if (isUnlocked()) {
                 $prevEnded = !empty($prog['ended']);
             }
         }
+    } catch (Throwable $e) {}
+    try {
         $obj = getPhysicalObjects();
         $objectsOut      = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'out'));
         $objectsResolved = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'resolved'));

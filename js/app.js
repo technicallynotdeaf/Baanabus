@@ -79,6 +79,7 @@ function setupOverlayListeners() {
   // Helper function to fetch and display content
   const loadOverlay = (url) => {
     overlay.style.display = 'block';
+    overlayContent.innerHTML = '<p style="color:#999;font-size:0.9em;padding:0.5rem 0;">Loading…</p>';
     fetch(url)
       .then(response => response.text())
       .then(data => {

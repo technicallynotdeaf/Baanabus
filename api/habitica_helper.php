@@ -5,6 +5,21 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
     if (!function_exists('curl_init')) throw new Exception('cURL not available');
     $url = 'https://habitica.com/api/v3' . $path;
     $ch  = curl_init($url);
+
+    // Capture rate-limit headers into globals so habiticaThrottle() can inspect them
+    $rateRemaining = null;
+    $rateResetRaw  = null;
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($ch, $hdr) use (&$rateRemaining, &$rateResetRaw) {
+        $parts = explode(':', $hdr, 2);
+        if (count($parts) === 2) {
+            $name = strtolower(trim($parts[0]));
+            $val  = trim($parts[1]);
+            if ($name === 'x-ratelimit-remaining') $rateRemaining = (int)$val;
+            if ($name === 'x-ratelimit-reset')     $rateResetRaw  = $val;
+        }
+        return strlen($hdr);
+    });
+
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
@@ -28,11 +43,33 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err  = curl_error($ch);
     curl_close($ch);
+
+    // Update global rate-limit state after every call
+    if ($rateRemaining !== null) {
+        $GLOBALS['_hab_rate_remaining'] = $rateRemaining;
+    }
+    if ($rateResetRaw !== null) {
+        // Header format: "Mon Jun 29 2026 08:50:10 GMT+0000 (Coordinated Universal Time)"
+        $clean = preg_replace('/\s*\(.*?\)\s*$/', '', $rateResetRaw);
+        $ts    = strtotime($clean);
+        if ($ts !== false) $GLOBALS['_hab_rate_reset_ts'] = $ts;
+    }
+
     if ($err) throw new Exception("Habitica cURL error: $err");
     $json = json_decode($raw, true);
     if (!is_array($json)) throw new Exception("Habitica: non-JSON response (HTTP $code)");
     if (!($json['success'] ?? false)) throw new Exception('Habitica: ' . ($json['message'] ?? 'unknown error'));
     return $json['data'] ?? [];
+}
+
+// Sleep until the current rate-limit window resets if remaining requests <= $threshold.
+// Call after any habiticaRequest() that might be part of a burst.
+function habiticaThrottle(int $threshold = 3): void {
+    $remaining = $GLOBALS['_hab_rate_remaining'] ?? 30;
+    if ($remaining > $threshold) return;
+    $resetTs = $GLOBALS['_hab_rate_reset_ts'] ?? (time() + 60);
+    $sleep   = max(1, $resetTs - time() + 1); // +1s buffer past the reset
+    if ($sleep <= 120) sleep($sleep);
 }
 
 function habiticaSyncTimeTag(string $habiticaTaskId, int $timeMinutes, string $userId, string $apiKey): void {

@@ -14,6 +14,8 @@ if ($bskToken && authenticateAgentKey($bskToken)) {
     if (!isUnlocked())      json_response(['error' => 'Vault locked'],      423);
 }
 
+set_time_limit(300); // tag sync may sleep waiting for rate-limit reset
+
 try {
     $cfg   = getConfig() ?? [];
     $prefs = $cfg['preferences'] ?? [];
@@ -208,11 +210,13 @@ try {
                 if (empty($managedTagIds[$tn])) continue;
                 habiticaRequest('DELETE', "/tasks/$habId/tags/{$managedTagIds[$tn]}", $userId, $apiKey);
                 $tagCallsUsed++;
+                habiticaThrottle();
             }
             foreach ($toAdd as $tn) {
                 if (empty($managedTagIds[$tn])) continue;
                 habiticaRequest('POST', "/tasks/$habId/tags/{$managedTagIds[$tn]}", $userId, $apiKey);
                 $tagCallsUsed++;
+                habiticaThrottle();
             }
         } catch (Throwable $e) {
             $callOk = false;

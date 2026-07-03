@@ -1,7 +1,7 @@
 <?php
 // Habitica HTTP helper — include after init.php and config_helper.php
 
-function habiticaRequest(string $method, string $path, string $userId, string $apiKey, ?array $body = null): array {
+function habiticaRequest(string $method, string $path, string $userId, string $apiKey, ?array $body = null, int $timeout = 5): array {
     if (!function_exists('curl_init')) throw new Exception('cURL not available');
     $url = 'https://habitica.com/api/v3' . $path;
     $ch  = curl_init($url);
@@ -22,7 +22,7 @@ function habiticaRequest(string $method, string $path, string $userId, string $a
 
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_HTTPHEADER     => [
             'x-api-user: '  . $userId,
             'x-api-key: '   . $apiKey,
@@ -136,11 +136,12 @@ function habiticaMetaNotes(array $task): string {
 }
 
 // Push metadata notes to Habitica (non-fatal — logs errors, never throws)
+// Uses a short timeout so UI actions aren't held up if Habitica is slow.
 function habiticaPushNotes(string $habId, array $task, string $userId, string $apiKey): void {
     try {
         habiticaRequest('PATCH', "/tasks/$habId", $userId, $apiKey, [
             'notes' => habiticaMetaNotes($task),
-        ]);
+        ], 4);
     } catch (Throwable $e) {
         error_log('Habitica notes push failed (' . $habId . '): ' . $e->getMessage());
     }

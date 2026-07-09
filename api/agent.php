@@ -1030,6 +1030,23 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'backfill_subtask_ids') {
+        try {
+            $data = getTasks();
+            $count = 0;
+            foreach ($data['tasks'] as $t) {
+                if (!empty($t['parent_id'])) {
+                    vaultLinkSubtask($data, (int)$t['parent_id'], (int)$t['id']);
+                    $count++;
+                }
+            }
+            saveTasks($data);
+            json_response(['ok' => true, 'linked' => $count]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'bulk_clear_field') {
         $field = $body['field'] ?? '';
         $allowedFields = ['urgency', 'importance', 'energy', 'context'];

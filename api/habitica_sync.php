@@ -52,7 +52,9 @@ try {
     // existingItems:   "habitica_id:item_id" => true  (checklist subtasks)
     $existingParents = [];
     $existingItems   = [];
-    foreach ($data['tasks'] as $t) {
+    $idIndex         = [];
+    foreach ($data['tasks'] as $k => $t) {
+        $idIndex[(int)$t['id']] = $k;
         if (empty($t['habitica_id'])) continue;
         if (empty($t['habitica_item_id'])) {
             $existingParents[$t['habitica_id']] = (int)$t['id'];
@@ -61,11 +63,22 @@ try {
         }
     }
 
-    $synced = 0;
+    // Habitica's todo 'notes' field is free text the user can write in the Habitica app.
+    // Baanabus also writes its own '[baanabus] urgency: ...' metadata block into that same
+    // field (see habiticaPushNotes) — never treat that block as a real description.
+    $habNotesToDescription = function (array $todo): ?string {
+        $notes = trim($todo['notes'] ?? '');
+        if ($notes === '' || strpos($notes, '[baanabus]') === 0) return null;
+        return $notes;
+    };
+
+    $synced          = 0;
+    $descBackfilled  = 0;
 
     foreach ($todos as $todo) {
         if ($todo['completed'] ?? false) continue;
-        $todoId = $todo['id'];
+        $todoId      = $todo['id'];
+        $description = $habNotesToDescription($todo);
 
         // Import parent todo if not already present
         if (!isset($existingParents[$todoId])) {
@@ -79,10 +92,19 @@ try {
                 'snoozed_until' => null,
                 'created_at'    => $now,
                 'habitica_id'   => $todoId,
+                'description'   => $description,
             ];
             $existingParents[$todoId] = $task['id'];
+            $idIndex[$task['id']]     = count($data['tasks']);
             $data['tasks'][]          = $task;
             $synced++;
+        } elseif ($description !== null) {
+            // Backfill description for tasks synced before this field existed
+            $k = $idIndex[$existingParents[$todoId]] ?? null;
+            if ($k !== null && empty($data['tasks'][$k]['description'])) {
+                $data['tasks'][$k]['description'] = $description;
+                $descBackfilled++;
+            }
         }
 
         $parentBaanabusId = $existingParents[$todoId];
@@ -232,7 +254,7 @@ try {
     }
     // --- end tag sync ---
 
-    if ($synced > 0 || $deleted > 0 || $tasksDirty) saveTasks($data);
+    if ($synced > 0 || $deleted > 0 || $tasksDirty || $descBackfilled > 0) saveTasks($data);
 
     $cfg['habitica_sync_date'] = $today;
     $cfg['habitica_sync_last_count'] = $synced;
@@ -299,7 +321,8 @@ try {
 
     json_response(['synced' => $synced, 'deleted' => $deleted, 'daily_synced' => $dailySynced,
                    'parents' => count($existingParents), 'items_checked' => count($existingItems),
-                   'tags_updated' => $tagsUpdated, 'tag_calls' => $tagCallsUsed]);
+                   'tags_updated' => $tagsUpdated, 'tag_calls' => $tagCallsUsed,
+                   'descriptions_backfilled' => $descBackfilled]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

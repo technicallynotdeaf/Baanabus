@@ -128,6 +128,7 @@ function habiticaGetOrCreateTag(string $name, string $userId, string $apiKey): s
 function habiticaMetaNotes(array $task): string {
     $lines = ['[baanabus]'];
     if (!empty($task['urgency']))      $lines[] = 'urgency: '  . $task['urgency'];
+    if (!empty($task['importance']))   $lines[] = 'importance: ' . $task['importance'];
     if (!empty($task['task_type']))    $lines[] = 'type: '     . $task['task_type'];
     if (!empty($task['context']))      $lines[] = 'context: '  . $task['context'];
     if (!empty($task['location']))     $lines[] = 'location: ' . $task['location'];

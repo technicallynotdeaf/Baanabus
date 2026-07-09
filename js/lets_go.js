@@ -1280,6 +1280,7 @@ window.initLetsGo = function() {
       energy:     'How much energy does this take?',
       context:    'Which area of your life does this belong to?',
       urgency:    'How urgent is this?',
+      importance: 'How much does this actually matter to you?',
     };
     const itemsHtml = (d.items && d.items.length > 0)
       ? `<ul style="margin:0 0 0.6rem 0;padding-left:1.2rem;font-size:0.88em;color:#555;line-height:1.5;">${d.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
@@ -1388,6 +1389,15 @@ window.initLetsGo = function() {
         mkBtn("Medium — important but not pressing", () => save({action:'save_urgency', urgency:'medium'})),
         mkBtn("Low — can wait indefinitely",         () => save({action:'save_urgency', urgency:'low'})),
         mkBtn("Not sure — skip for now",             () => save({action:'save_urgency', urgency:'medium'}), skipStyle)
+      );
+
+    } else if (question === 'importance') {
+      const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
+      el.append(
+        mkBtn("High — moves something that really matters",     () => save({action:'save_importance', importance:'high'})),
+        mkBtn("Medium — worth doing, not a big deal either way", () => save({action:'save_importance', importance:'medium'})),
+        mkBtn("Low — minor, wouldn't lose sleep over it",       () => save({action:'save_importance', importance:'low'})),
+        mkBtn("Not sure — skip for now",                        () => save({action:'save_importance', importance:'medium'}), skipStyle)
       );
     }
   }

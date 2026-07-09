@@ -547,14 +547,14 @@ if ($method === 'POST') {
     if ($action === 'update_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
-        $allowed = ['urgency', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
+        $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
                     'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags'];
         $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
         try {
             vaultUpdateTask($taskId, $fields);
             // Push metadata notes to Habitica when relevant fields change
-            $metaFields = ['urgency', 'context', 'task_type', 'location', 'snoozed_until'];
+            $metaFields = ['urgency', 'importance', 'context', 'task_type', 'location', 'snoozed_until'];
             if (array_intersect_key($fields, array_flip($metaFields))) {
                 try {
                     $cfg = getConfig() ?? [];
@@ -618,6 +618,7 @@ if ($method === 'POST') {
                 'title'         => $title,
                 'task_type'     => $body['task_type']     ?? 'next_action',
                 'urgency'       => $body['urgency']       ?? 'medium',
+                'importance'    => $body['importance']    ?? 'medium',
                 'energy'        => $body['energy']        ?? 'medium',
                 'time'          => isset($body['time']) ? (int)$body['time'] : null,
                 'status'        => 'active',
@@ -1025,7 +1026,7 @@ if ($method === 'POST') {
 
     if ($action === 'bulk_clear_field') {
         $field = $body['field'] ?? '';
-        $allowedFields = ['urgency', 'energy', 'context'];
+        $allowedFields = ['urgency', 'importance', 'energy', 'context'];
         if (!in_array($field, $allowedFields, true)) {
             json_response(['error' => 'field must be one of: ' . implode(', ', $allowedFields)], 400);
         }

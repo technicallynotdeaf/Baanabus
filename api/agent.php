@@ -1023,6 +1023,29 @@ if ($method === 'POST') {
         }
     }
 
+    if ($action === 'bulk_clear_field') {
+        $field = $body['field'] ?? '';
+        $allowedFields = ['urgency', 'energy', 'context'];
+        if (!in_array($field, $allowedFields, true)) {
+            json_response(['error' => 'field must be one of: ' . implode(', ', $allowedFields)], 400);
+        }
+        try {
+            $data  = getTasks();
+            $count = 0;
+            foreach ($data['tasks'] as &$t) {
+                if (($t['status'] ?? '') === 'active' && ($t[$field] ?? null) !== null) {
+                    $t[$field] = null;
+                    $count++;
+                }
+            }
+            unset($t);
+            if ($count > 0) saveTasks($data);
+            json_response(['ok' => true, 'field' => $field, 'cleared' => $count]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'rotate_api_key') {
         if (!extension_loaded('sodium')) json_response(['error' => 'libsodium missing'], 500);
 

@@ -717,8 +717,8 @@ function triage_next_question(array $t): string {
 
 function fill_next_question(array $t): string {
     if (!isset($t['energy'])  || $t['energy']  === null) return 'energy';
-    if (!isset($t['context']) || $t['context'] === null) return 'context';
     if (!isset($t['urgency']) || $t['urgency'] === null) return 'urgency';
+    if (!isset($t['context']) || $t['context'] === null) return 'context';
     return 'done';
 }
 

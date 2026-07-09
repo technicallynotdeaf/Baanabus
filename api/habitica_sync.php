@@ -86,7 +86,8 @@ try {
                 'id'            => $data['next_id']++,
                 'title'         => $todo['text'],
                 'task_type'     => 'inbox',
-                'urgency'       => 'low',
+                'urgency'       => null,
+                'importance'    => null,
                 'energy'        => null,
                 'status'        => 'active',
                 'snoozed_until' => null,
@@ -115,8 +116,9 @@ try {
             $key = $todoId . ':' . $item['id'];
             if (isset($existingItems[$key])) continue;
 
-            $data['tasks'][] = [
-                'id'               => $data['next_id']++,
+            $childId = $data['next_id']++;
+            vaultAppendTask($data, [
+                'id'               => $childId,
                 'title'            => $item['text'],
                 'task_type'        => 'inbox',
                 'urgency'          => 'low',
@@ -127,7 +129,8 @@ try {
                 'habitica_id'      => $todoId,
                 'habitica_item_id' => $item['id'],
                 'parent_id'        => $parentBaanabusId,
-            ];
+            ]);
+            $idIndex[$childId]   = count($data['tasks']) - 1;
             $existingItems[$key] = true;
             $synced++;
         }

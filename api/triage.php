@@ -147,11 +147,12 @@ try {
         if ($firstStep !== '' && mb_strlen($firstStep) <= 300) {
             $data   = getTasks();
             $stepId = (int)($data['next_id'] ?? 1);
-            $data['tasks'][] = [
+            vaultAppendTask($data, [
                 'id'            => $stepId,
                 'title'         => $firstStep,
                 'task_type'     => 'next_action',
                 'urgency'       => $urgency ?? 'medium',
+                'importance'    => 'medium',
                 'energy'        => 'medium',
                 'status'        => 'active',
                 'context'       => null,
@@ -162,7 +163,7 @@ try {
                 'deadline'      => null,
                 'tags'          => null,
                 'description'   => null,
-            ];
+            ]);
             $data['next_id'] = $stepId + 1;
             saveTasks($data);
         }

@@ -104,6 +104,7 @@ if ($method === 'GET') {
         'title'         => $t['title'],
         'task_type'     => $t['task_type']     ?? null,
         'urgency'       => $t['urgency']       ?? null,
+        'importance'    => $t['importance']    ?? null,
         'energy'        => $t['energy']        ?? null,
         'time'          => $t['time']          ?? null,
         'context'       => $t['context']       ?? null,
@@ -112,6 +113,7 @@ if ($method === 'GET') {
         'snoozed_until' => $t['snoozed_until'] ?? null,
         'stuck'         => $t['stuck']         ?? false,
         'parent_id'     => $t['parent_id']     ?? null,
+        'subtask_ids'   => $t['subtask_ids']   ?? [],
         'person_id'     => $t['person_id']     ?? null,
         'habitica_id'   => $t['habitica_id']   ?? null,
         'description'   => $t['description']   ?? null,
@@ -613,7 +615,7 @@ if ($method === 'POST') {
         try {
             $data   = getTasks();
             $taskId = (int)($data['next_id'] ?? 1);
-            $data['tasks'][] = [
+            vaultAppendTask($data, [
                 'id'            => $taskId,
                 'title'         => $title,
                 'task_type'     => $body['task_type']     ?? 'next_action',
@@ -630,7 +632,7 @@ if ($method === 'POST') {
                 'description'   => $body['description']   ?? null,
                 'tags'          => $body['tags']          ?? null,
                 'created_at'    => date('c'),
-            ];
+            ]);
             $data['next_id'] = $taskId + 1;
             saveTasks($data);
 
@@ -994,6 +996,10 @@ if ($method === 'POST') {
                 }
             }
             unset($t);
+            // If the deleted task was itself a subtask, unlink it from its parent
+            if ($changed && $taskToDelete && !empty($taskToDelete['parent_id'])) {
+                vaultUnlinkSubtask($allData, (int)$taskToDelete['parent_id'], $taskId);
+            }
             if ($changed) saveTasks($allData);
 
             // Delete from Habitica (best-effort)

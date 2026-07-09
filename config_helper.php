@@ -344,11 +344,51 @@ function getInboxTasks(): array {
     ));
 }
 
+// ---------- subtask linking ----------
+// parent_id on the child is the source of truth; subtask_ids on the parent is a
+// materialised reverse index kept in sync here so subtasks can be found from
+// either side without scanning every task. Callers should route all
+// subtask creation/reparenting/deletion through these so the two never drift.
+
+// Append a newly-built task to $data['tasks'] and link it into its parent's
+// subtask_ids if it has a parent_id. Operates on $data in memory — caller saves.
+function vaultAppendTask(array &$data, array $task): void {
+    $task['subtask_ids'] = $task['subtask_ids'] ?? [];
+    $data['tasks'][] = $task;
+    if (!empty($task['parent_id'])) {
+        vaultLinkSubtask($data, (int)$task['parent_id'], (int)$task['id']);
+    }
+}
+
+function vaultLinkSubtask(array &$data, int $parentId, int $childId): void {
+    foreach ($data['tasks'] as &$p) {
+        if ((int)$p['id'] === $parentId) {
+            $ids = $p['subtask_ids'] ?? [];
+            if (!in_array($childId, $ids, true)) $ids[] = $childId;
+            $p['subtask_ids'] = $ids;
+            break;
+        }
+    }
+    unset($p);
+}
+
+function vaultUnlinkSubtask(array &$data, int $parentId, int $childId): void {
+    foreach ($data['tasks'] as &$p) {
+        if ((int)$p['id'] === $parentId) {
+            $p['subtask_ids'] = array_values(array_diff($p['subtask_ids'] ?? [], [$childId]));
+            break;
+        }
+    }
+    unset($p);
+}
+
 function vaultUpdateTask(int $taskId, array $fields): void {
     $data  = getTasks();
     $found = false;
+    $oldParentId = null;
     foreach ($data['tasks'] as &$t) {
         if ((int)$t['id'] === $taskId) {
+            $oldParentId = $t['parent_id'] ?? null;
             foreach ($fields as $k => $v) $t[$k] = $v;
             $found = true;
             break;
@@ -356,6 +396,18 @@ function vaultUpdateTask(int $taskId, array $fields): void {
     }
     unset($t);
     if (!$found) throw new Exception('Task not found');
+
+    // Keep subtask_ids in sync when a subtask is reparented or deleted
+    $newParentId   = array_key_exists('parent_id', $fields) ? $fields['parent_id'] : $oldParentId;
+    $parentChanged = (int)($newParentId ?? 0) !== (int)($oldParentId ?? 0);
+    $becameDeleted = ($fields['status'] ?? null) === 'deleted';
+    if ($oldParentId && ($parentChanged || $becameDeleted)) {
+        vaultUnlinkSubtask($data, (int)$oldParentId, $taskId);
+    }
+    if ($parentChanged && !$becameDeleted && !empty($newParentId)) {
+        vaultLinkSubtask($data, (int)$newParentId, $taskId);
+    }
+
     saveTasks($data);
 }
 

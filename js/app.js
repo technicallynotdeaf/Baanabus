@@ -59,6 +59,21 @@ window.buildSnoozeOpts = function(taskLocation) {
 };
 
 // ===========================
+// Loading-state copy for the speech bubble — shown immediately on trigger so a
+// slow server response never reads as the app having done nothing. lets_go.js
+// rotates through these while its own next_activity.php fetch is in flight.
+window.LOADING_LINES = [
+  "One sec…",
+  "Finding the next thing…",
+  "Nearly there…",
+  "Hang tight…",
+  "Just a moment…",
+];
+window.pickLoadingLine = function() {
+  return window.LOADING_LINES[Math.floor(Math.random() * window.LOADING_LINES.length)];
+};
+
+// ===========================
 // global consts for things we reference...
 //
 const letsGoLink = document.getElementById('lets-go');
@@ -100,6 +115,8 @@ function setupOverlayListeners() {
 
   // Helper function to fetch and display content
   const loadSpeechBubble = (url) => {
+    speechBubble.style.display = 'block';
+    speechBubbleContent.innerHTML = '<p class="muted">' + window.pickLoadingLine() + '</p>';
     fetch(url)
       .then(response => {
           if (!response.ok) return null;

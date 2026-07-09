@@ -26,10 +26,20 @@ window.initLetsGo = function() {
 
   const _force = c.dataset.force || '';
   const _actUrl = 'api/next_activity.php' + (_force ? '?force=' + encodeURIComponent(_force) : '');
+
+  // Rotate the loading line while the (potentially slow) real fetch is in flight,
+  // so a busy server reads as "still working" rather than "did nothing".
+  const pickLine = window.pickLoadingLine || (() => 'Loading…');
+  c.innerHTML = `<p class="muted">${pickLine()}</p>`;
+  const _loadingTimer = setInterval(() => {
+    const p = c.querySelector('p.muted');
+    if (p) p.textContent = pickLine();
+  }, 1400);
+
   fetch(_actUrl)
     .then(r => r.json())
-    .then(render)
-    .catch(() => { c.innerHTML = '<p class="muted">Could not load next activity.</p>'; });
+    .then(d => { clearInterval(_loadingTimer); render(d); })
+    .catch(() => { clearInterval(_loadingTimer); c.innerHTML = '<p class="muted">Could not load next activity.</p>'; });
 
   function render(d) {
     switch (d.type) {

@@ -81,20 +81,24 @@ window.initLetsGo = function() {
   }
 
   function renderTask(d) {
-    if (d.subtasks && d.subtasks.length > 0) {
-      renderBlockTask(d);
-    } else {
-      const pagesHint = d.pages_remaining
-        ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.pages_remaining} more task${d.pages_remaining === 1 ? '' : 's'} to unlock the next story page</p>`
-        : '';
-      c.innerHTML = `
-        <p style="margin-bottom:0.75rem;">${esc(d.title)}</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="action-button" onclick="markAsDone(${d.id})">Done</button>
-          <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
-          <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
-        </div>${pagesHint}`;
-    }
+    const hasSubs = d.subtasks && d.subtasks.length > 0;
+    const info    = window.renderTaskInfo ? window.renderTaskInfo(d, {interactive: hasSubs}) : '';
+    const label   = hasSubs
+      ? `<p style="font-size:0.72em;color:#999;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:0.06em;">Block task</p>`
+      : '';
+    const doneBtn = hasSubs ? '' : `<button class="action-button" onclick="markAsDone(${d.id})">Done</button>`;
+    const pagesHint = d.pages_remaining
+      ? `<p style="font-size:0.78em;color:#999;margin-top:0.5rem;">${d.pages_remaining} more task${d.pages_remaining === 1 ? '' : 's'} to unlock the next story page</p>`
+      : '';
+    c.innerHTML = `
+      ${label}
+      <p style="${hasSubs ? 'font-weight:600;' : ''}margin-bottom:0.3rem;">${esc(d.title)}</p>
+      ${info}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:0.6rem;">
+        ${doneBtn}
+        <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
+        <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
+      </div>${pagesHint}`;
   }
 
   function renderRegulation(d) {
@@ -122,10 +126,12 @@ window.initLetsGo = function() {
 
   function renderMorningReview(d) {
     const more = d.remaining > 1 ? ` <span style="font-size:0.82em;color:#aaa;">(${d.remaining} to review)</span>` : '';
+    const info = window.renderTaskInfo ? window.renderTaskInfo(d, {interactive: false}) : '';
     c.innerHTML = `
       <p style="font-size:0.8em;color:#aaa;margin-bottom:0.4rem;">Woke from snooze today${more}</p>
-      <p style="margin-bottom:0.85rem;">${esc(d.title)}</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <p style="margin-bottom:0.3rem;">${esc(d.title)}</p>
+      ${info}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:0.5rem;">
         <button class="action-button" onclick="_mrToday(${d.id})">On today's list</button>
         <button class="action-button" onclick="_mrShowSnooze(${d.id}, this)">Snooze</button>
         <button class="action-button" onclick="_mrDone(${d.id})">Done</button>
@@ -441,50 +447,6 @@ window.initLetsGo = function() {
     dateRow.append(dateInput, dateBtn);
     opts.append(dateRow);
   };
-
-  function renderBlockTask(d) {
-    const rows = d.subtasks.map(s => `
-      <div class="subtask-row" style="display:flex;align-items:flex-start;gap:8px;padding:0.35rem 0;border-bottom:1px solid rgba(0,0,0,0.07);">
-        <span style="flex:1;line-height:1.4;font-size:0.95em;">${esc(s.title)}</span>
-        <button class="action-button" data-id="${s.id}"
-          style="flex-shrink:0;padding:0.2rem 0.6rem;font-size:0.82em;"
-          onclick="window._subtaskDone(${s.id}, this)">Done</button>
-      </div>`).join('');
-
-    c.innerHTML = `
-      <p style="font-size:0.72em;color:#999;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:0.06em;">Block task</p>
-      <p style="font-weight:600;margin-bottom:0.5rem;">${esc(d.title)}</p>
-      <div id="subtask-list" style="margin-bottom:0.75rem;">${rows}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
-        <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
-      </div>`;
-
-    window._subtaskDone = function(taskId, btn) {
-      const row = btn.closest('.subtask-row');
-      btn.disabled = true;
-      row.style.transition = 'opacity 0.2s';
-      row.style.opacity    = '0';
-      fetch(`api/mark_complete.api.php?task_id=${taskId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            updateProgressBar(data.pages, data.pages_target, data.total_pages);
-            if (data.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
-            setTimeout(() => {
-              row.remove();
-              if (!document.querySelector('#subtask-list .subtask-row')) {
-                loadSpeechBubble('lets-go.php');
-              }
-            }, 220);
-          } else {
-            btn.disabled    = false;
-            row.style.opacity = '1';
-          }
-        })
-        .catch(() => { btn.disabled = false; row.style.opacity = '1'; });
-    };
-  }
 
   function recordQuestionSeen(id, correct) {
     if (!id) return;

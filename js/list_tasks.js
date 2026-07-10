@@ -113,6 +113,14 @@ window.initListTasks = function() {
   });
 
   document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.task-detail-btn');
+    if (!btn) return;
+    if (typeof window.loadOverlay === 'function') {
+      window.loadOverlay(`api/task_detail.php?id=${btn.dataset.id}`);
+    }
+  });
+
+  document.addEventListener('click', function(e) {
     const btn = e.target.closest('.task-snooze-btn');
     if (!btn) return;
     const taskId = parseInt(btn.dataset.id);

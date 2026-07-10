@@ -411,6 +411,40 @@ function vaultUpdateTask(int $taskId, array $fields): void {
     saveTasks($data);
 }
 
+// Shared field-update path for both the agent API (Bearer auth) and the browser
+// session (cookie auth) — filters to the allowed set, saves, and pushes updated
+// metadata to Habitica notes when a synced field changes. Throws on bad input.
+function updateTaskFieldsShared(int $taskId, array $rawFields): array {
+    $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
+                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags'];
+    $fields  = array_intersect_key($rawFields, array_flip($allowed));
+    if (!$fields) throw new Exception('No valid fields to update');
+
+    vaultUpdateTask($taskId, $fields);
+
+    $metaFields = ['urgency', 'importance', 'context', 'task_type', 'location', 'snoozed_until'];
+    if (array_intersect_key($fields, array_flip($metaFields))) {
+        try {
+            $cfg = getConfig() ?? [];
+            if (!empty($cfg['preferences']['uses_habitica'])) {
+                $allData = getTasks();
+                foreach ($allData['tasks'] as $t) {
+                    if ((int)$t['id'] !== $taskId) continue;
+                    if (empty($t['habitica_id']) || !empty($t['habitica_item_id'])) break;
+                    require_once __DIR__ . '/api/habitica_helper.php';
+                    $cass    = getCassowary();
+                    $habUser = $cass['habitica']['user_id'] ?? '';
+                    $habKey  = $cass['habitica']['api_key']  ?? '';
+                    if ($habUser && $habKey) habiticaPushNotes($t['habitica_id'], $t, $habUser, $habKey);
+                    break;
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return $fields;
+}
+
 function vaultMarkComplete(int $taskId, int $target = 15): array {
     $data           = getTasks();
     $found          = false;

@@ -549,32 +549,8 @@ if ($method === 'POST') {
     if ($action === 'update_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
-        $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
-                    'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags'];
-        $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
-        if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
         try {
-            vaultUpdateTask($taskId, $fields);
-            // Push metadata notes to Habitica when relevant fields change
-            $metaFields = ['urgency', 'importance', 'context', 'task_type', 'location', 'snoozed_until'];
-            if (array_intersect_key($fields, array_flip($metaFields))) {
-                try {
-                    $cfg = getConfig() ?? [];
-                    if (!empty($cfg['preferences']['uses_habitica'])) {
-                        $allData = getTasks();
-                        foreach ($allData['tasks'] as $t) {
-                            if ((int)$t['id'] !== $taskId) continue;
-                            if (empty($t['habitica_id']) || !empty($t['habitica_item_id'])) break;
-                            require_once __DIR__ . '/habitica_helper.php';
-                            $cass = getCassowary();
-                            $habUser = $cass['habitica']['user_id'] ?? '';
-                            $habKey  = $cass['habitica']['api_key']  ?? '';
-                            if ($habUser && $habKey) habiticaPushNotes($t['habitica_id'], $t, $habUser, $habKey);
-                            break;
-                        }
-                    }
-                } catch (Throwable $e) {}
-            }
+            $fields = updateTaskFieldsShared($taskId, $body['fields'] ?? []);
             json_response(['ok' => true, 'updated' => $fields]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

@@ -160,6 +160,8 @@ if (isset($bucketFilters[$filter])) {
         <?php endif;
         endif; ?>
       </div>
+      <button class="task-detail-btn" data-id="<?= (int)$t['id'] ?>"
+              style="flex-shrink:0;background:none;border:none;color:#bbb;font-size:1.1em;padding:2px 4px;cursor:pointer;" title="View details">&#8230;</button>
       <?php if ($filter !== 'inbox'): ?>
       <div style="display:flex;gap:4px;flex-shrink:0;">
         <button class="task-done-btn action-button" data-id="<?= (int)$t['id'] ?>"
@@ -334,6 +336,8 @@ $typeLabels = [
               <div style="font-size:0.75em;color:#bbb;margin-top:2px;"><?= htmlspecialchars(trim($t['context'])) ?></div>
             <?php endif; ?>
           </div>
+          <button class="task-detail-btn" data-id="<?= (int)$t['id'] ?>"
+                  style="flex-shrink:0;background:none;border:none;color:#bbb;font-size:1.1em;padding:2px 4px;cursor:pointer;" title="View details">&#8230;</button>
           <div style="display:flex;gap:4px;flex-shrink:0;">
             <button class="task-done-btn action-button"
                     style="padding:3px 8px;font-size:0.75em;min-height:28px;"

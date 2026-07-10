@@ -20,27 +20,29 @@ $taskType  = in_array($body['task_type'] ?? '', ['next_action','someday','inbox'
 $context   = trim($body['context']  ?? '') ?: null;
 $location  = trim($body['location'] ?? '') ?: null;
 $personId  = isset($body['person_id']) && is_int($body['person_id']) ? $body['person_id'] : null;
+$parentId  = isset($body['parent_id']) && (int)$body['parent_id'] > 0 ? (int)$body['parent_id'] : null;
 
 try {
     $data   = getTasks();
     $taskId = (int)($data['next_id'] ?? 1);
-    $data['tasks'][] = [
+    vaultAppendTask($data, [
         'id'           => $taskId,
         'title'        => $title,
         'task_type'    => $taskType,
         'urgency'      => $urgency,
+        'importance'   => null,
         'energy'       => null,
         'status'       => 'active',
         'context'      => $context,
         'location'     => $location,
         'created_at'   => date('c'),
         'snoozed_until'=> null,
-        'parent_id'    => null,
+        'parent_id'    => $parentId,
         'person_id'    => $personId,
         'deadline'     => null,
         'tags'         => null,
         'description'  => null,
-    ];
+    ]);
     $data['next_id'] = $taskId + 1;
     saveTasks($data);
     json_response(['ok' => true, 'task_id' => $taskId]);

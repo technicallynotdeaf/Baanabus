@@ -304,12 +304,27 @@ if ($actCount <= 5 && ($_SESSION['last_activity'] ?? '') !== 'morning_review') {
         if (!empty($wokeToday)) {
             $t = $wokeToday[0];
             $remaining = count($wokeToday);
+            $mrNow = time();
+            $mrSubtasks = array_values(array_filter($allTasks, fn($s) =>
+                !empty($s['parent_id']) &&
+                (int)$s['parent_id'] === (int)$t['id'] &&
+                $s['status'] === 'active' &&
+                (!$s['snoozed_until'] || strtotime($s['snoozed_until']) <= $mrNow)
+            ));
+            usort($mrSubtasks, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+            $mrSubtasks = array_map(fn($s) => ['id' => (int)$s['id'], 'title' => $s['title']], $mrSubtasks);
             $_SESSION['last_activity'] = 'morning_review';
             json_response([
-                'type'      => 'morning_review',
-                'id'        => (int)$t['id'],
-                'title'     => $t['title'],
-                'remaining' => $remaining,
+                'type'        => 'morning_review',
+                'id'          => (int)$t['id'],
+                'title'       => $t['title'],
+                'description' => $t['description'] ?? null,
+                'subtasks'    => $mrSubtasks,
+                'context'     => trim($t['context'] ?? '') ?: null,
+                'time'        => $t['time'] ?? null,
+                'person_name' => personNameForId($t['person_id'] ?? null),
+                'location'    => $t['location'] ?? null,
+                'remaining'   => $remaining,
             ]);
         }
     } catch (Throwable $e) { /* non-fatal */ }
@@ -660,7 +675,17 @@ try {
     $subtasks  = [];
     $pagesLeft = null;
 }
-$taskResp = ['type' => 'task', 'id' => (int)$t['id'], 'title' => $t['title'], 'subtasks' => $subtasks, 'location' => $t['location'] ?? null];
+$taskResp = [
+    'type'        => 'task',
+    'id'          => (int)$t['id'],
+    'title'       => $t['title'],
+    'description' => $t['description'] ?? null,
+    'subtasks'    => $subtasks,
+    'location'    => $t['location'] ?? null,
+    'context'     => trim($t['context'] ?? '') ?: null,
+    'time'        => $t['time'] ?? null,
+    'person_name' => personNameForId($t['person_id'] ?? null),
+];
 if ($pagesLeft !== null && $pagesLeft > 0 && $pagesLeft <= 3) {
     $taskResp['pages_remaining'] = $pagesLeft;
 }
@@ -706,6 +731,18 @@ function serve_triage_question(array $inboxTasks, array $fillTasks): ?array {
         return $resp;
     }
     return null;
+}
+
+function personNameForId(?int $personId): ?string {
+    static $byId = null;
+    if (!$personId) return null;
+    if ($byId === null) {
+        $byId = [];
+        try {
+            foreach (getPeople()['people'] as $p) $byId[(int)$p['id']] = $p['name'] ?? null;
+        } catch (Throwable $e) {}
+    }
+    return $byId[$personId] ?? null;
 }
 
 function triage_next_question(array $t): string {

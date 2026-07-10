@@ -30,7 +30,7 @@ $personName = null;
 if (!empty($task['person_id'])) {
     try {
         foreach (getPeople()['people'] as $p) {
-            if ((int)$p['id'] === (int)$task['person_id']) { $personName = $p['name'] ?? null; break; }
+            if ((int)$p['person_id'] === (int)$task['person_id']) { $personName = $p['name'] ?? null; break; }
         }
     } catch (Throwable $e) {}
 }

@@ -739,7 +739,7 @@ function personNameForId(?int $personId): ?string {
     if ($byId === null) {
         $byId = [];
         try {
-            foreach (getPeople()['people'] as $p) $byId[(int)$p['id']] = $p['name'] ?? null;
+            foreach (getPeople()['people'] as $p) $byId[(int)$p['person_id']] = $p['name'] ?? null;
         } catch (Throwable $e) {}
     }
     return $byId[$personId] ?? null;

@@ -90,12 +90,15 @@ for ($i = 6; $i >= 0; $i--) {
     ];
 }
 
-// "Today" header value — weekly nutrients show 7-day rolling total vs weekly target
+// "Today" header value — weekly nutrients show 7-day rolling total vs weekly target,
+// prorated to the number of days actually logged so an unlogged day reads as
+// "unknown" rather than a zero-intake day dragging the week's score down.
 if ($isWeekly) {
     $weekStart   = date('Y-m-d', strtotime("$today -6 days"));
     $wt          = foodLogNutrientTotals($database, $log, $weekStart, $today);
     $todayActual = (float)($wt[$totalsKey] ?? 0);
-    $todayTarget = $weekTarget;
+    $streakDays  = loggedStreakDays($log, $today, 7);
+    $todayTarget = $weekTarget * ($streakDays / 7);
 } else {
     $dt          = foodLogNutrientTotals($database, $log, $today, $today);
     $todayActual = (float)($dt[$totalsKey] ?? 0);
@@ -136,6 +139,7 @@ json_response([
         'target' => round($todayTarget, 3),
         'pct'    => $todayTarget > 0 ? round($todayActual / $todayTarget, 4) : 0.0,
     ],
+    'streak_days' => $isWeekly ? $streakDays : null,
     'history'   => $history,
     'sources'   => $sources,
 ]);

@@ -798,6 +798,22 @@ function saveFoodLog(array $data): void {
     @chmod($path, 0600);
 }
 
+// Counts consecutive logged days ending at $endDate, stopping at the first gap
+// (a day with zero entries — write-offs count as "logged", they're a deliberate
+// record that the day happened even without tracked nutrients). Used to prorate
+// weekly-rolling nutrient goals so an unlogged day reads as "unknown", not as a
+// zero-intake day that tanks the week's score.
+function loggedStreakDays(array $log, string $endDate, int $maxDays = 7): int {
+    $n   = 0;
+    $cur = $endDate;
+    for ($i = 0; $i < $maxDays; $i++) {
+        if (empty($log['entries'][$cur])) break;
+        $n++;
+        $cur = date('Y-m-d', strtotime($cur . ' -1 day'));
+    }
+    return $n;
+}
+
 // Computes nutrient totals from vault entries + SQLite reference data.
 // $log is the full getFoodLog() result; $from/$to are YYYY-MM-DD strings (inclusive).
 function foodLogNutrientTotals(PDO $db, array $log, string $from, string $to): array {

@@ -100,6 +100,13 @@ $todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
 $weekStart   = date('Y-m-d', strtotime($date . ' -6 days'));
 $weekTotals  = foodLogNutrientTotals($database, $log, $weekStart, $date);
 
+// How many of the last 7 days actually have log entries, counting back from
+// $date and stopping at the first unlogged day. Weekly-rolling nutrient goals
+// are prorated to this many days out of 7 so an unlogged day (unknown intake)
+// isn't scored as a zero-intake day.
+$streakDays  = loggedStreakDays($log, $date, 7);
+$weekProrate = $streakDays / 7;
+
 // Build progress bars for ALL RDI nutrients (including limits).
 $progress = [];
 foreach ($rdis as $rdi) {
@@ -108,7 +115,7 @@ foreach ($rdis as $rdi) {
     if (!$totKey) continue;
 
     if ($rdi['period'] === 'weekly') {
-        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7);
+        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7) * $weekProrate;
         $actual = (float)($weekTotals[$totKey] ?? 0);
     } else {
         $target = (float)$rdi['daily_rdi'];
@@ -135,7 +142,7 @@ foreach ($rdis as $rdi) {
     if (!$col || !empty($rdi['is_limit'])) continue;
 
     if ($rdi['period'] === 'weekly') {
-        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7);
+        $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7) * $weekProrate;
         $actual = (float)($weekTotals[$col] ?? 0);
     } else {
         $target = (float)$rdi['daily_rdi'];
@@ -155,7 +162,7 @@ foreach ($rdis as $rdi) {
 }
 
 if (empty($gaps)) {
-    json_response(['foods' => [], 'progress' => $progress, 'suggestions' => new stdClass(), 'date' => $date]);
+    json_response(['foods' => [], 'progress' => $progress, 'suggestions' => new stdClass(), 'date' => $date, 'streak_days' => $streakDays]);
 }
 
 // Load all non-meal foods with their default serving
@@ -245,4 +252,4 @@ foreach ($sortedGaps as $n => $gap) {
     $suggCount++;
 }
 
-json_response(['foods' => array_slice($scored, 0, 10), 'progress' => $progress, 'suggestions' => $suggestions, 'date' => $date]);
+json_response(['foods' => array_slice($scored, 0, 10), 'progress' => $progress, 'suggestions' => $suggestions, 'date' => $date, 'streak_days' => $streakDays]);

@@ -118,6 +118,10 @@ window.initNutritionProgress = function () {
       ? `<p style="font-size:0.82em;color:#888;margin:0.75rem 0 0;line-height:1.5;">${esc(d.note)}</p>`
       : '';
 
+    const streakHtml = (d.streak_days != null && d.streak_days < 7)
+      ? `<p class="muted" style="font-size:0.8em;margin:0.4rem 0 0;">Based on the last ${d.streak_days} day${d.streak_days === 1 ? '' : 's'} logged, not a full week.</p>`
+      : '';
+
     const histHtml = d.history.map(h => {
       const hp      = Math.min(1, h.pct || 0);
       const hColour = barColour(hp, isLimit, isInfo);
@@ -163,6 +167,7 @@ window.initNutritionProgress = function () {
         <div style="height:100%;width:${pctDisp}%;background:${colour};border-radius:4px;transition:width 0.4s;"></div>
       </div>
       ${noteHtml}
+      ${streakHtml}
 
       <div style="margin-top:1.4rem;">
         <p style="font-size:0.71em;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;
@@ -211,9 +216,16 @@ window.initNutritionProgress = function () {
     .then(r => r.json())
     .then(data => {
       if (!body) return;
-      const progress = data.progress || {};
-      const foods    = data.foods    || [];
-      const html = SECTIONS.map(s => renderSection(s, progress)).join('') + renderGapFoods(foods);
+      const progress   = data.progress    || {};
+      const foods      = data.foods       || [];
+      const streakDays = data.streak_days;
+      const streakNote = (streakDays != null && streakDays < 7)
+        ? `<p class="muted" style="font-size:0.8em;margin-bottom:0.75rem;">
+             Weekly goals based on the last ${streakDays} day${streakDays === 1 ? '' : 's'} logged, not a full week —
+             days you haven't logged aren't counted against you.
+           </p>`
+        : '';
+      const html = streakNote + SECTIONS.map(s => renderSection(s, progress)).join('') + renderGapFoods(foods);
       body.innerHTML = html || '<p class="muted">No nutrient data yet today.</p>';
     })
     .catch(() => {

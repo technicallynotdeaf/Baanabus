@@ -7,6 +7,7 @@ $objectsOut      = false;
 $cycleDay        = 0;
 $cycleLen        = 0;
 $cyclePhases     = [];
+$top3Entries     = [];
 if (isUnlocked()) {
     try {
         $cp = getCyclePhase();
@@ -39,6 +40,9 @@ if (isUnlocked()) {
         $objectsOut      = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'out'));
         $objectsResolved = !empty(array_filter($obj['objects'] ?? [], fn($o) => ($o['status'] ?? '') === 'resolved'));
     } catch (Throwable $e) {}
+    try {
+        $top3Entries = getOrGenerateTop3();
+    } catch (Throwable $e) {}
 }
 ?>
 <canvas id="sceneCanvas"
@@ -51,7 +55,8 @@ if (isUnlocked()) {
   data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"
   data-cycle-day="<?= $cycleDay ?>"
   data-cycle-len="<?= $cycleLen ?>"
-  data-cycle-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"></canvas>
+  data-cycle-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"
+  data-top3="<?= htmlspecialchars(json_encode($top3Entries), ENT_QUOTES) ?>"></canvas>
 
 <?php
 $pageCount    = 0;

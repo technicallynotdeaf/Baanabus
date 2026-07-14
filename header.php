@@ -26,6 +26,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/task_detail.js?v=<?= filemtime(__DIR__ . '/js/task_detail.js') ?>" defer></script>
   <script src="js/upload_questions.js?v=<?= filemtime(__DIR__ . '/js/upload_questions.js') ?>" defer></script>
   <script src="js/badges.js?v=<?= filemtime(__DIR__ . '/js/badges.js') ?>" defer></script>
+  <script src="js/top3.js?v=<?= filemtime(__DIR__ . '/js/top3.js') ?>" defer></script>
   <script src="js/food_log.js?v=<?= filemtime(__DIR__ . '/js/food_log.js') ?>" defer></script>
   <script src="js/nutrition_progress.js?v=<?= filemtime(__DIR__ . '/js/nutrition_progress.js') ?>" defer></script>
   <script src="js/list_dailies.js?v=<?= filemtime(__DIR__ . '/js/list_dailies.js') ?>" defer></script>

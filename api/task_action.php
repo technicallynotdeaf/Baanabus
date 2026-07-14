@@ -95,7 +95,15 @@ try {
                 }
             }
             vaultUpdateTask($taskId, ['snoozed_until' => date('c', $until), 'woke_date' => null]);
-            json_response(['ok' => true]);
+            try {
+                $allTasks = getTasks()['tasks'];
+                foreach ($allTasks as $t) {
+                    if ((int)$t['id'] === $taskId && !empty($t['created_at']) && strtotime($t['created_at']) < strtotime('-21 days')) {
+                        creditTop3Progress('snooze_old', 1);
+                    }
+                }
+            } catch (Throwable $e) {}
+            json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
 
         case 'someday':
             vaultUpdateTask($taskId, [

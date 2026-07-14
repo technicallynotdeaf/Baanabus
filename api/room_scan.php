@@ -49,7 +49,8 @@ try {
     $data['room_scan_dates'][$roomId] = date('Y-m-d');
 
     savePhysicalObjects($data);
-    json_response(['ok' => true, 'added' => $added]);
+    try { creditTop3Progress('room_scan', 1); } catch (Throwable $e) {}
+    json_response(['ok' => true, 'added' => $added, 'top3_completed' => top3DrainCompleted()]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

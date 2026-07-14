@@ -23,7 +23,15 @@ if ($value === null || !is_numeric($value)) {
 
 try {
     saveDiaryEntry($date, [$field => (int)$value]);
-    json_response(['ok' => true]);
+    try {
+        if ($date === date('Y-m-d')) {
+            $entry = getDiaryEntry($date);
+            if (!empty($entry['energy_level']) && !empty($entry['day_type']) && !empty($entry['location'])) {
+                creditTop3Progress('checkin_done', 1);
+            }
+        }
+    } catch (Throwable $e) {}
+    json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

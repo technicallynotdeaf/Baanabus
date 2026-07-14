@@ -13,6 +13,7 @@
     const CYCLE_LEN           = parseInt(canvas.dataset.cycleLen,  10) || 0;
     const CYCLE_PHASES        = JSON.parse(canvas.dataset.cyclePhases || '[]');
     const HAS_CYCLE           = CYCLE_DAY > 0 && CYCLE_LEN > 0 && CYCLE_PHASES.length > 0;
+    const TOP3                = JSON.parse(canvas.dataset.top3 || '[]');
 
     const STORY_BOOKS = [
         { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
@@ -48,6 +49,84 @@
     let chestBounds       = null;
     let calendarBounds    = null;
     let cycleDial         = null; // { cx, cy, rx, ry, quad }
+    let jarBounds         = [];
+
+    function roundRectPath(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function drawTop3Jars(ctx, startX, by, jarW, jarH, gap, entries) {
+        jarBounds = [];
+        if (!entries || !entries.length) return;
+        entries.forEach((e, i) => {
+            const bx = startX + i * (jarW + gap);
+            jarBounds.push({ x: bx, y: by, w: jarW, h: jarH });
+
+            const target = e.target > 0 ? e.target : 1;
+            const pct    = Math.max(0, Math.min(1, e.progress / target));
+            const done   = !!e.completed_at;
+
+            const neckH  = Math.round(jarH * 0.16);
+            const neckW  = Math.round(jarW * 0.55);
+            const bodyY  = by + neckH;
+            const bodyH  = jarH - neckH;
+            const neckX  = bx + Math.round((jarW - neckW) / 2);
+            const r      = Math.round(jarW * 0.14);
+
+            // Drop shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            roundRectPath(ctx, bx + 2, bodyY + 2, jarW, bodyH, r);
+            ctx.fill();
+
+            // Glass body
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            roundRectPath(ctx, bx, bodyY, jarW, bodyH, r);
+            ctx.fill();
+
+            // Fill level
+            const fillH = Math.round(bodyH * pct);
+            if (fillH > 1) {
+                ctx.save();
+                roundRectPath(ctx, bx, bodyY, jarW, bodyH, r);
+                ctx.clip();
+                const topC = done ? '#2ecc71' : '#f5a623';
+                const botC = done ? '#25a25b' : '#d9820f';
+                const grad = ctx.createLinearGradient(bx, bodyY + bodyH - fillH, bx, bodyY + bodyH);
+                grad.addColorStop(0, topC);
+                grad.addColorStop(1, botC);
+                ctx.fillStyle = grad;
+                ctx.fillRect(bx, bodyY + bodyH - fillH, jarW, fillH);
+                ctx.restore();
+            }
+
+            // Glass outline + rim highlight
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.lineWidth   = 1;
+            roundRectPath(ctx, bx, bodyY, jarW, bodyH, r);
+            ctx.stroke();
+
+            // Neck + lid
+            ctx.fillStyle = '#9aa4ac';
+            ctx.fillRect(neckX, by, neckW, neckH);
+            ctx.fillStyle = done ? '#2ecc71' : '#7c8890';
+            ctx.fillRect(neckX - 2, by - Math.round(neckH * 0.35), neckW + 4, Math.round(neckH * 0.55));
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(neckX - 2, by - Math.round(neckH * 0.35), neckW + 4, 1);
+
+            if (done) {
+                ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                ctx.beginPath();
+                ctx.arc(bx + jarW * 0.30, bodyY + bodyH * 0.32, Math.max(1.5, jarW * 0.045), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
 
     function frand(s) { return ((Math.sin(s * 91.3 + 217.5) * 53758.5) % 1 + 1) % 1; }
 
@@ -873,8 +952,17 @@
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
-        // Middle section bottom bay: toybox (unresolved) + treasure chest (resolved)
+        // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);
+        const topBayTop = innerTop + clearance;
+        const jarH      = Math.round(midShelfH * 0.68);
+        const jarW      = Math.round(secW * 0.22);
+        const jarGap    = Math.max(4, Math.round(secW * 0.05));
+        const jarY      = topBayTop + midShelfH - jarH - Math.round(midShelfH * 0.08);
+        const jarStartX = innerLeft + secW + Math.round((secW - jarW * 3 - jarGap * 2) / 2);
+        drawTop3Jars(ctx, jarStartX, jarY, jarW, jarH, jarGap, TOP3);
+
+        // Middle section bottom bay: toybox (unresolved) + treasure chest (resolved)
         const mbayBot   = innerTop + innerHeight;
         const mbayH     = mbayBot - (innerTop + clearance + 6 * midShelfH);
         const mbayL     = innerLeft + secW;
@@ -928,6 +1016,30 @@
     window.addEventListener('load',   updateBackground);
     window.refreshScene = updateBackground;
 
+    function spawnJarPip(completedItem) {
+        if (!jarBounds.length) return;
+        const target  = jarBounds[Math.min(jarBounds.length - 1, 0)];
+        const rect    = canvas.getBoundingClientRect();
+        const tx      = rect.left + target.x + target.w / 2;
+        const ty      = rect.top  + target.y + target.h / 2;
+        const startX  = window.innerWidth  / 2 + (Math.random() - 0.5) * 60;
+        const startY  = window.innerHeight * 0.5;
+
+        const el = document.createElement('div');
+        el.className   = 'star-pip top3-pip';
+        el.textContent = '★ +' + completedItem.points;
+        el.style.left  = startX + 'px';
+        el.style.top   = startY + 'px';
+        el.style.setProperty('--dx', (tx - startX) + 'px');
+        el.style.setProperty('--dy', (ty - startY) + 'px');
+        document.body.appendChild(el);
+        setTimeout(() => el.parentNode && el.parentNode.removeChild(el), 900);
+    }
+
+    window.celebrateTop3 = function (completedList) {
+        (completedList || []).forEach((c, i) => setTimeout(() => spawnJarPip(c), i * 250));
+    };
+
     function inRect(cx, cy, r) {
         return r && cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
     }
@@ -957,6 +1069,10 @@
             loadOverlay('api/objects_list.php');
             return;
         }
+        if (jarBounds.some(b => inRect(cx, cy, b))) {
+            loadOverlay('api/top3.php');
+            return;
+        }
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
                 loadOverlay('api/story_books.php');
@@ -975,6 +1091,7 @@
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))
             || inRect(cx, cy, toyboxBounds)
             || inRect(cx, cy, chestBounds)
+            || jarBounds.some(b => inRect(cx, cy, b))
             || onBook;
         this.style.cursor = pointer ? 'pointer' : '';
     });

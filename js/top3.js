@@ -1,0 +1,1 @@
+function initTop3() {}

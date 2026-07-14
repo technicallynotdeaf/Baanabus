@@ -30,7 +30,8 @@ try {
         $data['objects'][$objIdx]['status']      = 'resolved';
         $data['objects'][$objIdx]['resolved_at'] = date('c');
         savePhysicalObjects($data);
-        json_response(['ok' => true]);
+        try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
+        json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
     }
 
     if ($action === 'find_home') {
@@ -60,7 +61,8 @@ try {
         $data['objects'][$objIdx]['status']      = 'resolved';
         $data['objects'][$objIdx]['resolved_at'] = date('c');
         savePhysicalObjects($data);
-        json_response(['ok' => true, 'task_id' => $taskId]);
+        try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
+        json_response(['ok' => true, 'task_id' => $taskId, 'top3_completed' => top3DrainCompleted()]);
     }
 
     if ($action === 'link_task') {
@@ -72,7 +74,8 @@ try {
             $data['objects'][$objIdx]['status']      = 'resolved';
             $data['objects'][$objIdx]['resolved_at'] = date('c');
             savePhysicalObjects($data);
-            json_response(['ok' => true, 'task_id' => $existingTaskId]);
+            try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
+            json_response(['ok' => true, 'task_id' => $existingTaskId, 'top3_completed' => top3DrainCompleted()]);
         } elseif ($taskTitle !== '') {
             $taskData = getTasks();
             $taskId   = (int)($taskData['next_id'] ?? 1);
@@ -100,7 +103,8 @@ try {
             $data['objects'][$objIdx]['status']      = 'resolved';
             $data['objects'][$objIdx]['resolved_at'] = date('c');
             savePhysicalObjects($data);
-            json_response(['ok' => true, 'task_id' => $taskId]);
+            try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
+            json_response(['ok' => true, 'task_id' => $taskId, 'top3_completed' => top3DrainCompleted()]);
         } else {
             json_response(['error' => 'Provide task_id or task_title'], 400);
         }

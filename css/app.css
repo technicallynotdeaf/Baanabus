@@ -435,6 +435,13 @@ input:focus, textarea:focus, select:focus {
   z-index: 999;
   animation: fly-to-bar 0.75s cubic-bezier(0.4, 0, 0.8, 0.3) forwards;
 }
+.top3-pip {
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #2ecc71;
+  text-shadow: 0 0 8px rgba(46, 204, 113, 0.9);
+}
 
 /* === Progress bar (scene overlay) === */
 .scene-progress {

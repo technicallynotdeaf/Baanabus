@@ -41,7 +41,7 @@ try {
     }
 
     $remaining = getActiveDailies();
-    json_response(['ok' => true, 'all_done' => empty($remaining), 'remaining' => count($remaining)]);
+    json_response(['ok' => true, 'all_done' => empty($remaining), 'remaining' => count($remaining), 'top3_completed' => top3DrainCompleted()]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

@@ -382,13 +382,18 @@ function vaultUnlinkSubtask(array &$data, int $parentId, int $childId): void {
     unset($p);
 }
 
-function vaultUpdateTask(int $taskId, array $fields): void {
+// Returns any Top 3 jars completed as a side effect of this edit (see
+// top3CreditFieldTransitions), so callers can surface a positive-feedback
+// moment. Safe to ignore — most existing callers do.
+function vaultUpdateTask(int $taskId, array $fields): array {
     $data  = getTasks();
     $found = false;
     $oldParentId = null;
+    $before = null;
     foreach ($data['tasks'] as &$t) {
         if ((int)$t['id'] === $taskId) {
             $oldParentId = $t['parent_id'] ?? null;
+            $before      = $t;
             foreach ($fields as $k => $v) $t[$k] = $v;
             $found = true;
             break;
@@ -409,6 +414,55 @@ function vaultUpdateTask(int $taskId, array $fields): void {
     }
 
     saveTasks($data);
+
+    // Top 3: this is the single choke point for every field edit path (triage,
+    // task_action, schedule_task, the agent API), so credit transitions here
+    // rather than at each call site.
+    try { return top3CreditFieldTransitions($before, $fields); } catch (Throwable $e) { return []; }
+}
+
+// Detects the specific before/after transitions Top 3 cares about and credits
+// the matching category. $before is the full task row prior to the edit;
+// $fields is only the changed keys that were just applied. Returns the merged
+// list of newly-completed jars ([{label, points}, ...]).
+function top3CreditFieldTransitions(?array $before, array $fields): array {
+    if (!$before) return [];
+    $completed = [];
+
+    foreach (['urgency', 'importance', 'energy', 'context'] as $f) {
+        if (array_key_exists($f, $fields) && empty($before[$f]) && trim((string)$fields[$f]) !== '' && trim((string)$fields[$f]) !== ' ') {
+            $completed = array_merge($completed, creditTop3Progress('fill_info', 1));
+        }
+    }
+
+    foreach (['deadline', 'scheduled_date'] as $f) {
+        if (array_key_exists($f, $fields) && empty($before[$f]) && !empty($fields[$f])) {
+            $completed = array_merge($completed, creditTop3Progress('calendar_set', 1));
+        }
+    }
+
+    $oldType = $before['task_type'] ?? null;
+    $newType = array_key_exists('task_type', $fields) ? $fields['task_type'] : $oldType;
+    $inboxAffected = false;
+    if ($oldType === 'inbox' && $newType !== 'inbox') {
+        $completed = array_merge($completed, creditTop3Progress('inbox_triage', 1));
+        $inboxAffected = true;
+    }
+    if (in_array($newType, ['someday', 'waiting'], true) && $newType !== $oldType) {
+        $completed = array_merge($completed, creditTop3Progress('declutter', 1));
+    }
+    if (array_key_exists('status', $fields) && $fields['status'] === 'deleted' && ($before['status'] ?? null) !== 'deleted') {
+        $completed = array_merge($completed, creditTop3Progress('declutter', 1));
+        $inboxAffected = $inboxAffected || $oldType === 'inbox';
+    }
+    if ($inboxAffected) {
+        try {
+            $val = top3RecomputeValue('inbox_zero');
+            if ($val !== null) $completed = array_merge($completed, creditTop3Progress('inbox_zero', $val));
+        } catch (Throwable $e) {}
+    }
+
+    return $completed;
 }
 
 // Shared field-update path for both the agent API (Bearer auth) and the browser
@@ -1152,6 +1206,9 @@ function markDailyComplete(int $id, string $date = null): void {
         $done[]                     = $id;
         $data['completions'][$date] = $done;
         saveDailies($data);
+        if ($date === date('Y-m-d')) {
+            try { creditTop3Progress('daily_routine', 1); } catch (Throwable $e) {}
+        }
     }
 }
 
@@ -1301,6 +1358,216 @@ function checkAndAwardBadges(): array {
     }
 
     return $earned;
+}
+
+// ---------- Top 3 daily challenges ----------
+//
+// Three daily "jars" drawn from content/top3_challenges.php, each worth a
+// randomised point reward. Progress is never self-reported — every category
+// is credited automatically from a real app action via creditTop3Progress(),
+// called from the handful of endpoints where that action happens. See
+// CLAUDE.md for the full category → hook-point table.
+
+function getTop3ChallengePool(): array {
+    return include __DIR__ . '/content/top3_challenges.php';
+}
+
+function getOrGenerateTop3(?string $date = null): array {
+    $date   = $date ?? date('Y-m-d');
+    $config = getConfig() ?? [];
+    $top3   = $config['top3'] ?? [];
+    if (!empty($top3[$date])) return $top3[$date];
+
+    $pool   = getTop3ChallengePool();
+    $recent = $config['top3_recent'] ?? [];
+    $avoid  = [];
+    foreach ($recent as $cats) $avoid = array_merge($avoid, $cats);
+
+    $pickThree = function (array $candidates) {
+        shuffle($candidates);
+        $chosen = [];
+        $seenCategories = [];
+        foreach ($candidates as $def) {
+            if (in_array($def['category'], $seenCategories, true)) continue;
+            $chosen[] = $def;
+            $seenCategories[] = $def['category'];
+            if (count($chosen) === 3) break;
+        }
+        return $chosen;
+    };
+
+    $available = array_values(array_filter($pool, fn($p) => !in_array($p['category'], $avoid, true)));
+    $chosen    = $pickThree(count($available) >= 3 ? $available : $pool);
+    if (count($chosen) < 3) { // pool too small even ignoring anti-repeat — top up from full pool
+        $have = array_map(fn($c) => $c['category'], $chosen);
+        foreach ($pool as $def) {
+            if (in_array($def['category'], $have, true)) continue;
+            $chosen[] = $def;
+            $have[] = $def['category'];
+            if (count($chosen) === 3) break;
+        }
+    }
+
+    $entries = [];
+    foreach ($chosen as $def) {
+        $target = random_int($def['n_range'][0], $def['n_range'][1]);
+        $entries[] = [
+            'id'           => $def['id'],
+            'category'     => $def['category'],
+            'mode'         => $def['mode'],
+            'label'        => str_replace('{n}', (string)$target, $def['label']),
+            'target'       => $target,
+            'points'       => random_int($def['points_range'][0], $def['points_range'][1]),
+            'progress'     => 0,
+            'completed_at' => null,
+        ];
+    }
+
+    $top3[$date]     = $entries;
+    $config['top3']  = $top3;
+
+    $recent[$date] = array_map(fn($e) => $e['category'], $entries);
+    if (count($recent) > 2) {
+        $keys = array_keys($recent);
+        sort($keys);
+        $recent = array_intersect_key($recent, array_flip(array_slice($keys, -2)));
+    }
+    $config['top3_recent'] = $recent;
+
+    saveConfig($config);
+
+    // Recompute-mode categories reflect live state, so give them an immediate
+    // baseline in case the qualifying condition is already true today (e.g.
+    // the inbox happens to already be empty when the jars are first generated).
+    foreach ($entries as $e) {
+        if ($e['mode'] !== 'recompute') continue;
+        try {
+            $value = top3RecomputeValue($e['category'], $date);
+            if ($value !== null) creditTop3Progress($e['category'], $value);
+        } catch (Throwable $ex) {}
+    }
+
+    $fresh = getConfig() ?? [];
+    return $fresh['top3'][$date] ?? $entries;
+}
+
+// The single shared entry point every action site calls to advance a jar.
+// For 'increment'-mode categories, $value is added to progress. For
+// 'recompute'-mode categories, $value is the current true count and progress
+// is set to max(existing, value) so it can never regress. Returns a list of
+// [{label, points}] for any jar that reached its target on this call.
+function creditTop3Progress(string $category, int $value = 1): array {
+    $date   = date('Y-m-d');
+    $config = getConfig() ?? [];
+    if (empty($config['top3'][$date])) {
+        getOrGenerateTop3($date);
+        $config = getConfig() ?? [];
+    }
+    if (empty($config['top3'][$date])) return [];
+
+    $completed = [];
+    $changed   = false;
+    foreach ($config['top3'][$date] as &$entry) {
+        if ($entry['category'] !== $category || $entry['completed_at']) continue;
+
+        $newProgress = ($entry['mode'] ?? 'increment') === 'recompute'
+            ? max($entry['progress'], min($entry['target'], $value))
+            : min($entry['target'], $entry['progress'] + $value);
+
+        if ($newProgress !== $entry['progress']) {
+            $entry['progress'] = $newProgress;
+            $changed = true;
+        }
+        if ($entry['progress'] >= $entry['target']) {
+            $entry['completed_at'] = date('c');
+            $config['points']      = (int)($config['points'] ?? 0) + (int)$entry['points'];
+            $completed[]           = ['label' => $entry['label'], 'points' => $entry['points']];
+            $changed = true;
+        }
+    }
+    unset($entry);
+
+    if ($changed) saveConfig($config);
+    if ($completed) top3StashCompleted($completed);
+    return $completed;
+}
+
+// Per-request accumulator so endpoints that trigger a credit indirectly (e.g.
+// via vaultUpdateTask deep inside triage.php) can still surface the
+// just-completed jars without threading a return value through every call
+// site. Call top3DrainCompleted() once, right before building the JSON
+// response, and splice the result on as `top3_completed`.
+function top3StashCompleted(array $completed): void {
+    global $__top3StashedCompletions;
+    $__top3StashedCompletions = array_merge($__top3StashedCompletions ?? [], $completed);
+}
+
+function top3DrainCompleted(): array {
+    global $__top3StashedCompletions;
+    $out = $__top3StashedCompletions ?? [];
+    $__top3StashedCompletions = [];
+    return $out;
+}
+
+// Live-state value for a recompute-mode category. Returns null for categories
+// that don't need a baseline recompute (i.e. increment-mode ones).
+function top3RecomputeValue(string $category, ?string $date = null): ?int {
+    global $database;
+    $date = $date ?? date('Y-m-d');
+    if ($category === 'inbox_zero') {
+        try { return empty(getInboxTasks()) ? 1 : 0; } catch (Throwable $e) { return null; }
+    }
+    if ($category === 'nutrient_hit') {
+        if (!$database) return null;
+        try { return top3NutrientsAtRdiCount($date); } catch (Throwable $e) { return null; }
+    }
+    return null;
+}
+
+// How many non-limit RDI nutrients have reached 100% of their target for $date.
+// Mirrors the gap-scoring exclusions in api/food_gaps.php — limit nutrients
+// (sodium, saturated/trans fat, sugars) are excluded since hitting them isn't
+// an achievement.
+function top3NutrientsAtRdiCount(string $date): int {
+    global $database;
+    if (!$database) return 0;
+    $totalsMap = [
+        'energy_kj' => 'energy_kj', 'protein_g' => 'protein_g', 'fibre' => 'fibre',
+        'fibre_soluble' => 'fibre_soluble', 'fibre_insoluble' => 'fibre_insoluble',
+        'omega3_ala_mg' => 'omega3_ala', 'omega3_epa_mg' => 'omega3_epa', 'omega3_dha_mg' => 'omega3_dha',
+        'omega6_la_mg' => 'omega6_la', 'potassium' => 'potassium', 'calcium' => 'calcium',
+        'phosphorus' => 'phosphorus', 'iron' => 'iron', 'magnesium' => 'magnesium',
+        'zinc_mg' => 'zinc', 'selenium_mcg' => 'selenium', 'iodine_mcg' => 'iodine', 'copper_mg' => 'copper',
+        'vitamin_a' => 'vitamin_a', 'retinol' => 'retinol', 'vitamin_c' => 'vitamin_c', 'vitamin_d' => 'vitamin_d',
+        'vitamin_e_mg' => 'vitamin_e', 'vitamin_k' => 'vitamin_k', 'vitamin_k2_mcg' => 'vitamin_k2',
+        'folate' => 'vitamin_b9', 'vitamin_b1_mg' => 'vitamin_b1', 'vitamin_b2_mg' => 'vitamin_b2',
+        'vitamin_b3_mg' => 'vitamin_b3', 'vitamin_b5_mg' => 'vitamin_b5', 'vitamin_b6_mg' => 'vitamin_b6',
+        'vitamin_b7_mcg' => 'vitamin_b7', 'vitamin_b12_mcg' => 'vitamin_b12',
+        'choline_mg' => 'choline', 'lutein_zeaxanthin_mcg' => 'lutein_zeaxanthin',
+    ];
+    $rdis = $database->query("SELECT * FROM nutrient_rdis ORDER BY display_order")->fetchAll(PDO::FETCH_ASSOC);
+    $log  = getFoodLog();
+    $todayTotals = foodLogNutrientTotals($database, $log, $date, $date);
+    $weekStart   = date('Y-m-d', strtotime($date . ' -6 days'));
+    $weekTotals  = foodLogNutrientTotals($database, $log, $weekStart, $date);
+    $streakDays  = loggedStreakDays($log, $date, 7);
+    $weekProrate = $streakDays > 0 ? $streakDays / 7 : 1;
+
+    $count = 0;
+    foreach ($rdis as $rdi) {
+        $n      = $rdi['nutrient'];
+        $totKey = $totalsMap[$n] ?? null;
+        if (!$totKey) continue;
+        if ($rdi['period'] === 'weekly') {
+            $target = (float)($rdi['weekly_rdi'] ?? $rdi['daily_rdi'] * 7) * $weekProrate;
+            $actual = (float)($weekTotals[$totKey] ?? 0);
+        } else {
+            $target = (float)$rdi['daily_rdi'];
+            $actual = (float)($todayTotals[$totKey] ?? 0);
+        }
+        if ($target > 0 && $actual >= $target) $count++;
+    }
+    return $count;
 }
 
 // ---------- Physical objects vault ----------

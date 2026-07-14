@@ -551,7 +551,7 @@ if ($method === 'POST') {
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
         try {
             $fields = updateTaskFieldsShared($taskId, $body['fields'] ?? []);
-            json_response(['ok' => true, 'updated' => $fields]);
+            json_response(['ok' => true, 'updated' => $fields, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }
@@ -611,6 +611,7 @@ if ($method === 'POST') {
             ]);
             $data['next_id'] = $taskId + 1;
             saveTasks($data);
+            try { creditTop3Progress('task_add', 1); } catch (Throwable $e) {}
 
             // Push to Habitica if this is a next_action and Habitica is configured
             if (($body['task_type'] ?? 'next_action') === 'next_action' && empty($body['parent_id'])) {
@@ -638,7 +639,7 @@ if ($method === 'POST') {
                 }
             }
 
-            json_response(['ok' => true, 'task_id' => $taskId]);
+            json_response(['ok' => true, 'task_id' => $taskId, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }
@@ -866,7 +867,13 @@ if ($method === 'POST') {
             }
             $log['next_id']++;
             saveFoodLog($log);
-            json_response(['ok' => true, 'log_id' => $lid]);
+            try {
+                creditTop3Progress('food_log', 1);
+                if (empty($body['is_writeoff']) && $database) {
+                    creditTop3Progress('nutrient_hit', top3NutrientsAtRdiCount($date));
+                }
+            } catch (Throwable $e) {}
+            json_response(['ok' => true, 'log_id' => $lid, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

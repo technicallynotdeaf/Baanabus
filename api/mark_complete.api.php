@@ -63,6 +63,9 @@ try {
         $callout = "That task has been waiting a while. Really glad you got there.";
     }
 
+    // ── Top 3: task_complete ────────────────────────────────────────────
+    try { creditTop3Progress('task_complete', 1); } catch (Throwable $e) {}
+
     // ── Daily completion tracking + comeback callout ───────────────────
     try {
         $today  = date('Y-m-d');
@@ -98,6 +101,7 @@ try {
         'newStoryPage' => $result['newStoryPage'],
         'bookUnlocked' => false,
         'callout'      => $callout,
+        'top3_completed' => top3DrainCompleted(),
     ]);
 } catch (Throwable $e) {
     respond_mc(['success' => false, 'message' => $e->getMessage()], 500);

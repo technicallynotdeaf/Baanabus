@@ -55,7 +55,8 @@ try {
         $interval    = max(1, (int)($person['review_interval'] ?? 30));
         $next_review = scheduleNextReview($personId, $interval);
         vaultUpdatePerson($personId, ['next_review' => $next_review]);
-        json_response(['ok' => true, 'next_review' => $next_review]);
+        try { creditTop3Progress('person_review', 1); } catch (Throwable $e) {}
+        json_response(['ok' => true, 'next_review' => $next_review, 'top3_completed' => top3DrainCompleted()]);
 
     } elseif ($action === 'snooze') {
         $days        = max(1, min(365, (int)($body['days'] ?? 7)));
@@ -85,8 +86,11 @@ try {
         if ($char3 !== '') $fields['char3'] = $char3;
 
         vaultUpdatePerson($personId, $fields);
-        if ($lifeNote !== '') vaultAddPeopleNote($personId, $lifeNote);
-        json_response(['ok' => true, 'next_review' => $fields['next_review']]);
+        if ($lifeNote !== '') {
+            vaultAddPeopleNote($personId, $lifeNote);
+            try { creditTop3Progress('person_note', 1); } catch (Throwable $e) {}
+        }
+        json_response(['ok' => true, 'next_review' => $fields['next_review'], 'top3_completed' => top3DrainCompleted()]);
 
     } elseif ($action === 'update_interval') {
         $interval    = max(1, min(365, (int)($body['days'] ?? 30)));
@@ -99,7 +103,8 @@ try {
         if ($contents === '')          json_response(['error' => 'Note content required'], 400);
         if (mb_strlen($contents) > 2000) json_response(['error' => 'Note too long (max 2000 chars)'], 400);
         $noteId = vaultAddPeopleNote($personId, $contents);
-        json_response(['ok' => true, 'note_id' => $noteId]);
+        try { creditTop3Progress('person_note', 1); } catch (Throwable $e) {}
+        json_response(['ok' => true, 'note_id' => $noteId, 'top3_completed' => top3DrainCompleted()]);
     }
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);

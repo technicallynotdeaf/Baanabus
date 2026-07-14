@@ -166,6 +166,7 @@ try {
             ]);
             $data['next_id'] = $stepId + 1;
             saveTasks($data);
+            try { creditTop3Progress('subtask_break', 1); } catch (Throwable $e) {}
         }
     }
 
@@ -216,7 +217,7 @@ try {
         }
     }
 
-    json_response(['ok' => true]);
+    json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

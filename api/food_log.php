@@ -77,7 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             $log['next_id']++;
             saveFoodLog($log);
-            json_response(['ok' => true, 'log_id' => $lid]);
+            try {
+                creditTop3Progress('food_log', 1);
+                if ($database) {
+                    $nCount = top3NutrientsAtRdiCount($date);
+                    creditTop3Progress('nutrient_hit', $nCount);
+                }
+            } catch (Throwable $e) {}
+            json_response(['ok' => true, 'log_id' => $lid, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
     }
 
@@ -99,7 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             $log['next_id']++;
             saveFoodLog($log);
-            json_response(['ok' => true, 'log_id' => $lid]);
+            try { creditTop3Progress('food_log', 1); } catch (Throwable $e) {}
+            json_response(['ok' => true, 'log_id' => $lid, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
     }
 

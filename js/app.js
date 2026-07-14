@@ -1,4 +1,26 @@
 // ===========================
+// Top 3 celebration hook — every API call in the app goes through fetch(), so
+// wrapping it once here catches `top3_completed` on any JSON response without
+// having to thread it through each individual call site. The scene draws the
+// actual jars and owns window.celebrateTop3 (only defined when #sceneCanvas
+// is on the page); elsewhere this just no-ops.
+(function () {
+  const origFetch = window.fetch;
+  window.fetch = function (...args) {
+    return origFetch.apply(this, args).then(response => {
+      if (response.ok) {
+        response.clone().json().then(data => {
+          if (data && Array.isArray(data.top3_completed) && data.top3_completed.length && window.celebrateTop3) {
+            window.celebrateTop3(data.top3_completed);
+          }
+        }).catch(() => {});
+      }
+      return response;
+    });
+  };
+})();
+
+// ===========================
 // Snooze picker option builder — used by list_tasks, day_tasks, lets_go
 // Returns {suggested: [[label,when],...], rest: [[label,when],...]}
 // 'suggested' = upcoming days whose scheduled type matches the task's location

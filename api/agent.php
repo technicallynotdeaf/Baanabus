@@ -984,6 +984,9 @@ if ($method === 'POST') {
                 vaultUnlinkSubtask($allData, (int)$taskToDelete['parent_id'], $taskId);
             }
             if ($changed) saveTasks($allData);
+            if ($changed && $taskToDelete && ($taskToDelete['status'] ?? '') === 'active') {
+                try { creditTop3Progress('declutter', 1); } catch (Throwable $e) {}
+            }
 
             // Delete from Habitica (best-effort)
             if ($taskToDelete && !empty($taskToDelete['habitica_id'])) {
@@ -1007,7 +1010,7 @@ if ($method === 'POST') {
                 }
             }
 
-            json_response(['ok' => true]);
+            json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

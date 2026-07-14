@@ -33,5 +33,6 @@ $data['tasks'][] = [
 ];
 $data['next_id']++;
 saveTasks($data);
+try { creditTop3Progress('task_add', 1); } catch (Throwable $e) {}
 
-json_response(['ok' => true, 'task_id' => $id]);
+json_response(['ok' => true, 'task_id' => $id, 'top3_completed' => top3DrainCompleted()]);

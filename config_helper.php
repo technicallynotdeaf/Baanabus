@@ -1372,6 +1372,22 @@ function getTop3ChallengePool(): array {
     return include __DIR__ . '/content/top3_challenges.php';
 }
 
+// Fills in {n} and naively singularises a trailing plural noun when n === 1
+// (e.g. "Review {n} people" -> "Review 1 person"). Good enough for this pool's
+// small, known vocabulary — not a general pluralisation engine.
+function top3RenderLabel(string $label, int $n): string {
+    $text = str_replace('{n}', (string)$n, $label);
+    if ($n !== 1) return $text;
+    $singulars = ['people' => 'person', 'things' => 'thing', 'tasks' => 'task',
+                  'entries' => 'entry', 'objects' => 'object', 'rooms' => 'room',
+                  'nutrients' => 'nutrient', 'notes' => 'note', 'routines' => 'routine',
+                  'items' => 'item'];
+    foreach ($singulars as $plural => $singular) {
+        $text = preg_replace('/\b' . preg_quote($plural, '/') . '\b/', $singular, $text, 1);
+    }
+    return $text;
+}
+
 function getOrGenerateTop3(?string $date = null): array {
     $date   = $date ?? date('Y-m-d');
     $config = getConfig() ?? [];
@@ -1415,7 +1431,7 @@ function getOrGenerateTop3(?string $date = null): array {
             'id'           => $def['id'],
             'category'     => $def['category'],
             'mode'         => $def['mode'],
-            'label'        => str_replace('{n}', (string)$target, $def['label']),
+            'label'        => top3RenderLabel($def['label'], $target),
             'target'       => $target,
             'points'       => random_int($def['points_range'][0], $def['points_range'][1]),
             'progress'     => 0,

@@ -7,6 +7,7 @@
  * GET ?view=inbox               → inbox (untriaged) tasks
  * GET ?view=all_tasks           → every task regardless of status/type
  * GET ?view=config              → app config (preferences, onboarding state, story progress)
+ * GET ?view=top3                → today's 3 challenge jars (label/target/progress/points/completed_at) + lifetime points total
  * GET ?view=snapshot            → tasks + inbox + config + context in one call
  * GET ?view=food_search&q=term  → search foods + servings by name (for finding food_id/serving_id)
  * GET ?view=api_keys            → list agent API keys (label, created_at, is_current)
@@ -140,6 +141,16 @@ if ($method === 'GET') {
     if ($view === 'config') {
         try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
         json_response(['ok' => true, 'config' => $cfg]);
+    }
+
+    if ($view === 'top3') {
+        try {
+            $entries = getOrGenerateTop3();
+            $points  = (int)((getConfig() ?? [])['points'] ?? 0);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+        json_response(['ok' => true, 'challenges' => $entries, 'points' => $points]);
     }
 
     if ($view === 'snapshot') {

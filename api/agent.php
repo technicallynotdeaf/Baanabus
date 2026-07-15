@@ -878,12 +878,14 @@ if ($method === 'POST') {
             }
             $log['next_id']++;
             saveFoodLog($log);
-            try {
-                creditTop3Progress('food_log', 1);
-                if (empty($body['is_writeoff']) && $database) {
-                    creditTop3Progress('nutrient_hit', top3NutrientsAtRdiCount($date));
-                }
-            } catch (Throwable $e) {}
+            if ($date === date('Y-m-d')) {
+                try {
+                    creditTop3Progress('food_log', 1);
+                    if (empty($body['is_writeoff']) && $database) {
+                        creditTop3Progress('nutrient_hit', top3NutrientsAtRdiCount($date));
+                    }
+                } catch (Throwable $e) {}
+            }
             json_response(['ok' => true, 'log_id' => $lid, 'top3_completed' => top3DrainCompleted()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

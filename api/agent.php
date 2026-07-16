@@ -41,6 +41,9 @@
  * POST {"action":"add_goal","title":"..."}
  *      → add a goal; link tasks to it via update_task fields.goal_id
  *
+ * POST {"action":"delete_goal","goal_id":N}
+ *      → delete a goal (tasks keep their goal_id, pointing at nothing)
+ *
  * POST {"action":"add_recipe","name":"...","ingredients_text":"...","notes":"...","default_portions":N,"tags":[...]}
  *      → add a recipe to the recipe book (ingredients_text is free text for now)
  *
@@ -1202,6 +1205,19 @@ if ($method === 'POST') {
             $data['next_id'] = $id + 1;
             saveGoals($data);
             json_response(['ok' => true, 'goal_id' => $id]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_goal') {
+        $goalId = (int)($body['goal_id'] ?? 0);
+        if (!$goalId) json_response(['error' => 'goal_id required'], 400);
+        try {
+            $data = getGoals();
+            $data['items'] = array_values(array_filter($data['items'], fn($g) => (int)$g['id'] !== $goalId));
+            saveGoals($data);
+            json_response(['ok' => true]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

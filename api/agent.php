@@ -17,7 +17,7 @@
  * GET ?view=meal_plan&date=YYYY-MM-DD → meal plan for a date (defaults to today)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
- *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status
+ *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status / parent_id
  *
  * POST {"action":"add_task","title":"...","task_type"?:"next_action","urgency"?:"medium",...}
  *      → insert a new task into the vault

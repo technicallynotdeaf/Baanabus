@@ -470,7 +470,7 @@ function top3CreditFieldTransitions(?array $before, array $fields): array {
 // metadata to Habitica notes when a synced field changes. Throws on bad input.
 function updateTaskFieldsShared(int $taskId, array $rawFields): array {
     $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
-                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags'];
+                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id'];
     $fields  = array_intersect_key($rawFields, array_flip($allowed));
     if (!$fields) throw new Exception('No valid fields to update');
 

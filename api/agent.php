@@ -123,6 +123,7 @@ if ($method === 'GET') {
         'habitica_id'   => $t['habitica_id']   ?? null,
         'description'   => $t['description']   ?? null,
         'tags'          => $t['tags']          ?? null,
+        'goal_id'       => $t['goal_id']       ?? null,
         'created_at'    => $t['created_at']    ?? null,
     ];
 
@@ -627,6 +628,7 @@ if ($method === 'POST') {
                 'person_id'     => $body['person_id']     ?? null,
                 'description'   => $body['description']   ?? null,
                 'tags'          => $body['tags']          ?? null,
+                'goal_id'       => $body['goal_id']       ?? null,
                 'created_at'    => date('c'),
             ]);
             $data['next_id'] = $taskId + 1;

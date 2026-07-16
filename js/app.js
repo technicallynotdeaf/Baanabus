@@ -465,6 +465,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSpeechBubble('greeting.php');
     fetch('api/habitica_sync.php').catch(() => {});
 
+    // Keep-alive ping — refreshes the session's mtime so a tab left open
+    // through a longer task (or backgrounded on mobile) doesn't come back to
+    // a dead session. Fires on an interval and again whenever the tab
+    // regains focus, since mobile browsers throttle background timers.
+    const sendHeartbeat = () => fetch('api/heartbeat.php', { credentials: 'same-origin' }).catch(() => {});
+    setInterval(sendHeartbeat, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') sendHeartbeat();
+    });
+
     // Morning mode lockout — prevent nav overlays until daily sequence is done
     if (document.body.classList.contains('morning-mode')) {
         const blockedIds = ['note-to-self', 'people-book', 'task-list'];

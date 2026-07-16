@@ -4,7 +4,22 @@
  * Included by every page and API endpoint. Does NOT output HTML.
  */
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    // Default session.cookie_lifetime=0 makes PHPSESSID a non-persistent
+    // "session" cookie. On mobile browsers, backgrounding the tab during a
+    // short task (e.g. a 2-minute grounding prompt) can let the OS reclaim
+    // the browser process and drop that cookie, forcing a full re-login even
+    // though the server-side session (gc_maxlifetime, 24min) is still valid.
+    // A real expiry makes the cookie survive that.
+    session_set_cookie_params([
+        'lifetime' => 60 * 60 * 24,
+        'path'     => '/',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 
 // Apply user timezone (stored in session after vault unlock; defaults to Melbourne)
 $_tz = $_SESSION['user_timezone'] ?? 'Australia/Melbourne';

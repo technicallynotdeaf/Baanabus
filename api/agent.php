@@ -15,9 +15,10 @@
  * GET ?view=person&id=N         → single person with their notes
  * GET ?view=recipes             → all saved recipes
  * GET ?view=meal_plan&date=YYYY-MM-DD → meal plan for a date (defaults to today)
+ * GET ?view=goals                → all goals (id, title, created_at)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
- *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status / parent_id
+ *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status / parent_id / goal_id
  *
  * POST {"action":"add_task","title":"...","task_type"?:"next_action","urgency"?:"medium",...}
  *      → insert a new task into the vault
@@ -36,6 +37,9 @@
  *
  * POST {"action":"update_person","person_id":N,"fields":{...}}
  *      → update fields on a person record (name, birthday, circles, next_review_date, etc.)
+ *
+ * POST {"action":"add_goal","title":"..."}
+ *      → add a goal; link tasks to it via update_task fields.goal_id
  *
  * POST {"action":"add_recipe","name":"...","ingredients_text":"...","notes":"...","default_portions":N,"tags":[...]}
  *      → add a recipe to the recipe book (ingredients_text is free text for now)
@@ -489,6 +493,11 @@ if ($method === 'GET') {
     if ($view === 'recipes') {
         try { $data = getRecipes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
         json_response(['ok' => true, 'recipes' => $data['recipes']]);
+    }
+
+    if ($view === 'goals') {
+        try { $data = getGoals(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'goals' => $data['items']]);
     }
 
     if ($view === 'meal_plan') {
@@ -1172,6 +1181,25 @@ if ($method === 'POST') {
         try {
             vaultUpdatePerson($personId, $fields);
             json_response(['ok' => true, 'updated' => $fields]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'add_goal') {
+        $title = trim($body['title'] ?? '');
+        if (!$title) json_response(['error' => 'title required'], 400);
+        try {
+            $data = getGoals();
+            $id   = (int)($data['next_id'] ?? 1);
+            $data['items'][] = [
+                'id'         => $id,
+                'title'      => $title,
+                'created_at' => date('c'),
+            ];
+            $data['next_id'] = $id + 1;
+            saveGoals($data);
+            json_response(['ok' => true, 'goal_id' => $id]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

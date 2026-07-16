@@ -135,6 +135,16 @@ function _ensureSchema(PDO $db): void {
             description TEXT
         );
 
+        -- Canonical list of fields a vault task record should have. Not personal
+        -- data itself (just field names/defaults/docs) — the actual per-task
+        -- values live encrypted in tasks.enc. getTasks() reads this table to
+        -- backfill any field missing from older task records on load.
+        CREATE TABLE IF NOT EXISTS task_fields (
+            field_name    TEXT PRIMARY KEY,
+            default_value TEXT,
+            description   TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS priority (
             priority_level INTEGER PRIMARY KEY,
             display_name   TEXT NOT NULL
@@ -219,6 +229,31 @@ function _ensureSchema(PDO $db): void {
             ('question',    'You need to ask someone something'),
             ('wishlist',    'A birthday idea or something you want but don''t have finance approval for'),
             ('delegated',   'Someone else can do this job');
+
+        INSERT OR IGNORE INTO task_fields (field_name, default_value, description) VALUES
+            ('id',                 NULL,   'Task ID'),
+            ('title',              NULL,   'Task title'),
+            ('task_type',          NULL,   'next_action|reference|someday|project|waiting|inbox'),
+            ('urgency',            NULL,   'low|medium|high'),
+            ('importance',         NULL,   'low|medium|high'),
+            ('energy',             NULL,   'low|medium|high'),
+            ('status',             'active','active|deleted'),
+            ('snoozed_until',      NULL,   'ISO datetime or null'),
+            ('stuck',              'false','boolean'),
+            ('created_at',         NULL,   'ISO datetime'),
+            ('time',               NULL,   'integer minutes'),
+            ('triage_actionable',  NULL,   'boolean, set during GTD triage'),
+            ('location',           NULL,   'home|work|shops|phone|online|null(anywhere)'),
+            ('context',            NULL,   'area-of-life planning tag, not a filter'),
+            ('description',       NULL,   'free-text note'),
+            ('parent_id',          NULL,   'parent task id, for subtasks'),
+            ('subtask_ids',        '[]',   'array of child task ids (materialised reverse index)'),
+            ('person_id',          NULL,   'linked person id'),
+            ('habitica_id',        NULL,   'Habitica parent todo UUID'),
+            ('habitica_item_id',   NULL,   'Habitica checklist item UUID'),
+            ('prereq_tasks',       NULL,   'prerequisite task ids'),
+            ('tags',               NULL,   'tags array'),
+            ('goal_id',            NULL,   'linked goal id, references goals.enc');
 
         INSERT OR IGNORE INTO priority VALUES
             (0,   'Doesn''t matter'),

@@ -241,6 +241,24 @@ function _defaultTasks(): array {
     ];
 }
 
+// Reads the non-personal task_fields registry from SQLite: field name -> default
+// value to backfill with when a task record predates that field. '[]'/'false' are
+// decoded to their real PHP types; everything else (incl. actual NULL) stays null.
+function taskFieldDefaults(): array {
+    global $database;
+    if (!$database) return [];
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $cache = [];
+    try {
+        foreach ($database->query("SELECT field_name, default_value FROM task_fields") as $row) {
+            $v = $row['default_value'];
+            $cache[$row['field_name']] = $v === '[]' ? [] : ($v === 'false' ? false : ($v === 'true' ? true : $v));
+        }
+    } catch (Throwable $e) {}
+    return $cache;
+}
+
 function getTasks(): array {
     $path = tasksPath();
     if (!is_file($path)) return _defaultTasks();
@@ -256,11 +274,18 @@ function getTasks(): array {
     $now  = time();
     $dirty = false;
     $today = date('Y-m-d');
+    $fieldDefaults = taskFieldDefaults();
     foreach ($data['tasks'] as &$t) {
         if (!empty($t['snoozed_until']) && strtotime($t['snoozed_until']) <= $now) {
             $t['snoozed_until'] = null;
             if (empty($t['woke_date'])) $t['woke_date'] = $today;
             $dirty = true;
+        }
+        foreach ($fieldDefaults as $field => $default) {
+            if (!array_key_exists($field, $t)) {
+                $t[$field] = $default;
+                $dirty = true;
+            }
         }
     }
     unset($t);
@@ -470,7 +495,7 @@ function top3CreditFieldTransitions(?array $before, array $fields): array {
 // metadata to Habitica notes when a synced field changes. Throws on bad input.
 function updateTaskFieldsShared(int $taskId, array $rawFields): array {
     $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
-                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id'];
+                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id', 'goal_id'];
     $fields  = array_intersect_key($rawFields, array_flip($allowed));
     if (!$fields) throw new Exception('No valid fields to update');
 
@@ -681,6 +706,49 @@ function getQuotes(): array {
 
 function saveQuotes(array $data): void {
     $path = quotesPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+// ---------- Goals vault ----------
+// Personal outcome/goal records that tasks can link to via task.goal_id.
+// Deliberately minimal: {id, title, created_at}. Not a life-area tag (that's
+// context) — a goal is a specific outcome a task moves you toward.
+
+function goalsPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/goals.enc";
+}
+
+function getGoals(): array {
+    $path = goalsPath();
+    if (!is_file($path)) return ['next_id' => 1, 'items' => []];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Goals: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Goals decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'items' => []];
+}
+
+function saveGoals(array $data): void {
+    $path = goalsPath();
     if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
     if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
     $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));

@@ -1140,6 +1140,7 @@ function pick_physical_object(): ?array {
 }
 
 function pick_easy_task(): array {
+    global $physicalLocation;
     $tasks = [
         "Drink a full glass of water",
         "Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds.",
@@ -1147,11 +1148,14 @@ function pick_easy_task(): array {
         "Sit quietly for two minutes",
         "Stretch your arms above your head and hold for ten seconds",
         "Step outside for five minutes",
-        "Put away three things that are out of place",
         "Take your vitamins or any medication you need today",
         "Wash your face",
         "Make your bed or straighten where you're sitting",
     ];
+    // Not actionable away from home — Out (3) and Transit (6)
+    if (!in_array($physicalLocation, [3, 6], true)) {
+        $tasks[] = "Put away three things that are out of place";
+    }
     return ['type' => 'easy_task', 'text' => $tasks[array_rand($tasks)]];
 }
 

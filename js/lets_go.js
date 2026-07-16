@@ -1357,10 +1357,10 @@ window.initLetsGo = function() {
     } else if (question === 'urgency') {
       const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
       el.append(
-        mkBtn("High — time-sensitive or blocking",  () => save({action:'save_urgency', urgency:'high'})),
-        mkBtn("Medium — important but not pressing", () => save({action:'save_urgency', urgency:'medium'})),
-        mkBtn("Low — can wait indefinitely",         () => save({action:'save_urgency', urgency:'low'})),
-        mkBtn("Not sure — skip for now",             () => save({action:'save_urgency', urgency:'medium'}), skipStyle)
+        mkBtn("Today or the next few days", () => save({action:'save_urgency', urgency:'high'})),
+        mkBtn("Next few weeks",             () => save({action:'save_urgency', urgency:'medium'})),
+        mkBtn("Later",                      () => save({action:'save_urgency', urgency:'low'})),
+        mkBtn("Not sure — skip for now",    () => save({action:'save_urgency', urgency:'medium'}), skipStyle)
       );
 
     } else if (question === 'importance') {

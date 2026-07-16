@@ -206,7 +206,7 @@ foreach ($active as $t) {
     $groups[$u][] = $t;
 }
 
-$urgencyLabel = ['high' => 'Today', 'medium' => 'This week', 'low' => 'Later'];
+$urgencyLabel = ['high' => 'Today / next few days', 'medium' => 'Next few weeks', 'low' => 'Later'];
 $urgencyColor = ['high' => '#c0392b', 'medium' => '#e67e22', 'low' => '#888'];
 
 $usedContexts = array_values(array_filter(
@@ -234,8 +234,8 @@ $typeLabels = [
       <div style="flex:1;min-width:120px;">
         <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">When</label>
         <select id="new-task-urgency">
-          <option value="high">Today</option>
-          <option value="medium" selected>This week</option>
+          <option value="high">Today / next few days</option>
+          <option value="medium" selected>Next few weeks</option>
           <option value="low">Later</option>
         </select>
       </div>

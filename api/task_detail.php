@@ -67,9 +67,9 @@ $sel = fn($val, $opt) => ((string)($val ?? '') === (string)$opt) ? 'selected' : 
     <div style="flex:1;min-width:110px;">
       <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Urgency</label>
       <select id="td-urgency" style="width:100%;">
-        <option value="high"   <?= $sel($task['urgency'] ?? '', 'high') ?>>High — time-sensitive</option>
-        <option value="medium" <?= $sel($task['urgency'] ?? '', 'medium') ?>>Medium</option>
-        <option value="low"    <?= $sel($task['urgency'] ?? '', 'low') ?>>Low — can wait</option>
+        <option value="high"   <?= $sel($task['urgency'] ?? '', 'high') ?>>Today / next few days</option>
+        <option value="medium" <?= $sel($task['urgency'] ?? '', 'medium') ?>>Next few weeks</option>
+        <option value="low"    <?= $sel($task['urgency'] ?? '', 'low') ?>>Later</option>
       </select>
     </div>
     <div style="flex:1;min-width:110px;">

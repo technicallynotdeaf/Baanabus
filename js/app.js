@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // a dead session. Fires on an interval and again whenever the tab
     // regains focus, since mobile browsers throttle background timers.
     const sendHeartbeat = () => fetch('api/heartbeat.php', { credentials: 'same-origin' }).catch(() => {});
-    setInterval(sendHeartbeat, 5 * 60 * 1000);
+    setInterval(sendHeartbeat, 30 * 1000);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') sendHeartbeat();
     });

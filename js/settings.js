@@ -478,6 +478,35 @@ window.initSettings = function() {
     });
   });
 
+  document.querySelectorAll('[data-reset-set]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const setName = this.dataset.resetSet;
+      const qType   = this.dataset.resetType || 'study';
+      const statusEl = document.getElementById('study-reset-status');
+      if (!confirm('Reset progress for ' + setName + '? This clears all seen/correct counts for this set.')) return;
+      this.disabled = true;
+      if (statusEl) statusEl.textContent = 'Resetting ' + setName + '...';
+      try {
+        const r = await fetch('api/reset_study_progress.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({set_name: setName, q_type: qType}),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          if (statusEl) statusEl.textContent = setName + ' progress reset (' + data.reset + ' questions).';
+          setTimeout(() => location.reload(), 900);
+        } else {
+          if (statusEl) statusEl.textContent = data.error || 'Something went wrong.';
+          this.disabled = false;
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = 'Network error.';
+        this.disabled = false;
+      }
+    });
+  });
+
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }

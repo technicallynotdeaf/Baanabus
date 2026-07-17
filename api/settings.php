@@ -535,13 +535,18 @@ if ($database) {
       <div style="margin-bottom:0.75rem;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;">
           <span style="font-weight:500;"><?= htmlspecialchars($setName) ?></span>
-          <span class="muted" style="font-size:0.88em;"><?= $stat['mastered'] ?>/<?= $stat['total'] ?> mastered</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span class="muted" style="font-size:0.88em;"><?= $stat['mastered'] ?>/<?= $stat['total'] ?> mastered</span>
+            <button type="button" data-reset-set="<?= htmlspecialchars($setName) ?>" data-reset-type="study"
+              style="background:none;border:none;color:#a33;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;">Reset</button>
+          </span>
         </div>
         <div style="height:6px;background:#e0d8cc;border-radius:3px;">
           <div style="height:6px;background:#7a9e7e;border-radius:3px;width:<?= $pct ?>%;"></div>
         </div>
       </div>
       <?php endforeach; ?>
+      <p id="study-reset-status" class="muted" style="margin-top:0.25rem;min-height:1.2em;font-size:0.85em;"></p>
     </div>
     <?php endif; ?>
 

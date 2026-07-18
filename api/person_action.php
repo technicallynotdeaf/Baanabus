@@ -86,6 +86,7 @@ try {
         if ($char3 !== '') $fields['char3'] = $char3;
 
         vaultUpdatePerson($personId, $fields);
+        try { creditTop3Progress('person_review', 1); } catch (Throwable $e) {}
         if ($lifeNote !== '') {
             vaultAddPeopleNote($personId, $lifeNote);
             try { creditTop3Progress('person_note', 1); } catch (Throwable $e) {}

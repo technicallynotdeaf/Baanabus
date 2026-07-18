@@ -494,9 +494,9 @@ window.initLetsGo = function() {
 
   function renderTopicPicker(d) {
     if (!d.topics || d.topics.length === 0) {
-      c.innerHTML = `<p style="font-weight:600;">You've mastered all the trivia topics!</p>
-        <p class="muted">More topics coming soon. In the meantime, keep completing tasks.</p>
-        <button class="action-button" style="margin-top:0.5rem;" onclick="loadSpeechBubble('lets-go.php')">Next</button>`;
+      // Nothing left to unlock or answer — skip this activity silently
+      // rather than announcing it, and move straight to the next one.
+      loadSpeechBubble('lets-go.php');
       return;
     }
     const btns = d.topics.map(topic =>

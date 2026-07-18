@@ -416,6 +416,27 @@ if ($database) {
     } catch (Throwable $e) {}
 }
 
+// Check for available trivia (unseen/uncorrected questions, or a topic still locked to unlock)
+$hasTrivia = false;
+if ($database) {
+    try {
+        $hasTrivia = (bool)$database->query("
+            SELECT 1 FROM study_questions sq
+            LEFT JOIN question_seen qs ON sq.id = qs.question_id
+            WHERE sq.q_type = 'trivia'
+              AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+            LIMIT 1
+        ")->fetchColumn();
+        if (!$hasTrivia) {
+            foreach (['Plants', 'Pop Music', 'Food'] as $topic) {
+                $s = $database->prepare("SELECT COUNT(*) FROM study_questions WHERE set_name = ? AND q_type = 'trivia'");
+                $s->execute([$topic]);
+                if ((int)$s->fetchColumn() === 0) { $hasTrivia = true; break; }
+            }
+        }
+    } catch (Throwable $e) {}
+}
+
 $hasQuotes = false;
 $hasTips   = false;
 try { $hasQuotes = !empty(getQuotes()['items']); } catch (Throwable $e) {}
@@ -490,7 +511,7 @@ $pool = array_merge(
     array_fill(0, $doableSlots,                        'task'),
     array_fill(0, $triageSlots,                        'triage'),
     array_fill(0, $hasStudy ? 3 : 0,                   'study'),
-    array_fill(0, 2,                                   'trivia'),
+    array_fill(0, $hasTrivia ? 2 : 0,                  'trivia'),
     array_fill(0, $hasQuotes ? 2 : 0,                  'quote'),
     array_fill(0, $hasTips  ? 1 : 0,                   'tip'),
     array_fill(0, $gamesEnabled ? $gameSlots : 0,      'minigame'),
@@ -527,12 +548,12 @@ if ($choice === 'dance') {
 if ($choice === 'quote') {
     $q = pick_quote();
     if ($q) json_response($q);
-    json_response(pick_trivia());
+    json_response(pick_trivia() ?? pick_fun_task());
 }
 if ($choice === 'tip') {
     $t = pick_tip();
     if ($t) json_response($t);
-    json_response(pick_trivia());
+    json_response(pick_trivia() ?? pick_fun_task());
 }
 if ($choice === 'other_daily') {
     $allDailiesForPool = array_merge($otherDailies, $morningDailies);
@@ -560,7 +581,7 @@ if ($choice === 'other_daily') {
             ]);
         }
     }
-    json_response(pick_trivia()); // fallback if no dailies available
+    json_response(pick_trivia() ?? pick_fun_task()); // fallback if no dailies available
 }
 if ($choice === 'house_task') {
     $ht = pick_house_task();
@@ -587,11 +608,11 @@ if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
 if ($choice === 'joke')      json_response(pick_joke());
 if ($choice === 'nutrition') json_response(pick_nutrition());
-if ($choice === 'trivia') json_response(pick_trivia());
+if ($choice === 'trivia') json_response(pick_trivia() ?? pick_fun_task());
 if ($choice === 'study') {
     $s = pick_study();
     if ($s) json_response($s);
-    json_response(pick_trivia()); // fallback if pool somehow empty
+    json_response(pick_trivia() ?? pick_fun_task()); // fallback if pool somehow empty
 }
 if ($choice === 'minigame') {
     $allGames = ['gemMatch','gemMatch','gemMatch','tictactoe','numguess','rps','mathquiz','truefalse','sequence','reaction','wordscramble','highlow'];
@@ -609,7 +630,7 @@ if ($choice === 'minigame') {
 if ($choice === 'triage') {
     $resp = serve_triage_question($inboxTasks, $fillTasks);
     if ($resp) json_response($resp);
-    json_response(pick_trivia()); // nothing left to triage
+    json_response(pick_trivia() ?? pick_fun_task()); // nothing left to triage
 }
 if ($choice === 'missing_info') json_response($missing);
 
@@ -780,7 +801,7 @@ function question_row_to_response(array $q, string $type): array {
     return $out;
 }
 
-function pick_trivia(): array {
+function pick_trivia(): ?array {
     global $database;
     if ($database) {
         try {
@@ -794,7 +815,11 @@ function pick_trivia(): array {
             $stmt->execute();
             $q = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($q) return question_row_to_response($q, 'trivia');
-            return pick_topic_picker();
+            $picker = pick_topic_picker();
+            // Only worth showing if there's actually a topic left to unlock —
+            // otherwise there's nothing actionable, so let the caller fall back.
+            if (!empty($picker['topics'])) return $picker;
+            return null;
         } catch (Throwable $e) {
             error_log('pick_trivia: ' . $e->getMessage());
         }

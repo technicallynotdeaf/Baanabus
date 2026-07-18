@@ -7,6 +7,8 @@
     const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
     const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[]');
     const STORY_BOOKS_EXIST   = JSON.parse(canvas.dataset.storyBooksExist || '[]');
+    const STORY_CURRENT_BOOK  = parseInt(canvas.dataset.storyCurrentBook, 10) || 0;
+    const STORY_PAGES_AVAIL   = parseInt(canvas.dataset.storyPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -235,6 +237,41 @@
 
             bookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, unlocked });
         });
+
+        // Unread-pages badge: drawn last so it sits on top of the neighbouring
+        // book's spine rather than being painted over by it.
+        if (STORY_CURRENT_BOOK && STORY_PAGES_AVAIL > 0) {
+            const current = bookBounds.find(b => b.id === STORY_CURRENT_BOOK && b.unlocked);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, current.w, STORY_PAGES_AVAIL);
+        }
+    }
+
+    function drawUnreadBadge(ctx, cx, cy, bookW, count) {
+        const r = Math.max(5, Math.min(9, Math.round(bookW * 0.32)));
+
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';
+        ctx.beginPath(); ctx.arc(cx + 1, cy + 1, r, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = '#e0342a';
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.30)';
+        ctx.beginPath();
+        ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        const label = count > 9 ? '9+' : String(count);
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(7, Math.round(r * 1.15))}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, cx, cy + 0.5);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
     }
 
     // One-point perspective helpers.

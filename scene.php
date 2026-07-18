@@ -3,6 +3,8 @@ $paperCount      = 0;
 $storyStarted    = false;
 $badgeIds        = [];
 $storyBooksAvail = [];
+$storyCurrentBook = 0;
+$storyPagesAvail  = 0;
 $objectsOut      = false;
 $cycleDay        = 0;
 $cycleLen        = 0;
@@ -34,6 +36,19 @@ if (isUnlocked()) {
                 $prevEnded = !empty($prog['ended']);
             }
         }
+        // Books unlock strictly in sequence (next only opens once the previous
+        // one is ended), so at most one unlocked book is ever still "in
+        // progress" — the last entry in storyBooksAvail. The global page pool
+        // is what actually gates making its next choice, so surface that
+        // count as a badge on that one book.
+        if (!empty($storyBooksAvail)) {
+            $latestBookId   = end($storyBooksAvail);
+            $latestBookProg = getStoryProgress('q' . $latestBookId);
+            if (empty($latestBookProg['ended'])) {
+                $storyPagesAvail = getGlobalStoryPages();
+                if ($storyPagesAvail > 0) $storyCurrentBook = $latestBookId;
+            }
+        }
     } catch (Throwable $e) {}
     try {
         $obj = getPhysicalObjects();
@@ -51,6 +66,8 @@ if (isUnlocked()) {
   data-badge-ids="<?= htmlspecialchars(json_encode($badgeIds), ENT_QUOTES) ?>"
   data-story-books-avail="<?= htmlspecialchars(json_encode($storyBooksAvail), ENT_QUOTES) ?>"
   data-story-books-exist="<?= htmlspecialchars(json_encode($storyBooksExist ?? []), ENT_QUOTES) ?>"
+  data-story-current-book="<?= (int)$storyCurrentBook ?>"
+  data-story-pages-avail="<?= (int)$storyPagesAvail ?>"
   data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
   data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"
   data-cycle-day="<?= $cycleDay ?>"

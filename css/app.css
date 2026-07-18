@@ -498,9 +498,13 @@ body.scene-view #scene-total-pips { display: block; }
     body.scene-view #scene-clock  { display: block; }
 }
 
-/* Context pill (energy + location) — separate from nav, floats top-right */
+/* Context pill (energy + location) — separate from nav, floats top-right on
+   desktop. On mobile the navbar (centered, top:8px) takes the full width of
+   the row, so the pill drops to its own row underneath instead of being
+   hidden entirely — it was previously display:none below 601px with no
+   mobile equivalent, which made location/energy uneditable on phones. */
 #nav-context-pill {
-    display: none;
+    display: flex;
     position: fixed;
     top: 8px;
     right: 16px;
@@ -515,8 +519,13 @@ body.scene-view #scene-total-pips { display: block; }
     border-radius: 22px;
     border: 1px solid rgba(120, 140, 220, 0.25);
 }
-@media (min-width: 601px) {
-    #nav-context-pill { display: flex; }
+@media (max-width: 600px) {
+    #nav-context-pill {
+        top: 60px;
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+    }
 }
 .nav-context-sep {
     color: rgba(120, 140, 220, 0.4);

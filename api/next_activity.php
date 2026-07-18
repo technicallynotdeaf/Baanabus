@@ -271,7 +271,7 @@ if (!empty($morningDailies) && ($_SESSION['last_activity'] ?? '') !== 'morning_d
         ? $morningDailies
         : array_values(array_filter($morningDailies, fn($d) => !in_array((int)$d['id'], $skip, true)));
     if (!empty($available)) {
-        $d         = $available[0];
+        $d         = $available[array_rand($available)];
         $dSubtasks = array_values(array_map(
             fn($ci) => ['id' => $ci['id'], 'title' => $ci['text']],
             $d['checklist'] ?? []
@@ -563,7 +563,7 @@ if ($choice === 'other_daily') {
             ? $allDailiesForPool
             : array_values(array_filter($allDailiesForPool, fn($d) => !in_array((int)$d['id'], $skip, true)));
         if (!empty($available)) {
-            $d         = $available[0];
+            $d         = $available[array_rand($available)];
             $dSubtasks = array_values(array_map(
                 fn($ci) => ['id' => $ci['id'], 'title' => $ci['text']],
                 $d['checklist'] ?? []

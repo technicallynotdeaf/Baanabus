@@ -80,6 +80,41 @@ p  { margin: 0.5rem 0; line-height: 1.5; }
     .navbar li a .nav-text { display: none; }
 }
 
+/* Habitica sync status — small, unobtrusive, top-left; appears while the
+   background sync runs and removes itself when done (see app.js). On mobile
+   the centered navbar can span nearly the full viewport width by itself, so
+   this stacks in its own row below the navbar + context pill rather than
+   risking a horizontal collision at the same top:8px row. */
+#habitica-sync-pill {
+    position: fixed;
+    top: 8px;
+    left: 16px;
+    z-index: 200;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 0.78em;
+    color: rgba(220, 225, 255, 0.85);
+    background: rgba(20, 25, 55, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 22px;
+    border: 1px solid rgba(120, 140, 220, 0.25);
+    white-space: nowrap;
+    pointer-events: none;
+}
+@media (max-width: 600px) {
+    #habitica-sync-pill {
+        font-size: 0.72em;
+        padding: 0 10px;
+        height: 34px;
+        top: 108px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}
+
 /* === Buttons === */
 .btn,
 button.btn,

@@ -16,6 +16,18 @@ if ($bskToken && authenticateAgentKey($bskToken)) {
 
 set_time_limit(300); // tag sync may sleep waiting for rate-limit reset
 
+// Release the PHP session file lock now. session_start() (called for every
+// request via init.php) holds an exclusive lock on the session file for the
+// entire script lifetime unless explicitly released — and nothing else in
+// this codebase ever calls session_write_close(). This script is fired
+// fire-and-forget alongside the greeting bubble on page load and can run for
+// 40s+ (tag-sync rate-limit sleeps below), during which every other request
+// for the same session — the greeting bubble, next_activity.php, everything —
+// was queueing behind this lock and making the whole app appear frozen.
+// $_SESSION remains fully readable after this call; only writes to new keys
+// would be lost, and nothing below writes to $_SESSION.
+session_write_close();
+
 try {
     $cfg   = getConfig() ?? [];
     $prefs = $cfg['preferences'] ?? [];
@@ -188,7 +200,13 @@ try {
         saveCassowary($cass);
     }
 
-    $tagBudget    = 50; // max API calls for tag sync per run (prevents timeout on first run)
+    // Habitica's per-minute rate limit is commonly ~30 requests. A budget of 50 almost
+    // guarantees exhausting it mid-run and triggering habiticaThrottle()'s blocking sleep()
+    // (up to ~60s) — previously the biggest contributor to the 40s+ first-load-of-the-day
+    // duration. 20 keeps a typical run under the limit so it usually completes without
+    // sleeping at all; runs needing more than 20 tag changes just finish the rest on the
+    // next sync (tags are Habitica-side organisational metadata, not time-critical).
+    $tagBudget    = 20; // max API calls for tag sync per run
     $tagCallsUsed = 0;
     $tagsUpdated  = 0;
     $tasksDirty   = false;

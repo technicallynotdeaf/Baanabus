@@ -139,12 +139,21 @@ function setupOverlayListeners() {
   const loadSpeechBubble = (url) => {
     speechBubble.style.display = 'block';
     speechBubbleContent.innerHTML = '<p class="muted">' + window.pickLoadingLine() + '</p>';
+    // Rotate the loading line every 2.5s instead of freezing on whichever one
+    // was picked first — if the fetch genuinely takes a while (e.g. queued
+    // behind another slow request for the same session), the bubble should
+    // still look alive rather than static the whole time.
+    const loadingTimer = setInterval(() => {
+      const p = speechBubbleContent.querySelector('p.muted');
+      if (p) p.textContent = window.pickLoadingLine();
+    }, 2500);
     fetch(url)
       .then(response => {
           if (!response.ok) return null;
           return response.text();
           })
       .then(data => {
+          clearInterval(loadingTimer);
           if (!data) return;
           speechBubble.style.display = 'block';
           speechBubbleContent.innerHTML = data;
@@ -156,7 +165,7 @@ function setupOverlayListeners() {
           const event = new Event('speechBubbleLoaded');
           speechBubble.dispatchEvent(event);
           })
-      .catch(error => console.error('Speech bubble load error:', error));
+      .catch(error => { clearInterval(loadingTimer); console.error('Speech bubble load error:', error); });
   };
 
   window.loadSpeechBubble = loadSpeechBubble;
@@ -463,7 +472,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadSpeechBubble('greeting.php');
-    fetch('api/habitica_sync.php').catch(() => {});
+
+    // Habitica sync is the genuinely slow part of first-load-of-the-day (tag
+    // sync can make dozens of rate-limited external API calls and take up to
+    // ~40s) — it's fire-and-forget and no longer blocks anything else since
+    // api/habitica_sync.php releases the session lock immediately, but it's
+    // still worth a small honest status indicator rather than leaving the
+    // user wondering why new Habitica tasks haven't shown up yet.
+    const habPill = document.createElement('div');
+    habPill.id = 'habitica-sync-pill';
+    habPill.textContent = 'Syncing Habitica…';
+    document.body.appendChild(habPill);
+    fetch('api/habitica_sync.php')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || data.already_ran || data.skipped || data.error) { habPill.remove(); return; }
+        const changed = (data.synced || 0) + (data.deleted || 0) + (data.tags_updated || 0) + (data.daily_synced || 0);
+        if (changed > 0) {
+          habPill.textContent = 'Habitica synced — ' + (data.synced || 0) + ' new';
+          setTimeout(() => habPill.remove(), 4000);
+        } else {
+          habPill.remove();
+        }
+      })
+      .catch(() => habPill.remove());
 
     // Keep-alive ping — refreshes the session's mtime so a tab left open
     // through a longer task (or backgrounded on mobile) doesn't come back to

@@ -556,7 +556,7 @@ window.initLetsGo = function() {
     ).join('');
     c.innerHTML = `
       ${meta}${progressBar}
-      <p style="font-weight:600;line-height:1.4;margin-bottom:0.75rem;">${esc(d.question)}</p>
+      <p style="font-weight:600;line-height:1.4;margin-bottom:0.75rem;white-space:pre-wrap;">${esc(d.question)}</p>
       <div id="study-opts" style="display:flex;flex-direction:column;gap:6px;">${opts}</div>
       <p id="study-feedback" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
       <p id="study-expl" style="display:none;margin-top:0.4rem;font-size:0.88em;line-height:1.45;

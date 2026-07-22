@@ -1124,6 +1124,45 @@ function getGlobalStoryPages(): int {
     return (int)($cfg['story_pages'] ?? 1);
 }
 
+// Shared source of truth for the bookshelf's book-unlock state and the
+// unread-pages badge (the red "N pages waiting" circle on the current book's
+// spine). Used by scene.php (full render) and api/heartbeat.php (lightweight
+// poll, badge fields only) so the two never compute this differently.
+function getStoryBookState(): array {
+    $storyBooksExist = [];
+    $storyBooksAvail = [];
+    $prevEnded = true; // book 1 has no prerequisite
+    for ($n = 1; $n <= 24; $n++) {
+        $file   = sprintf('quilt_%02d.php', $n);
+        $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
+        if ($fileOk) $storyBooksExist[] = $n;
+        if ($fileOk && $prevEnded) $storyBooksAvail[] = $n;
+        $prevEnded = false;
+        if ($fileOk) {
+            $prog      = getStoryProgress('q' . $n);
+            $prevEnded = !empty($prog['ended']);
+        }
+    }
+
+    $currentBook = 0;
+    $pagesAvail  = 0;
+    if (!empty($storyBooksAvail)) {
+        $latestBookId   = end($storyBooksAvail);
+        $latestBookProg = getStoryProgress('q' . $latestBookId);
+        if (empty($latestBookProg['ended'])) {
+            $pagesAvail = getGlobalStoryPages();
+            if ($pagesAvail > 0) $currentBook = $latestBookId;
+        }
+    }
+
+    return [
+        'books_exist'  => $storyBooksExist,
+        'books_avail'  => $storyBooksAvail,
+        'current_book' => $currentBook,
+        'pages_avail'  => $pagesAvail,
+    ];
+}
+
 function incrementGlobalStoryPages(): int {
     $cfg = getConfig() ?? [];
     $cfg['story_pages'] = (int)($cfg['story_pages'] ?? 1) + 1;

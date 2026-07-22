@@ -501,7 +501,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // through a longer task (or backgrounded on mobile) doesn't come back to
     // a dead session. Fires on an interval and again whenever the tab
     // regains focus, since mobile browsers throttle background timers.
-    const sendHeartbeat = () => fetch('api/heartbeat.php', { credentials: 'same-origin' }).catch(() => {});
+    // Also carries the current "pages waiting" badge count so the bookshelf
+    // stays live without a manual reload (see window.updateStoryBadge in
+    // scene.js) — it was previously baked into the canvas once at page load.
+    const sendHeartbeat = () => fetch('api/heartbeat.php', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && typeof window.updateStoryBadge === 'function') {
+          window.updateStoryBadge(data.story_current_book || 0, data.story_pages_avail || 0);
+        }
+      })
+      .catch(() => {});
     setInterval(sendHeartbeat, 30 * 1000);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') sendHeartbeat();

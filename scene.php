@@ -23,32 +23,15 @@ if (isUnlocked()) {
         $paperCount   = count(getInboxTasks());
         $storyStarted = true;
         $badgeIds     = array_keys(checkAndAwardBadges());
-        $storyBooksExist = [];
-        $prevEnded = true; // book 1 has no prerequisite
-        for ($n = 1; $n <= 24; $n++) {
-            $file   = sprintf('quilt_%02d.php', $n);
-            $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
-            if ($fileOk) $storyBooksExist[] = $n;
-            if ($fileOk && $prevEnded) $storyBooksAvail[] = $n;
-            $prevEnded = false;
-            if ($fileOk) {
-                $prog      = getStoryProgress('q' . $n);
-                $prevEnded = !empty($prog['ended']);
-            }
-        }
         // Books unlock strictly in sequence (next only opens once the previous
         // one is ended), so at most one unlocked book is ever still "in
-        // progress" — the last entry in storyBooksAvail. The global page pool
-        // is what actually gates making its next choice, so surface that
-        // count as a badge on that one book.
-        if (!empty($storyBooksAvail)) {
-            $latestBookId   = end($storyBooksAvail);
-            $latestBookProg = getStoryProgress('q' . $latestBookId);
-            if (empty($latestBookProg['ended'])) {
-                $storyPagesAvail = getGlobalStoryPages();
-                if ($storyPagesAvail > 0) $storyCurrentBook = $latestBookId;
-            }
-        }
+        // progress". The global page pool is what actually gates making its
+        // next choice, so surface that count as a badge on that one book.
+        $bookState        = getStoryBookState();
+        $storyBooksExist  = $bookState['books_exist'];
+        $storyBooksAvail  = $bookState['books_avail'];
+        $storyCurrentBook = $bookState['current_book'];
+        $storyPagesAvail  = $bookState['pages_avail'];
     } catch (Throwable $e) {}
     try {
         $obj = getPhysicalObjects();

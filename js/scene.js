@@ -7,8 +7,12 @@
     const BADGE_IDS           = JSON.parse(canvas.dataset.badgeIds || '[]');
     const STORY_BOOKS_AVAIL   = JSON.parse(canvas.dataset.storyBooksAvail || '[]');
     const STORY_BOOKS_EXIST   = JSON.parse(canvas.dataset.storyBooksExist || '[]');
-    const STORY_CURRENT_BOOK  = parseInt(canvas.dataset.storyCurrentBook, 10) || 0;
-    const STORY_PAGES_AVAIL   = parseInt(canvas.dataset.storyPagesAvail,  10) || 0;
+    // Mutable (not const): kept fresh by the 30s heartbeat poll via
+    // window.updateStoryBadge() below, since pages can be earned through
+    // paths this tab doesn't see directly (agent API completions, etc.) and
+    // the badge would otherwise stay stuck at whatever it was on page load.
+    let STORY_CURRENT_BOOK  = parseInt(canvas.dataset.storyCurrentBook, 10) || 0;
+    let STORY_PAGES_AVAIL   = parseInt(canvas.dataset.storyPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -1052,6 +1056,16 @@
     window.addEventListener('resize', updateBackground);
     window.addEventListener('load',   updateBackground);
     window.refreshScene = updateBackground;
+
+    // Called from app.js's heartbeat poll (every 30s) with the latest values
+    // from api/heartbeat.php. Redraws only when something actually changed,
+    // to avoid a full canvas repaint every 30s for no visible difference.
+    window.updateStoryBadge = function (currentBook, pagesAvail) {
+        if (currentBook === STORY_CURRENT_BOOK && pagesAvail === STORY_PAGES_AVAIL) return;
+        STORY_CURRENT_BOOK = currentBook;
+        STORY_PAGES_AVAIL  = pagesAvail;
+        updateBackground();
+    };
 
     function spawnJarPip(completedItem) {
         if (!jarBounds.length) return;

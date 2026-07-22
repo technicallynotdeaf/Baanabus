@@ -1083,6 +1083,56 @@ function saveRecipes(array $data): void {
     @chmod($path, 0600);
 }
 
+// Shared nutrition + cost computation for a recipe's ingredient list, used by
+// both api/agent.php's precalculate_recipe action and the session-authenticated
+// api/recipe_action.php, so the two never compute a recipe's numbers
+// differently. $ingredients is a list of {food_id, weight_g} (the same shape
+// stored as a recipe's ingredient_matches). $manualNutrients are pre-scaled
+// (already at actual weight, not per-100g) nutrient values to add on top —
+// e.g. for a store-bought component with no foods-table entry.
+function computeRecipeTotals(PDO $db, array $ingredients, array $manualNutrients = []): array {
+    $nutrientCols = [
+        'energy_kj','protein_g','fat_total_g','fat_saturated_g','fat_monounsaturated_g',
+        'fat_polyunsaturated_g','fat_trans_g','cholesterol_mg','carbohydrate_g','sugars_g',
+        'fibre_g','fibre_soluble_g','fibre_insoluble_g',
+        'omega3_ala_mg','omega3_epa_mg','omega3_dha_mg','omega6_la_mg',
+        'vitamin_a_mcg','vitamin_b1_mg','vitamin_b2_mg','vitamin_b3_mg','vitamin_b5_mg',
+        'vitamin_b6_mg','vitamin_b7_mcg','folate_mcg','vitamin_b12_mcg',
+        'vitamin_c_mg','vitamin_d_mcg','vitamin_e_mg','vitamin_k_mcg','vitamin_k2_mcg',
+        'choline_mg','lutein_zeaxanthin_mcg',
+        'calcium_mg','copper_mg','iodine_mcg','iron_mg','magnesium_mg',
+        'potassium_mg','selenium_mcg','sodium_mg','zinc_mg',
+    ];
+
+    $totals = array_fill_keys($nutrientCols, 0.0);
+    $cost   = 0.0;
+
+    foreach ($manualNutrients as $k => $v) {
+        if (isset($totals[$k])) $totals[$k] += (float)$v;
+    }
+
+    $cols = implode(', ', $nutrientCols);
+    $stmt = $db->prepare("SELECT $cols, cost_per_100g FROM foods WHERE food_id = ?");
+    foreach ($ingredients as $ing) {
+        $foodId  = (int)($ing['food_id']  ?? 0);
+        $weightG = (float)($ing['weight_g'] ?? 0);
+        if (!$foodId || !$weightG) continue;
+        $stmt->execute([$foodId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) continue;
+        $factor = $weightG / 100.0;
+        foreach ($nutrientCols as $col) {
+            $totals[$col] += (float)($row[$col] ?? 0) * $factor;
+        }
+        if ($row['cost_per_100g'] !== null) $cost += (float)$row['cost_per_100g'] * $factor;
+    }
+
+    return [
+        'nutrition' => array_map(fn($v) => round($v, 3), $totals),
+        'cost'      => round($cost, 2),
+    ];
+}
+
 function vaultAddPeopleNote(int $personId, string $contents): int {
     $data   = getPeopleNotes();
     $noteId = (int)($data['next_id'] ?? 1);

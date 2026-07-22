@@ -90,16 +90,23 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
     </div>
   </div>
 
-  <?php if (!empty($mealPlan)): ?>
-    <div style="background:#fdf6e3;border-left:3px solid #c8a84b;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:1rem;">
+  <?php if (!$isPast): ?>
+    <div id="meal-plan-block" data-date="<?= $date ?>" style="background:#fdf6e3;border-left:3px solid #c8a84b;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:1rem;">
       <?php
         $mealLabels = ['breakfast' => 'Breakfast', 'lunch' => 'Lunch', 'dinner' => 'Dinner'];
-        foreach ($mealPlan as $type => $meal):
-          if (empty($meal['name'])) continue;
-          $typeLabel = $mealLabels[$type] ?? ucfirst($type);
+        foreach ($mealLabels as $type => $typeLabel):
+          $meal = $mealPlan[$type] ?? null;
+          $name = $meal['name'] ?? null;
       ?>
-        <div style="font-size:0.82em;color:#888;margin-bottom:1px;"><?= htmlspecialchars($typeLabel) ?></div>
-        <div style="font-weight:600;color:#5a4a1e;"><?= htmlspecialchars($meal['name']) ?></div>
+        <div class="meal-plan-row" style="padding:2px 0;cursor:pointer;" onclick="window._toggleMealPicker('<?= $type ?>', this)">
+          <div style="font-size:0.78em;color:#888;">
+            <?= $typeLabel ?><?= $name ? '' : ' — tap to plan' ?>
+          </div>
+          <div style="font-weight:600;color:<?= $name ? '#5a4a1e' : '#c8b888' ?>;">
+            <?= $name ? htmlspecialchars($name) : '+ Add' ?>
+          </div>
+        </div>
+        <div class="meal-picker" data-meal-type="<?= $type ?>" style="display:none;margin:4px 0 8px;"></div>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>

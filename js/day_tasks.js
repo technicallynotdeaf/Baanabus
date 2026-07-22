@@ -156,4 +156,99 @@ window.initDayTasks = function() {
     });
     if (li) li.after(picker);
   };
+
+  // ── Meal plan (tap a meal type row to plan/clear it) ────────────────────
+  let _mealRecipeCache = null;
+  async function _getRecipeList() {
+    if (_mealRecipeCache) return _mealRecipeCache;
+    try {
+      const res  = await fetch('api/recipe_action.php?list=1');
+      const data = await res.json();
+      _mealRecipeCache = data.ok ? data.recipes : [];
+    } catch (e) {
+      _mealRecipeCache = [];
+    }
+    return _mealRecipeCache;
+  }
+
+  window._toggleMealPicker = async function (mealType, rowEl) {
+    const block  = document.getElementById('meal-plan-block');
+    const date   = block ? block.dataset.date : null;
+    const picker = block ? block.querySelector(`.meal-picker[data-meal-type="${mealType}"]`) : null;
+    if (!picker || !date) return;
+
+    // Close any other open picker
+    block.querySelectorAll('.meal-picker').forEach(p => { if (p !== picker) p.style.display = 'none'; });
+
+    if (picker.style.display === 'block') { picker.style.display = 'none'; return; }
+    picker.style.display = 'block';
+    if (picker.dataset.built === '1') return;
+    picker.dataset.built = '1';
+
+    const recipes = await _getRecipeList();
+    const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    const recipeBtns = recipes.map(r =>
+      `<button class="action-button" data-recipe-id="${r.id}" data-recipe-name="${esc(r.name)}"
+               style="padding:3px 9px;font-size:0.78em;min-height:28px;">${esc(r.name)}</button>`
+    ).join('');
+
+    picker.innerHTML = `
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px;">${recipeBtns || '<span class="muted" style="font-size:0.78em;">No saved recipes yet.</span>'}</div>
+      <div style="display:flex;gap:5px;">
+        <input type="text" class="mp-custom-name" placeholder="Or type a name…" style="flex:1;font-size:0.85em;">
+        <button class="action-button mp-save" style="padding:3px 10px;font-size:0.8em;min-height:28px;">Save</button>
+        <button class="action-button mp-clear" style="padding:3px 10px;font-size:0.8em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;">Clear</button>
+      </div>`;
+
+    function saveMeal(body) {
+      picker.querySelectorAll('button').forEach(b => b.disabled = true);
+      fetch('api/meal_plan.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'plan', date, meal_type: mealType, ...body }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          rowEl.querySelector('div:last-child').textContent = data.name;
+          rowEl.querySelector('div:last-child').style.color = '#5a4a1e';
+          rowEl.querySelector('div:first-child').textContent = rowEl.querySelector('div:first-child').textContent.replace(' — tap to plan', '');
+          picker.style.display = 'none';
+        } else {
+          picker.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+      })
+      .catch(() => picker.querySelectorAll('button').forEach(b => b.disabled = false));
+    }
+
+    picker.querySelectorAll('[data-recipe-id]').forEach(btn => {
+      btn.addEventListener('click', () => saveMeal({ recipe_id: parseInt(btn.dataset.recipeId, 10), name: btn.dataset.recipeName }));
+    });
+    picker.querySelector('.mp-save').addEventListener('click', () => {
+      const name = picker.querySelector('.mp-custom-name').value.trim();
+      if (!name) return;
+      saveMeal({ name });
+    });
+    picker.querySelector('.mp-clear').addEventListener('click', () => {
+      picker.querySelectorAll('button').forEach(b => b.disabled = true);
+      fetch('api/meal_plan.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'clear', date, meal_type: mealType }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          const nameEl = rowEl.querySelector('div:last-child');
+          const labelEl = rowEl.querySelector('div:first-child');
+          nameEl.textContent = '+ Add';
+          nameEl.style.color = '#c8b888';
+          if (!labelEl.textContent.includes('tap to plan')) labelEl.textContent += ' — tap to plan';
+          picker.style.display = 'none';
+        } else {
+          picker.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+      })
+      .catch(() => picker.querySelectorAll('button').forEach(b => b.disabled = false));
+    });
+  };
 };

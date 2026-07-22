@@ -1343,41 +1343,7 @@ if ($method === 'POST') {
         $manual      = $body['manual_nutrients'] ?? [];
         $notes       = $body['nutrition_notes'] ?? '';
 
-        $nutrient_cols = [
-            'energy_kj','protein_g','fat_total_g','fat_saturated_g','fat_monounsaturated_g',
-            'fat_polyunsaturated_g','fat_trans_g','cholesterol_mg','carbohydrate_g','sugars_g',
-            'fibre_g','fibre_soluble_g','fibre_insoluble_g',
-            'omega3_ala_mg','omega3_epa_mg','omega3_dha_mg','omega6_la_mg',
-            'vitamin_a_mcg','vitamin_b1_mg','vitamin_b2_mg','vitamin_b3_mg','vitamin_b5_mg',
-            'vitamin_b6_mg','vitamin_b7_mcg','folate_mcg','vitamin_b12_mcg',
-            'vitamin_c_mg','vitamin_d_mcg','vitamin_e_mg','vitamin_k_mcg','vitamin_k2_mcg',
-            'choline_mg','lutein_zeaxanthin_mcg',
-            'calcium_mg','copper_mg','iodine_mcg','iron_mg','magnesium_mg',
-            'potassium_mg','selenium_mcg','sodium_mg','zinc_mg',
-        ];
-
-        $totals = array_fill_keys($nutrient_cols, 0.0);
-
-        // Add manual pre-scaled nutrients (already at actual weight, not per 100g)
-        foreach ($manual as $k => $v) {
-            if (isset($totals[$k])) $totals[$k] += (float)$v;
-        }
-
-        // Look up each food and scale by weight
-        foreach ($ingredients as $ing) {
-            $foodId  = (int)($ing['food_id'] ?? 0);
-            $weightG = (float)($ing['weight_g'] ?? 0);
-            if (!$foodId || !$weightG) continue;
-            $cols = implode(', ', $nutrient_cols);
-            $stmt = $database->prepare("SELECT $cols FROM foods WHERE food_id = ?");
-            $stmt->execute([$foodId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) continue;
-            $factor = $weightG / 100.0;
-            foreach ($nutrient_cols as $col) {
-                $totals[$col] += (float)($row[$col] ?? 0) * $factor;
-            }
-        }
+        $result = computeRecipeTotals($database, $ingredients, $manual);
 
         // Determine portions (reuse $allRecipes/$storedRecipe already fetched above)
         $recipes = $allRecipes;
@@ -1385,14 +1351,18 @@ if ($method === 'POST') {
         $portions = (int)($body['portions'] ?? $recipe['default_portions'] ?? 1);
         if ($portions < 1) $portions = 1;
 
-        $batch_nutrition   = array_map(fn($v) => round($v, 3), $totals);
-        $portion_nutrition = array_map(fn($v) => round($v / $portions, 3), $totals);
+        $batch_nutrition   = $result['nutrition'];
+        $portion_nutrition = array_map(fn($v) => round($v / $portions, 3), $result['nutrition']);
+        $batch_cost        = $result['cost'];
+        $portion_cost      = round($batch_cost / $portions, 2);
 
         // Save back to recipe
         foreach ($recipes['recipes'] as &$r) {
             if ((int)$r['id'] === $recipeId) {
                 $r['batch_nutrition']    = $batch_nutrition;
                 $r['portion_nutrition']  = $portion_nutrition;
+                $r['batch_cost']         = $batch_cost;
+                $r['portion_cost']       = $portion_cost;
                 $r['default_portions']   = $portions;
                 $r['nutrition_notes']    = $notes;
                 $r['ingredient_matches'] = $ingredients;
@@ -1403,11 +1373,13 @@ if ($method === 'POST') {
         try { saveRecipes($recipes); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
 
         json_response([
-            'ok'               => true,
-            'recipe_id'        => $recipeId,
-            'portions'         => $portions,
-            'batch_nutrition'  => $batch_nutrition,
-            'portion_nutrition'=> $portion_nutrition,
+            'ok'                => true,
+            'recipe_id'         => $recipeId,
+            'portions'          => $portions,
+            'batch_nutrition'   => $batch_nutrition,
+            'portion_nutrition' => $portion_nutrition,
+            'batch_cost'        => $batch_cost,
+            'portion_cost'      => $portion_cost,
         ]);
     }
 

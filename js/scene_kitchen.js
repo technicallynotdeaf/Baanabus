@@ -9,6 +9,7 @@
     let nutrientProgress     = {};  // keyed by nutrient name
     let doorBounds           = null; // click zone → library
     let chalkboardBounds     = null; // click zone → food log overlay
+    let recipeBookBounds     = null; // click zone → recipe list overlay
     let nutrientSquareBounds = [];   // [{corners, label}] for tooltips
 
     // ── Geometry helpers (same system as scene.js) ────────────────────────────
@@ -28,6 +29,9 @@
         ctx.beginPath();
         ctx.moveTo(...A); ctx.lineTo(...B); ctx.lineTo(...D); ctx.lineTo(...C);
         ctx.closePath();
+    }
+    function inRect(px, py, r) {
+        return r && px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
     }
     function ptInQuad(px, py, corners) {
         if (!corners) return false;
@@ -111,6 +115,52 @@
         // Counter highlight
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.fillRect(iL, cY, iW, 3);
+    }
+
+    // ── Recipe book (sitting on the counter) ──────────────────────────────────
+    function drawRecipeBook(iL, iW, iT, iH) {
+        const cY = iT + iH - Math.floor(iH * 0.22); // counter top surface, matches drawShelves()
+        const bw = Math.max(16, Math.round(iW * 0.045));
+        const bh = Math.round(bw * 1.3);
+        const bx = iL + Math.round(iW * 0.87) - bw / 2;
+        const by = cY - bh;
+
+        recipeBookBounds = { x: bx - 4, y: by - 4, w: bw + 8, h: bh + 8 };
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+        ctx.fillRect(bx + 2, by + 2, bw, bh);
+
+        // Cover
+        const cg = ctx.createLinearGradient(bx, by, bx + bw, by);
+        cg.addColorStop(0, '#8a2a2a'); cg.addColorStop(1, '#a83a3a');
+        ctx.fillStyle = cg;
+        ctx.fillRect(bx, by, bw, bh);
+
+        // Spine (left edge, propped open slightly toward viewer)
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(bx, by, Math.max(2, bw * 0.14), bh);
+
+        // Page edges peeking from the right/bottom
+        ctx.fillStyle = 'rgba(250,245,230,0.92)';
+        ctx.fillRect(bx + bw - Math.max(2, bw * 0.10), by + 2, Math.max(2, bw * 0.10), bh - 4);
+
+        // Cover highlight + a small stitched "quilt square" motif to tie it to the household theme
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillRect(bx + bw * 0.18, by + bh * 0.14, bw * 0.5, 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + bw * 0.30, by + bh * 0.32, bw * 0.38, bh * 0.38);
+
+        // Hover label
+        if (bw > 12) {
+            ctx.save();
+            ctx.font = `${Math.max(7, Math.round(bw * 0.42))}px sans-serif`;
+            ctx.fillStyle = 'rgba(60,20,15,0.7)';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillText('recipes', bx + bw / 2, by + bh + 5);
+            ctx.restore();
+        }
     }
 
     function shelfYs(iT, iH) {
@@ -537,6 +587,7 @@
             drawLibraryDoor(W, H, iL, iW, iT, flY);
         }
         drawShelves(iL, iW, iT, iH);
+        drawRecipeBook(iL, iW, iT, iH);
         drawFoodItems(iL, iW, iT, iH, foods);
         drawChalkboard(W, H, iL, iW, iT, flY, nutrientProgress);
         drawSheep(W, H, flY);
@@ -582,12 +633,16 @@
         }
         if (ptInQuad(cx, cy, chalkboardBounds) && typeof loadOverlay === 'function') {
             loadOverlay('api/nutrition_progress.php');
+            return;
+        }
+        if (inRect(cx, cy, recipeBookBounds) && typeof loadOverlay === 'function') {
+            loadOverlay('list_recipes.php');
         }
     });
     canvas.addEventListener('mousemove', function (e) {
         const rect = canvas.getBoundingClientRect();
         const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-        const isPointer = ptInQuad(cx, cy, doorBounds) || ptInQuad(cx, cy, chalkboardBounds);
+        const isPointer = ptInQuad(cx, cy, doorBounds) || ptInQuad(cx, cy, chalkboardBounds) || inRect(cx, cy, recipeBookBounds);
         canvas.style.cursor = isPointer ? 'pointer' : 'default';
 
         let hit = null;

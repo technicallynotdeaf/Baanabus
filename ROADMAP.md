@@ -305,7 +305,9 @@ Process physical objects that are left out as visual reminders — without requi
   - "Just put it away" → marks resolved, no task
 - ✅ `api/add_physical_object.php` — POST `{label}`
 - ✅ `api/physical_object_triage.php` — POST `{object_id, action, task_id?, task_title?}`
-- [ ] Objects list overlay: view/manage all logged objects and their linked tasks
+- ✅ **Room scan**: separate `room_scan` activity type (`api/room_scan.php`, `pick_room_scan()`) — prompts "look around this room, log up to 5 things"; one scan per room per day (`room_scan_dates`)
+- ✅ **Objects list overlay** (`api/objects_list.php`, "Things"): view all logged objects split into Out & waiting / Put away, with room + location shown
+- ✅ **Declutter batch prioritization** (fixed 2026-07-26): room scan (spotting *new* clutter) and physical object triage (working through the *existing* unresolved batch) used to compete in the activity pool at the same time, so a room scan could run while a backlog of already-logged objects sat untriaged — risking the same item being logged twice. `pick_room_scan()` now refuses to fire at all while any object is unresolved (`status='out'`), and the pool gives that weight to `physical_object_triage` instead; new-spotting only resumes once the batch is clear. The "Things" overlay's "Yes, I can [spot more]" prompt had the same bug in miniature (`!$out && !$resolved`, which meant it never reappeared after the first-ever resolved object) — now just `!$out`.
 - [ ] Bidirectional task link: tasks gain `physical_object_ids` array; task card shows object labels
 
 ---

@@ -476,7 +476,9 @@ try {
     $hasPhysicalObjects = !empty(array_filter($objData['objects'], fn($o) =>
         $o['status'] === 'out' && $o['task_id'] === null
     ));
-    if (in_array($physicalLocation, [1, 4, 5], true)) {
+    // Don't invite new clutter-spotting while there's an existing unresolved batch —
+    // surface physical_object_triage instead until that's cleared.
+    if (!$hasPhysicalObjects && in_array($physicalLocation, [1, 4, 5], true)) {
         $rooms      = $objData['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
         $scanDates  = $objData['room_scan_dates'] ?? [];
         $todayScan  = date('Y-m-d');
@@ -525,7 +527,7 @@ $pool = array_merge(
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
     array_fill(0, $hasHouseTasks         ? 1 : 0,        'house_task'),
     array_fill(0, $hasRoomScan          ? 2 : 0,        'room_scan'),
-    array_fill(0, $hasPhysicalObjects   ? 1 : 0,        'physical_object_triage'),
+    array_fill(0, $hasPhysicalObjects   ? 2 : 0,        'physical_object_triage'),
     array_fill(0, !empty($otherDailies) ? 2 : 0,        'other_daily'),
     array_fill(0, !empty($morningDailies) ? 1 : 0,     'other_daily') // morning dailies also in pool as fallback
 );
@@ -1120,24 +1122,24 @@ function pick_house_task(): ?array {
 
 function pick_room_scan(): ?array {
     try {
-        $data      = getPhysicalObjects();
+        $data = getPhysicalObjects();
+        // Work through the existing unresolved batch before inviting new clutter-spotting —
+        // otherwise the same items risk getting logged again as "new" finds.
+        $hasBacklog = !empty(array_filter($data['objects'], fn($o) =>
+            $o['status'] === 'out' && $o['task_id'] === null
+        ));
+        if ($hasBacklog) return null;
+
         $rooms     = $data['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
         $scanDates = $data['room_scan_dates'] ?? [];
         $today     = date('Y-m-d');
         foreach ($rooms as $room) {
             if (($scanDates[$room['id']] ?? '') !== $today) {
-                $existing = array_values(array_filter($data['objects'], fn($o) =>
-                    ($o['room_id'] ?? null) == $room['id'] && $o['status'] === 'out'
-                ));
-                $existing = array_map(fn($o) => [
-                    'label'    => $o['label'],
-                    'location' => $o['location'] ?? null,
-                ], $existing);
                 return [
                     'type'       => 'room_scan',
                     'room_id'    => $room['id'],
                     'room_label' => $room['label'],
-                    'existing'   => $existing,
+                    'existing'   => [],
                 ];
             }
         }

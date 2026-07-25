@@ -1075,16 +1075,6 @@ window.initLetsGo = function() {
         <input type="text" class="scan-loc"   style="${locStyle}"   placeholder="Where?${n===1?' e.g. on the table':''}">
       </div>`).join('');
 
-    const existingHtml = (d.existing && d.existing.length > 0) ? `
-      <p style="font-size:0.75em;color:#aaa;text-transform:uppercase;letter-spacing:0.05em;margin:1rem 0 0.35rem;">Already waiting</p>
-      <div style="max-height:110px;overflow-y:auto;border:1px solid #ede9e0;border-radius:6px;padding:0.3rem 0.6rem;">
-        ${d.existing.map(o => `
-          <div style="padding:0.3rem 0;border-bottom:1px solid #f4f1ec;font-size:0.88em;display:flex;gap:6px;">
-            <span style="flex:1;">${esc(o.label)}</span>
-            ${o.location ? `<span style="color:#bbb;font-size:0.95em;">${esc(o.location)}</span>` : ''}
-          </div>`).join('')}
-      </div>` : '';
-
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;">Room scan</p>
       <p style="margin-bottom:0.85rem;">Look around your <strong>${esc(d.room_label)}</strong>. What's out and waiting for you?</p>
@@ -1095,8 +1085,7 @@ window.initLetsGo = function() {
         <button class="action-button" style="background:transparent;color:#888;border:1px solid #ddd;"
           onclick="loadSpeechBubble('lets-go.php')">Skip</button>
       </div>
-      <p id="scan-status" class="muted" style="margin-top:0.5rem;min-height:1em;font-size:0.85em;"></p>
-      ${existingHtml}`;
+      <p id="scan-status" class="muted" style="margin-top:0.5rem;min-height:1em;font-size:0.85em;"></p>`;
 
     document.getElementById('scan-submit-btn').addEventListener('click', function() {
       const labels = Array.from(c.querySelectorAll('.scan-label'));

@@ -108,14 +108,19 @@ window.initLetsGo = function() {
     };
     const cat     = catLabels[d.category] || d.category;
     const nextUrl = d.reset_context ? 'lets-go.php?reset=1' : 'lets-go.php';
+    const secs = d.seconds || null;
+    const uid  = Math.random().toString(36).slice(2);
+    const hourglass = secs ? hourglassMarkup(secs, uid) : '';
     c.innerHTML = `
       <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">${esc(cat)}</p>
       <p style="margin-bottom:0.85rem;line-height:1.5;">${esc(d.text)}</p>
+      ${hourglass}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.6rem;">
         <button class="action-button" onclick="loadSpeechBubble('${nextUrl}')">Try another</button>
         <button class="action-button" onclick="_regulationNotForMe(${d.prompt_id}, ${d.is_custom ? 'true' : 'false'}, '${nextUrl}')">Not for me</button>
-        <button class="action-button" style="background:transparent;color:#888;border:1px solid #ccc;" onclick="loadSpeechBubble('lets-go.php')">Done</button>
+        <button class="action-button" id="reg-done-btn" style="background:transparent;color:#888;border:1px solid #ccc;${secs ? 'visibility:hidden;' : ''}" onclick="loadSpeechBubble('lets-go.php')">Done</button>
       </div>`;
+    if (secs) armHourglass(secs, uid, 'reg-done-btn');
     window._regulationNotForMe = function(promptId, isCustom, reloadUrl) {
       const action = isCustom ? 'delete_custom' : 'disable';
       fetch('api/regulation_prompt.php', {method:'POST', headers:{'Content-Type':'application/json'},
@@ -215,11 +220,9 @@ window.initLetsGo = function() {
     return true;
   }
 
-  function renderFunTask(d) {
-    const is30s = d.text && d.text.includes('30 seconds');
-    const uid   = Math.random().toString(36).slice(2);
-
-    const hourglass = is30s ? `
+  // Shared sand-timer visual for any duration-bound prompt (fun task, regulation, easy win).
+  function hourglassMarkup(seconds, uid) {
+    return `
       <div style="display:flex;justify-content:center;margin:0.5rem 0 1rem;">
         <svg viewBox="0 0 60 102" width="52" height="88" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -234,13 +237,13 @@ window.initLetsGo = function() {
           <polygon points="29,54 31,54 58,97 2,97" fill="rgba(200,180,150,0.15)" stroke="#8b7355" stroke-width="1.5" stroke-linejoin="round"/>
           <!-- top sand (shrinks to nothing) -->
           <rect id="hgts${uid}" x="0" y="5" width="60" height="43" fill="#c8813a" clip-path="url(#hgt${uid})">
-            <animate attributeName="height" from="43" to="0" dur="30s" fill="freeze" calcMode="linear"/>
-            <animate attributeName="y" from="5" to="48" dur="30s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="height" from="43" to="0" dur="${seconds}s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="y" from="5" to="48" dur="${seconds}s" fill="freeze" calcMode="linear"/>
           </rect>
           <!-- bottom sand (grows from nothing) -->
           <rect x="0" y="97" width="60" height="0" fill="#c8813a" clip-path="url(#hgb${uid})">
-            <animate attributeName="height" from="0" to="43" dur="30s" fill="freeze" calcMode="linear"/>
-            <animate attributeName="y" from="97" to="54" dur="30s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="height" from="0" to="43" dur="${seconds}s" fill="freeze" calcMode="linear"/>
+            <animate attributeName="y" from="97" to="54" dur="${seconds}s" fill="freeze" calcMode="linear"/>
           </rect>
           <!-- waist stream -->
           <line id="hgst${uid}" x1="30" y1="48" x2="30" y2="54" stroke="#c8813a" stroke-width="1.5" opacity="0.5"/>
@@ -250,29 +253,37 @@ window.initLetsGo = function() {
             <animate attributeName="opacity" from="0.9" to="0.1" dur="0.45s" repeatCount="indefinite"/>
           </circle>
         </svg>
-      </div>` : '';
+      </div>`;
+  }
+
+  // Reveals the given Done button and stops the falling grain once the sand runs out.
+  function armHourglass(seconds, uid, doneBtnId) {
+    setTimeout(() => {
+      const btn = document.getElementById(doneBtnId);
+      if (btn) btn.style.visibility = '';
+      ['hgst', 'hggr'].forEach(p => {
+        const el = document.getElementById(p + uid);
+        if (el) el.style.display = 'none';
+      });
+    }, seconds * 1000);
+  }
+
+  function renderFunTask(d) {
+    const secs = d.seconds || null;
+    const uid  = Math.random().toString(36).slice(2);
+    const hourglass = secs ? hourglassMarkup(secs, uid) : '';
 
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Take a moment</p>
       <p style="line-height:1.5;margin-bottom:0.6rem;">${esc(d.text)}</p>
       ${hourglass}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" id="fun-done-btn" ${is30s ? 'style="visibility:hidden;"' : ''} onclick="window._funDone()">Done</button>
+        <button class="action-button" id="fun-done-btn" ${secs ? 'style="visibility:hidden;"' : ''} onclick="window._funDone()">Done</button>
         <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
           onclick="loadSpeechBubble('lets-go.php')">Skip</button>
       </div>`;
 
-    if (is30s) {
-      setTimeout(() => {
-        const btn = document.getElementById('fun-done-btn');
-        if (btn) btn.style.visibility = '';
-        // stop the falling grain once sand has run out
-        ['hgst','hggr'].forEach(p => {
-          const el = document.getElementById(p + uid);
-          if (el) el.style.display = 'none';
-        });
-      }, 30000);
-    }
+    if (secs) armHourglass(secs, uid, 'fun-done-btn');
 
     window._funDone = function() {
       earnPip();
@@ -378,14 +389,19 @@ window.initLetsGo = function() {
   }
 
   function renderEasyTask(d) {
+    const secs = d.seconds || null;
+    const uid  = Math.random().toString(36).slice(2);
+    const hourglass = secs ? hourglassMarkup(secs, uid) : '';
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Easy win</p>
       <p style="line-height:1.5;margin-bottom:0.75rem;">${esc(d.text)}</p>
+      ${hourglass}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="action-button" onclick="window._easyDone()">Done</button>
+        <button class="action-button" id="easy-done-btn" ${secs ? 'style="visibility:hidden;"' : ''} onclick="window._easyDone()">Done</button>
         <button class="action-button" style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);"
           onclick="loadSpeechBubble('lets-go.php')">Skip</button>
       </div>`;
+    if (secs) armHourglass(secs, uid, 'easy-done-btn');
     window._easyDone = function() {
       earnPip();
       if (!maybeAffirm()) loadSpeechBubble('lets-go.php');

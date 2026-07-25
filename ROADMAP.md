@@ -91,7 +91,7 @@ Full design philosophy: `mental-health-features.md` (light patterns, duty of car
   - *Waiting for a specific date* → date picker, snooze until chosen date
 - ✅ Effort acknowledgement — completing a high-urgency task, a task older than 21 days, or a previously-stuck task shows a specific callout before the next activity loads
 - ✅ Comeback callout — "This is your best week in a while. I noticed." fires when this week's completions beat the 3-week best (checked from Wed onward); once per week; count stored in `config['daily_completions']`
-- [ ] Morning mode — before a configurable time on work days, show one sequential morning task on screen with no navigation; everything else wakes up after the sequence is done
+- [~] Morning mode — before a configurable time on work days, show one sequential morning task on screen with no navigation; everything else wakes up after the sequence is done. Partially covered by the new M10 morning review (reviews scheduled/snoozed tasks), but that's calendar-driven, not a locked single-task sequence — still open whether a stricter mode is wanted.
 - [ ] Bunting daily essentials — 3–5 user-defined non-negotiable minimums visualised as flags across the scene; turns green on completion; Baanabus says something specific when all are green
 - [ ] Conversational check-ins — sparse (one every few days at most); triggered only when two passive signals align; Baanabus shares something first to make the question feel like commiseration
 - [ ] Lighter week mode — Settings toggle; reduces task pressure, surfaces easy-task roster more heavily, removes nudges; user-triggered, never algorithmically imposed
@@ -127,8 +127,9 @@ Log whole foods and close nutrient gaps — woven into the game loop, not bolted
 - ✅ **Kitchen chalkboard**: perspective-correct 12-row progress bars rendered on the right-wall board; clicking opens the food log overlay
 - ✅ **Pantry shelves**: food illustrations curated from today's gap suggestions (falls back to a default set when no gap data)
 - ✅ **Nutrition facts in activity pool**: 34 food facts (feijoas, broccoli, avocado, legumes, etc.) drawn from AFCD; weight 1 in `next_activity.php`; rendered as "Food fact" with a Got it button
-- [ ] **Food cost tracking**: record approximate cost per food item or serving; expose cost per meal/day in the food log overlay; use cost data to weight gap suggestions toward affordable options (e.g. "closes your iron gap for ~$0.40")
-- [ ] **Recipe storage**: store user-created recipes as a named collection of foods + quantities; compute aggregate nutrient totals from constituent AFCD values so recipes appear in the food log like a single item; recipes stored in vault (`recipes.enc`)
+- ✅ **Food cost tracking**: `foods.cost_per_100g` (all 98 foods populated); shared `computeRecipeTotals()` (`config_helper.php`) sums cost alongside nutrition per batch/portion — used by both `api/agent.php`'s `precalculate_recipe` action and the in-app recipe UI, so Claude and the browser never compute a recipe's numbers two different ways
+- ✅ **Recipe storage**: user-created recipes as a named collection of foods (`food_id`+`weight_g` rows) stored in vault (`recipes.enc`); recipe book overlay (`list_recipes.php`/`js/list_recipes.js`, `api/recipe_detail.php`/`js/recipe_detail.js`) reachable from a click-target on the kitchen counter (`js/scene_kitchen.js`); ingredient rows reuse the food log's search/serving picker; Calculate action shows nutrition + cost per batch/portion; session-authenticated `api/recipe_action.php` mirrors the bearer-token agent API actions
+- ✅ **Meal planning**: calendar day view's meal-plan block is tap-to-edit (pick a saved recipe or type a custom name); 2-week planner overlay (`list_meal_plan.php`/`js/list_meal_plan.js`) lays out 14 days × 3 meals with a running estimated cost total; `api/meal_plan.php` (session-authenticated) and the agent API's `plan_meal`/`clear_meal` both write to `diary.enc`'s `meal_plan` key
 
 ---
 
@@ -241,7 +242,7 @@ User never needs to visit baanabus.app. The phone is their only device and the p
 
 ## Ongoing / Infrastructure
 
-- [ ] Vault backup: authenticated download of decrypted JSON (all vault files: tasks, people, people_notes, config) — decision pending on format (encrypted vs plain)
+- ✅ Vault backup: `api/vault_export.php` — authenticated download of decrypted JSON (tasks, config, people, people_notes, inbox, diary, quotes)
 - [ ] CSP headers: move inline `<script>` blocks to external `.js` files first; then add `Content-Security-Policy` header in Apache
 - [ ] ModSecurity: switch from DetectionOnly → enforcement (after confirming no false positives in logs)
 - [ ] Automated deploy: git push → auto-pull on server (simple post-receive hook)
@@ -313,7 +314,33 @@ Process physical objects that are left out as visual reminders — without requi
 
 **M6.1 complete.** Habitica bidirectional sync is fully done: deletion both ways, metadata notes, doable/snoozed and location tags at sync time.
 
-**Up next:** remaining M4 scene polish (sheep click trigger, new-book animation), M3.5 warmth features (morning mode, bunting), M4.5 food cost tracking + recipe storage, M2.5 trivia expansion, or writing quilt quest books.
+**Up next:** remaining M4 scene polish (sheep click trigger, new-book animation), M3.5 warmth features (bunting, conversational check-ins), M2.5 trivia expansion, or writing quilt quest books.
+
+---
+
+## M9 — Goals & Daily Challenges (shipped, undocumented until now)
+
+Two gamification/motivation features built between M6.1 and now that don't fit cleanly into an earlier milestone — recorded here after the fact.
+
+- ✅ **Goals** (`goals.enc`): minimal outcome records — `{id, title, created_at}` — that a task can link to via `task.goal_id`. Deliberately separate from `context`: context is a life-area tag (Health, Faith, Garden), a goal is a specific outcome a task is moving you toward. CRUD via agent API (`add_task`/`update_task` accept `goal_id`, `delete_goal` action).
+- [ ] Goals list/detail overlay — currently only reachable via the agent API, no in-app UI to create, view, or browse goals yet
+- [ ] Goal progress surfacing — show linked-task completion progress against a goal somewhere in the scene or an overlay
+- ✅ **Top 3 daily challenge jars** (`content/top3_challenges.php`, `api/top3.php`): 3 auto-tracked daily challenges drawn from a pool each session, each worth points; credited as a side effect of real actions (task edits, inbox triage, food logging, calendar scheduling, declutter, daily routine) through one central choke point rather than scattered per-feature hooks. Lifetime points total exposed via `api/agent.php?view=top3`.
+- [ ] Points redemption / visible reward — points currently accumulate with no in-app sink or display beyond the agent API
+
+---
+
+## M10 — Calendar, Routine & Regulation (shipped, undocumented until now)
+
+- ✅ **Calendar overlay** (`api/calendar.php`, `js/scene2.js`, `js/day_tasks.js`): month view of tasks by `scheduled_date` + snoozed tasks; day-tap opens interactive rows with full snooze picker, location-aware snooze, and day-type picker inline
+- ✅ **Morning review**: reviews the day's scheduled/snoozed tasks as part of the calendar flow
+- ✅ **Weekly routine / "typical week"**: `config['weekly_schedule']` maps day-of-week → default day_type; editable in Settings and offered as an onboarding step
+- ✅ **Day type vs. location split**: physical location (own `locations` DB table, stored as an array) is now a separate check-in from day_type — "what kind of day" vs. "where am I right now"
+- ✅ **Regulation mode**: session toggle surfacing grounding/sensory prompts (`content/regulation_prompts.php`); user can disable defaults or add custom prompts in Settings → Wellness
+- ✅ **Dance activity**: pool activity type with start/stop timer, daily accumulator (`config['dance_log']`), suppressed after 15 min/day or when location is Out/Transit
+- ✅ **Quotes → auto-advancing interstitial**: 10-second auto-advance instead of manual dismiss; affirmations pool added alongside personal quotes
+- ✅ **Vault export/backup** (`api/vault_export.php`): authenticated decrypted-JSON download — resolves the "Vault backup" item under Ongoing/Infrastructure below
+- ✅ **Story picker/reread**: `active_story_id` lets the reader choose which unlocked book to continue (`api/set_active_story.php`); `api/story_reset.php` lets a finished book be reread from the start; `api/story_books.php` serves the 24-book catalogue with per-book ended state
 
 ---
 

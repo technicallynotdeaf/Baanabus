@@ -104,6 +104,7 @@ if (!empty($_GET['reset'])) {
                 'text'          => $p['text'],
                 'category'      => $p['category'],
                 'is_custom'     => !empty($p['is_custom']),
+                'seconds'       => $p['seconds'] ?? null,
                 'reset_context' => true,
             ]);
         } else {
@@ -949,39 +950,40 @@ function pick_dance(): array {
 
 function pick_fun_task(): array {
     $tasks = [
-        "Do 5 star jumps",
-        "Close your eyes for 20 seconds and imagine you're somewhere beautiful",
-        "Put on one song you love and just listen to it",
-        "Draw something badly on purpose",
-        "Walk to the end of the street and back",
-        "Look up at the sky for 30 seconds",
-        "Find a window and look at the furthest thing you can see for 20 seconds — give your eyes a proper rest",
-        "Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.",
-        "Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.",
-        "Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment.",
-        "Think of something kind someone said to you recently. Hold it in mind for 30 seconds.",
-        "Think of one person you're genuinely glad exists. Just hold that thought for a moment.",
-        "Think about someone who's been quietly good to you lately. You don't need to do anything with it — just notice.",
-        "Send someone a photo of something that made you think of them — no need to reply, just a little signal.",
-        "Make yourself a proper cup of tea or coffee — no rushing",
-        "Stretch — arms up, side to side, touch your toes if you can",
-        "Step outside for two minutes, even just to the doorstep",
-        "Find something nearby that's a colour you like and look at it for a moment",
-        "Find the softest thing within reach and hold it for a bit",
-        "Find something in the room you've never really looked at properly and spend 20 seconds on it",
-        "Find something that has an interesting texture and run your fingers over it slowly",
-        "Find the most beautiful thing you can see from where you're sitting and just look at it for 30 seconds",
-        "Find a plant, a leaf, or anything alive nearby and look at it closely — the detail, the colour, the edges",
-        "Find something that's lit up by the light right now — sunlight, lamplight, whatever — and look at how the light falls on it",
-        "Find something small and look at it like you've never seen it before. Turn it over. Notice everything.",
-        "Find a sound in the background you've been ignoring and just listen to it for 20 seconds",
-        "Look around the room and find something that makes you feel calm. Don't rush — wait until something actually does.",
-        "Find something that has a smell you like and breathe it in slowly a few times",
-        "Find a pattern — in fabric, on a wall, anywhere — and trace it with your eyes",
-        "Look out the window and find one thing that's moving. Watch it for a bit.",
-        "Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.",
+        ["Do 5 star jumps"],
+        ["Close your eyes for 20 seconds and imagine you're somewhere beautiful", 20],
+        ["Put on one song you love and just listen to it"],
+        ["Draw something badly on purpose"],
+        ["Walk to the end of the street and back"],
+        ["Look up at the sky for 30 seconds", 30],
+        ["Find a window and look at the furthest thing you can see for 20 seconds — give your eyes a proper rest", 20],
+        ["Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.", 30],
+        ["Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.", 20],
+        ["Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment."],
+        ["Think of something kind someone said to you recently. Hold it in mind for 30 seconds.", 30],
+        ["Think of one person you're genuinely glad exists. Just hold that thought for a moment."],
+        ["Think about someone who's been quietly good to you lately. You don't need to do anything with it — just notice."],
+        ["Send someone a photo of something that made you think of them — no need to reply, just a little signal."],
+        ["Make yourself a proper cup of tea or coffee — no rushing"],
+        ["Stretch — arms up, side to side, touch your toes if you can"],
+        ["Step outside for two minutes, even just to the doorstep", 120],
+        ["Find something nearby that's a colour you like and look at it for a moment"],
+        ["Find the softest thing within reach and hold it for a bit"],
+        ["Find something in the room you've never really looked at properly and spend 20 seconds on it", 20],
+        ["Find something that has an interesting texture and run your fingers over it slowly"],
+        ["Find the most beautiful thing you can see from where you're sitting and just look at it for 30 seconds", 30],
+        ["Find a plant, a leaf, or anything alive nearby and look at it closely — the detail, the colour, the edges"],
+        ["Find something that's lit up by the light right now — sunlight, lamplight, whatever — and look at how the light falls on it"],
+        ["Find something small and look at it like you've never seen it before. Turn it over. Notice everything."],
+        ["Find a sound in the background you've been ignoring and just listen to it for 20 seconds", 20],
+        ["Look around the room and find something that makes you feel calm. Don't rush — wait until something actually does."],
+        ["Find something that has a smell you like and breathe it in slowly a few times"],
+        ["Find a pattern — in fabric, on a wall, anywhere — and trace it with your eyes"],
+        ["Look out the window and find one thing that's moving. Watch it for a bit."],
+        ["Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.", 30],
     ];
-    return ['type' => 'fun_task', 'text' => $tasks[array_rand($tasks)]];
+    $t = $tasks[array_rand($tasks)];
+    return ['type' => 'fun_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];
 }
 
 function pick_nutrition(): array {
@@ -1167,21 +1169,22 @@ function pick_physical_object(): ?array {
 function pick_easy_task(): array {
     global $physicalLocation;
     $tasks = [
-        "Drink a full glass of water",
-        "Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds.",
-        "Tidy one small thing — just one",
-        "Sit quietly for two minutes",
-        "Stretch your arms above your head and hold for ten seconds",
-        "Step outside for five minutes",
-        "Take your vitamins or any medication you need today",
-        "Wash your face",
-        "Make your bed or straighten where you're sitting",
+        ["Drink a full glass of water"],
+        ["Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds."],
+        ["Tidy one small thing — just one"],
+        ["Sit quietly for two minutes", 120],
+        ["Stretch your arms above your head and hold for ten seconds", 10],
+        ["Step outside for five minutes", 300],
+        ["Take your vitamins or any medication you need today"],
+        ["Wash your face"],
+        ["Make your bed or straighten where you're sitting"],
     ];
     // Not actionable away from home — Out (3) and Transit (6)
     if (!in_array($physicalLocation, [3, 6], true)) {
-        $tasks[] = "Put away three things that are out of place";
+        $tasks[] = ["Put away three things that are out of place"];
     }
-    return ['type' => 'easy_task', 'text' => $tasks[array_rand($tasks)]];
+    $t = $tasks[array_rand($tasks)];
+    return ['type' => 'easy_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];
 }
 
 function pick_study(): ?array {

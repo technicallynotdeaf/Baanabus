@@ -4,12 +4,12 @@
 // Categories: movement, breath, sensory, cognitive, self_compassion, somatic
 return [
     // Movement
-    ['id' =>  1, 'category' => 'movement',       'text' => "Put some pumping music on and dance somewhere private for 2 minutes. A bathroom, meeting room, car — wherever works."],
-    ['id' =>  2, 'category' => 'movement',       'text' => "Shake your hands and arms out for 30 seconds, like you're flinging water off them."],
+    ['id' =>  1, 'category' => 'movement',       'text' => "Put some pumping music on and dance somewhere private for 2 minutes. A bathroom, meeting room, car — wherever works.", 'seconds' => 120],
+    ['id' =>  2, 'category' => 'movement',       'text' => "Shake your hands and arms out for 30 seconds, like you're flinging water off them.", 'seconds' => 30],
     ['id' =>  3, 'category' => 'movement',       'text' => "10 slow shoulder rolls forward, then 10 back. Notice your shoulders dropping as you go."],
     ['id' =>  4, 'category' => 'movement',       'text' => "Walk up and down a flight of stairs twice, or do a lap around the building."],
     ['id' =>  5, 'category' => 'movement',       'text' => "Stand up and push your feet into the floor — really press down. Hold for 5 slow breaths."],
-    ['id' =>  6, 'category' => 'movement',       'text' => "Run cold water over your wrists for 30 seconds. Or splash some on your face."],
+    ['id' =>  6, 'category' => 'movement',       'text' => "Run cold water over your wrists for 30 seconds. Or splash some on your face.", 'seconds' => 30],
 
     // Breath
     ['id' =>  7, 'category' => 'breath',         'text' => "Box breathing: in for 4 counts, hold 4, out 4, hold 4. Do it 4 times. That's it."],
@@ -37,7 +37,7 @@ return [
     ['id' => 23, 'category' => 'self_compassion','text' => "You don't have to fix everything right now. One small thing is enough. What's the one thing?"],
 
     // Somatic
-    ['id' => 24, 'category' => 'somatic',        'text' => "Clench every muscle in your body as tight as you can for 5 seconds, then release all at once. Repeat 3 times."],
-    ['id' => 25, 'category' => 'somatic',        'text' => "Hum something — anything. The vibration in your chest and throat activates your rest system. Keep going for a minute."],
-    ['id' => 26, 'category' => 'somatic',        'text' => "Massage your hands slowly — press into your palm, work each finger. A minute of this is surprisingly calming."],
+    ['id' => 24, 'category' => 'somatic',        'text' => "Clench every muscle in your body as tight as you can for 5 seconds, then release all at once. Repeat 3 times.", 'seconds' => 5],
+    ['id' => 25, 'category' => 'somatic',        'text' => "Hum something — anything. The vibration in your chest and throat activates your rest system. Keep going for a minute.", 'seconds' => 60],
+    ['id' => 26, 'category' => 'somatic',        'text' => "Massage your hands slowly — press into your palm, work each finger. A minute of this is surprisingly calming.", 'seconds' => 60],
 ];

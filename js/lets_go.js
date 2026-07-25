@@ -56,6 +56,8 @@ window.initLetsGo = function() {
       case 'minigame':       renderMinigame(d);      break;
       case 'triage':         renderTriage(d);        break;
       case 'person_review':  renderPersonReview(d);  break;
+      case 'event_prebrief': renderEventPrebrief(d); break;
+      case 'event_debrief':  renderEventDebrief(d);  break;
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
@@ -1589,6 +1591,192 @@ window.initLetsGo = function() {
         body: JSON.stringify({person_id: d.person_id, action: 'archive'}),
       }).then(() => loadSpeechBubble('lets-go.php'))
         .catch(() => loadSpeechBubble('lets-go.php'));
+    };
+  }
+
+  function renderEventPrebrief(d) {
+    const notes = d.recent_notes || [];
+    const notesHtml = notes.length ? `
+      <div style="font-size:0.72em;color:#aaa;text-transform:uppercase;letter-spacing:0.05em;margin:0.6rem 0 0.3rem;">Worth remembering</div>
+      <div style="margin-bottom:0.5rem;">
+        ${notes.map(n => `<p style="margin:0 0 4px;font-size:0.85em;line-height:1.4;color:#666;">${esc(n.contents)}</p>`).join('')}
+      </div>` : '';
+
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Before you go</p>
+      <p style="line-height:1.5;margin-bottom:0.5rem;">You're seeing <strong>${esc(d.name)}</strong> today — ${esc(d.task_title)}.</p>
+      ${notesHtml}
+      <p style="font-weight:500;color:#555;margin:0.5rem 0 0.6rem;font-size:0.95em;">How are you going into it?</p>
+      <div id="eb-energy-opts" style="display:flex;flex-direction:column;gap:7px;"></div>
+      <button class="action-button" style="background:transparent;color:#888;border:1px solid #ddd;margin-top:0.6rem;"
+        onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+      <p id="eb-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
+
+    const opts = [[1, 'Exhausted'], [2, 'Low'], [3, 'Okay'], [4, 'Good'], [5, 'On fire']];
+    const wrap = document.getElementById('eb-energy-opts');
+    opts.forEach(([val, label]) => {
+      const b = document.createElement('button');
+      b.className = 'action-button';
+      b.style.cssText = 'width:100%;text-align:left;';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        wrap.querySelectorAll('button').forEach(x => x.disabled = true);
+        document.getElementById('eb-status').textContent = 'Saving…';
+        fetch('api/event_checkin.php', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'prebrief', task_id: d.task_id, person_id: d.person_id, energy: val}),
+        }).then(r => r.json()).then(res => {
+          if (res.ok) {
+            earnPip();
+            if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+          } else {
+            document.getElementById('eb-status').textContent = res.error || 'Could not save.';
+            wrap.querySelectorAll('button').forEach(x => x.disabled = false);
+          }
+        }).catch(() => {
+          document.getElementById('eb-status').textContent = 'Network error.';
+          wrap.querySelectorAll('button').forEach(x => x.disabled = false);
+        });
+      });
+      wrap.appendChild(b);
+    });
+  }
+
+  function renderEventDebrief(d) {
+    function relDate(s) {
+      if (!s) return 'recently';
+      const diff = Math.floor((Date.now() - new Date(s + 'T00:00:00').getTime()) / 86400000);
+      if (diff <= 0) return 'today';
+      if (diff === 1) return 'yesterday';
+      return diff + ' days ago';
+    }
+
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Debrief</p>
+      <p style="line-height:1.5;margin-bottom:0.75rem;">You saw <strong>${esc(d.name)}</strong> ${relDate(d.event_date)} — ${esc(d.task_title)}.</p>
+
+      <p style="font-size:0.88em;color:#555;margin-bottom:0.3rem;">Did you commit to doing anything for them?</p>
+      <div style="display:flex;gap:6px;margin-bottom:0.3rem;">
+        <input id="eb-commit" type="text" placeholder="What did you commit to?" style="flex:1;font-size:0.88em;">
+        <button class="action-button" style="flex-shrink:0;padding:5px 10px;font-size:0.82em;" onclick="window._ebAddTask()">Add</button>
+      </div>
+      <p id="eb-commit-status" class="muted" style="font-size:0.8em;min-height:1em;margin-bottom:0.5rem;"></p>
+
+      <p style="font-size:0.88em;color:#555;margin-bottom:0.3rem;">Did you learn anything new about them?</p>
+      <div style="display:flex;gap:6px;margin-bottom:0.3rem;">
+        <input id="eb-note" type="text" placeholder="What did you learn?" style="flex:1;font-size:0.88em;">
+        <button class="action-button" style="flex-shrink:0;padding:5px 10px;font-size:0.82em;" onclick="window._ebAddNote()">Save</button>
+      </div>
+      <p id="eb-note-status" class="muted" style="font-size:0.8em;min-height:1em;margin-bottom:0.5rem;"></p>
+
+      <div id="eb-notice-qs" style="margin-bottom:0.6rem;"></div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" onclick="window._ebDone()">Done</button>
+        <button class="action-button" style="background:transparent;color:#888;border:1px solid #ddd;"
+          onclick="loadSpeechBubble('lets-go.php')">Skip</button>
+      </div>
+      <p id="eb-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
+
+    // Noticing questions — tap only, no storage. The value is in being asked, not the log.
+    const noticeQs = [
+      'Did they seem tired, distracted, or off today?',
+      "Was there a moment they wanted to say something but didn't get to?",
+    ];
+    const noticeWrap = document.getElementById('eb-notice-qs');
+    noticeQs.forEach(q => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-bottom:0.5rem;';
+      const qP = document.createElement('p');
+      qP.style.cssText = 'font-size:0.88em;color:#555;margin-bottom:0.3rem;';
+      qP.textContent = q;
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:6px;';
+      ['Yes', 'No', 'Not sure'].forEach(label => {
+        const b = document.createElement('button');
+        b.className = 'action-button';
+        b.style.cssText = 'padding:4px 10px;font-size:0.82em;min-height:30px;';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          btnRow.querySelectorAll('button').forEach(x => {
+            x.style.opacity = x === b ? '1' : '0.4';
+            x.disabled = true;
+          });
+        });
+        btnRow.appendChild(b);
+      });
+      row.append(qP, btnRow);
+      noticeWrap.appendChild(row);
+    });
+
+    window._ebAddTask = function() {
+      const input  = document.getElementById('eb-commit');
+      const status = document.getElementById('eb-commit-status');
+      const title  = input.value.trim();
+      if (!title) return;
+      input.disabled = true;
+      status.textContent = 'Adding…';
+      fetch('api/add_task.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title, person_id: d.person_id, task_type: 'next_action', urgency: 'medium'}),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          input.value = '';
+          status.textContent = 'Added.';
+          setTimeout(() => { status.textContent = ''; }, 2000);
+        } else {
+          status.textContent = res.error || 'Could not add task.';
+        }
+        input.disabled = false;
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        input.disabled = false;
+      });
+    };
+
+    window._ebAddNote = function() {
+      const input  = document.getElementById('eb-note');
+      const status = document.getElementById('eb-note-status');
+      const note   = input.value.trim();
+      if (!note) return;
+      input.disabled = true;
+      status.textContent = 'Saving…';
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({person_id: d.person_id, action: 'add_note', note_content: note}),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          input.value = '';
+          status.textContent = 'Saved.';
+          setTimeout(() => { status.textContent = ''; }, 2000);
+        } else {
+          status.textContent = res.error || 'Could not save.';
+        }
+        input.disabled = false;
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        input.disabled = false;
+      });
+    };
+
+    window._ebDone = function() {
+      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+      document.getElementById('eb-status').textContent = 'Saving…';
+      fetch('api/event_checkin.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'debrief', task_id: d.task_id}),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          earnPip();
+          if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+        } else {
+          document.getElementById('eb-status').textContent = res.error || 'Could not save.';
+          document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+        }
+      }).catch(() => {
+        document.getElementById('eb-status').textContent = 'Network error.';
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+      });
     };
   }
 

@@ -257,11 +257,13 @@ Build the capacity for meaningful connection through low-friction, attention-sha
 
 Design constraint: many users are neurodiverse. Prefer tappable structured options, scales, and "sit with this for a moment" interactions over blank text boxes. The pause is a valid and valuable interaction.
 
-**Event Debrief** (post-interaction reflection tied to a person + event type):
-- [ ] "Did you see [person] today?" prompt in activity pool — if yes, ask up to 5 structured questions (commit to anything? learn anything new? did they seem off? moment they wanted to say something?)
-- [ ] Commitments captured in debrief optionally convert to tasks
-- [ ] Event types (church, band, work, family) tune the question set slightly
-- [ ] All questions are tappable/selectable, not free-text
+**Event Pre-brief/Debrief** (2026-07-26) — a task linking to a person via `person_id` and carrying a scheduled day (`scheduled_date` or `snoozed_until`) doubles as "seeing them", so this reuses existing task data rather than a new events store:
+- ✅ **Pre-brief** (`pick_event_prebrief()`, `renderEventPrebrief` in `js/lets_go.js`): fires once per task on its scheduled day. Shows the person's name, the task, up to 2 recent notes about them ("worth remembering"), and a 5-tap energy scale ("How are you going into it?" — Exhausted/Low/Okay/Good/On fire, same scale as the daily check-in). Answer is appended to `diary.enc`'s `event_prebriefs` for that date — private, vault-only, never surfaced socially.
+- ✅ **Debrief** (`pick_event_debrief()`, `renderEventDebrief`): fires once per task, starting the day after its scheduled day (up to 3 days back — older than that is treated as stale and skipped). Card frames it as "You saw [Name] [when] — [task]" rather than asking a literal yes/no (the task's existence is treated as the "did you see them" signal). Commitments captured optionally convert to a task via `api/add_task.php` (person-linked); "learned something new" optionally saves a note via `api/person_action.php`'s existing `add_note` action; two tap-only noticing questions ("seemed off?", "wanted to say something?") are ephemeral by design — no storage, the value is in being asked, matching the design doc's framing.
+- ✅ New endpoint `api/event_checkin.php` — `prebrief`/`debrief` actions; marks `event_prebriefed_at`/`event_debriefed_at` on the task so each stage fires exactly once.
+- [ ] Event types (church, band, work, family) tuning the question set — not implemented; `context` could stand in for this but wasn't wired up
+- [ ] "Did you see [person] today?" as an explicit yes/no gate before the rest of the debrief (currently assumed true from the task existing)
+- [ ] Situational awareness extensions (conversation ease/effort, "did you give them an out", "what was going on for you going in") — not implemented, a distinct follow-on from the pre-brief/debrief pair built here
 
 **Relationship Review Prompts** (periodic, no text required unless desired):
 - [ ] Gratitude: "Think about [person] — what's one thing they've done lately that mattered?" — pause only, no output needed
@@ -270,10 +272,10 @@ Design constraint: many users are neurodiverse. Prefer tappable structured optio
 - [ ] Connection thought capture: "I should introduce X to Y" → quick-capture, links to person or task
 
 **Self-Awareness Layer** (foundational — underpins all relational features):
-- [ ] Pre-interaction check: "How are you going into this?" (1–5 scale or 3-emoji, not text)
+- ✅ Pre-interaction check: "How are you going into this?" — shipped as part of Event Pre-brief above (5-tap scale, not text)
 - [ ] Post-interaction: "Did what you were carrying affect how that went?"
-- [ ] Pattern noticing over time: if user rates flat before certain event types, surface it gently
-- [ ] Emotional state data: private, never surfaced socially, framed as information not judgment
+- [ ] Pattern noticing over time: if user rates flat before certain event types, surface it gently (the raw data is now being collected in `diary.enc.event_prebriefs`, but nothing reads it back yet)
+- ✅ Emotional state data: private, vault-only (`diary.enc`), never surfaced socially
 
 **Situational Awareness** (debrief extension):
 - [ ] "Did the conversation feel easy or effortful for them?"

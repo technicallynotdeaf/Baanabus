@@ -504,6 +504,25 @@ try {
     }
 } catch (Throwable $e) {}
 
+// Event pre-brief/debrief: a task links to a person and carries a scheduled day, so it
+// doubles as "seeing them" — pre-brief fires the day of, debrief the day after (once the
+// day has actually passed), each exactly once per task.
+$hasEventPrebrief = false;
+$hasEventDebrief  = false;
+try {
+    $todayStr    = date('Y-m-d');
+    $debriefFrom = date('Y-m-d', strtotime('-3 days'));
+    $allTasks    = getTasks()['tasks'];
+    foreach ($allTasks as $t) {
+        if (empty($t['person_id']) || ($t['status'] ?? '') === 'deleted') continue;
+        $sched = $t['scheduled_date'] ?? (!empty($t['snoozed_until']) ? substr($t['snoozed_until'], 0, 10) : null);
+        if (!$sched) continue;
+        if ($sched === $todayStr && empty($t['event_prebriefed_at'])) $hasEventPrebrief = true;
+        if ($sched < $todayStr && $sched >= $debriefFrom && empty($t['event_debriefed_at'])) $hasEventDebrief = true;
+        if ($hasEventPrebrief && $hasEventDebrief) break;
+    }
+} catch (Throwable $e) {}
+
 // 1-in-3 chance to surface a missing check-in question mid-session; never back-to-back
 if ($missing && $checkinOn && ($_SESSION['last_activity'] ?? '') !== 'missing_info' && rand(1, 3) === 1) {
     $_SESSION['last_activity'] = 'missing_info';
@@ -525,6 +544,8 @@ $pool = array_merge(
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
+    array_fill(0, $hasEventPrebrief ? 1 : 0,           'event_prebrief'),
+    array_fill(0, $hasEventDebrief  ? 1 : 0,           'event_debrief'),
     array_fill(0, $hasHouseTasks         ? 1 : 0,        'house_task'),
     array_fill(0, $hasRoomScan          ? 2 : 0,        'room_scan'),
     array_fill(0, $hasPhysicalObjects   ? 2 : 0,        'physical_object_triage'),
@@ -595,6 +616,16 @@ if ($choice === 'person_review') {
     $pr = pick_person_review();
     if ($pr) json_response($pr);
     json_response(pick_fun_task()); // fallback if no people
+}
+if ($choice === 'event_prebrief') {
+    $ep = pick_event_prebrief();
+    if ($ep) json_response($ep);
+    json_response(pick_fun_task());
+}
+if ($choice === 'event_debrief') {
+    $ed = pick_event_debrief();
+    if ($ed) json_response($ed);
+    json_response(pick_fun_task());
 }
 if ($choice === 'room_scan') {
     $rs = pick_room_scan();
@@ -897,6 +928,85 @@ function pick_person_review(): ?array {
             'char3'           => $p['char3'] ?? '',
             'review_interval' => (int)($p['review_interval'] ?? 30),
             'recent_notes'    => $recentNotes,
+        ];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function pick_event_prebrief(): ?array {
+    try {
+        $today = date('Y-m-d');
+        $tasks = getTasks()['tasks'];
+        $candidates = [];
+        foreach ($tasks as $t) {
+            if (empty($t['person_id']) || ($t['status'] ?? '') !== 'active') continue;
+            if (!empty($t['event_prebriefed_at'])) continue;
+            $sched = $t['scheduled_date'] ?? (!empty($t['snoozed_until']) ? substr($t['snoozed_until'], 0, 10) : null);
+            if ($sched === $today) $candidates[] = $t;
+        }
+        if (empty($candidates)) return null;
+        $t = $candidates[array_rand($candidates)];
+
+        $person = null;
+        foreach (getPeople()['people'] as $p) {
+            if ((int)$p['person_id'] === (int)$t['person_id']) { $person = $p; break; }
+        }
+        if (!$person) return null;
+
+        $recentNotes = [];
+        try {
+            $notesData = getPeopleNotes();
+            $pNotes = array_values(array_filter($notesData['notes'] ?? [],
+                fn($n) => (int)$n['person_id'] === (int)$person['person_id']));
+            usort($pNotes, fn($a, $b) => strcmp($b['date_added'] ?? '', $a['date_added'] ?? ''));
+            $recentNotes = array_slice($pNotes, 0, 2);
+        } catch (Throwable $e) {}
+
+        return [
+            'type'         => 'event_prebrief',
+            'task_id'      => (int)$t['id'],
+            'task_title'   => $t['title'],
+            'person_id'    => (int)$person['person_id'],
+            'name'         => $person['name'] ?? 'them',
+            'recent_notes' => $recentNotes,
+        ];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function pick_event_debrief(): ?array {
+    try {
+        $today  = date('Y-m-d');
+        $cutoff = date('Y-m-d', strtotime('-3 days'));
+        $tasks  = getTasks()['tasks'];
+        $candidates = [];
+        foreach ($tasks as $t) {
+            if (empty($t['person_id']) || ($t['status'] ?? '') === 'deleted') continue;
+            if (!empty($t['event_debriefed_at'])) continue;
+            $sched = $t['scheduled_date'] ?? (!empty($t['snoozed_until']) ? substr($t['snoozed_until'], 0, 10) : null);
+            if (!$sched || $sched >= $today || $sched < $cutoff) continue;
+            $t['_sched'] = $sched;
+            $candidates[] = $t;
+        }
+        if (empty($candidates)) return null;
+        usort($candidates, fn($a, $b) => strcmp($a['_sched'], $b['_sched']));
+        $t = $candidates[0];
+
+        $person = null;
+        foreach (getPeople()['people'] as $p) {
+            if ((int)$p['person_id'] === (int)$t['person_id']) { $person = $p; break; }
+        }
+        if (!$person) return null;
+
+        return [
+            'type'       => 'event_debrief',
+            'task_id'    => (int)$t['id'],
+            'task_title' => $t['title'],
+            'person_id'  => (int)$person['person_id'],
+            'name'       => $person['name'] ?? 'them',
+            'event_date' => $t['_sched'],
         ];
     } catch (Throwable $e) {
         return null;

@@ -407,6 +407,26 @@ function vaultUnlinkSubtask(array &$data, int $parentId, int $childId): void {
     unset($p);
 }
 
+// Awards one pip toward today's story-page target — the same mechanic
+// api/earn_pip.php exposes for completed activities, reused here so
+// organization work (see top3CreditFieldTransitions) raises level progress too.
+function awardPip(): array {
+    $target       = todayPagesTarget();
+    $data         = getTasks();
+    $data['pages']       = ($data['pages']       ?? 0) + 1;
+    $data['total_pages'] = ($data['total_pages'] ?? 0) + 1;
+    $newStoryPage = false;
+    if ($data['pages'] >= $target) {
+        $data['pages'] = 0;
+        $newStoryPage  = true;
+    }
+    saveTasks($data);
+    if ($newStoryPage) {
+        try { incrementStoryPages(1); } catch (Throwable $e) { error_log('awardPip: incrementStoryPages failed: ' . $e->getMessage()); }
+    }
+    return ['pages' => $data['pages'], 'pages_target' => $target, 'total_pages' => $data['total_pages'], 'newStoryPage' => $newStoryPage];
+}
+
 // Returns any Top 3 jars completed as a side effect of this edit (see
 // top3CreditFieldTransitions), so callers can surface a positive-feedback
 // moment. Safe to ignore — most existing callers do.
@@ -442,8 +462,19 @@ function vaultUpdateTask(int $taskId, array $fields): array {
 
     // Top 3: this is the single choke point for every field edit path (triage,
     // task_action, schedule_task, the agent API), so credit transitions here
-    // rather than at each call site.
-    try { return top3CreditFieldTransitions($before, $fields); } catch (Throwable $e) { return []; }
+    // rather than at each call site. Same choke point also awards a level-progress
+    // pip for organization work (fill_info/calendar_set/inbox_triage/declutter),
+    // so tidying tasks up counts toward story-page progress, not just completing them.
+    try {
+        $completed = top3CreditFieldTransitions($before, $fields);
+    } catch (Throwable $e) {
+        $completed = [];
+    }
+    $pip = null;
+    if (!empty($completed)) {
+        try { $pip = awardPip(); } catch (Throwable $e) {}
+    }
+    return ['top3_completed' => $completed, 'pip' => $pip];
 }
 
 // Detects the specific before/after transitions Top 3 cares about and credits

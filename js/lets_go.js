@@ -1289,7 +1289,13 @@ window.initLetsGo = function() {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify(body),
       }).then(r => r.json()).then(data => {
-        if (data.ok) setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
+        if (data.ok) {
+          if (data.pip) {
+            updateProgressBar(data.pip.pages, data.pip.pages_target, data.pip.total_pages);
+            if (data.pip.newStoryPage && typeof window.refreshScene === 'function') window.refreshScene();
+          }
+          setTimeout(() => loadSpeechBubble('lets-go.php'), 350);
+        }
         else { setStatus(data.error || 'Could not save.'); el.querySelectorAll('button').forEach(b => b.disabled = false); }
       }).catch(() => { setStatus('Network error.'); el.querySelectorAll('button').forEach(b => b.disabled = false); });
     }

@@ -35,28 +35,30 @@ $urgency  = in_array($body['urgency'] ?? '', ['low', 'medium', 'high'], true) ? 
 $timeRaw  = $body['time'] ?? null;
 $time     = (is_int($timeRaw) || ctype_digit((string)$timeRaw)) && (int)$timeRaw > 0 ? (int)$timeRaw : null;
 
+$pipResult = null;
+
 try {
     if ($action === 'save_urgency') {
         $urg = $body['urgency'] ?? null;
         if (!in_array($urg, ['low', 'medium', 'high'], true)) $urg = 'medium';
-        vaultUpdateTask($taskId, ['urgency' => $urg]);
+        $pipResult = vaultUpdateTask($taskId, ['urgency' => $urg])['pip'] ?? null;
 
     } elseif ($action === 'save_importance') {
         $imp = $body['importance'] ?? null;
         if (!in_array($imp, ['low', 'medium', 'high'], true)) $imp = 'medium';
-        vaultUpdateTask($taskId, ['importance' => $imp]);
+        $pipResult = vaultUpdateTask($taskId, ['importance' => $imp])['pip'] ?? null;
 
     } elseif ($action === 'save_energy') {
         $energy = $body['energy'] ?? ' ';
         if (!in_array($energy, ['low', 'medium', 'high', ' '], true)) $energy = ' ';
-        vaultUpdateTask($taskId, ['energy' => $energy]);
+        $pipResult = vaultUpdateTask($taskId, ['energy' => $energy])['pip'] ?? null;
 
     } elseif ($action === 'save_context') {
         $context = isset($body['context']) ? trim((string)$body['context']) : '';
-        vaultUpdateTask($taskId, ['context' => $context !== '' ? $context : ' ']);
+        $pipResult = vaultUpdateTask($taskId, ['context' => $context !== '' ? $context : ' '])['pip'] ?? null;
 
     } elseif ($action === 'quick_win') {
-        vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action']);
+        $pipResult = vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action'])['pip'] ?? null;
 
     } elseif ($action === 'mark_actionable') {
         vaultUpdateTask($taskId, ['triage_actionable' => true]);
@@ -70,7 +72,7 @@ try {
             $fields['task_type'] = 'next_action';
             if ($urgency !== null) $fields['urgency'] = $urgency;
         }
-        if (!empty($fields)) vaultUpdateTask($taskId, $fields);
+        if (!empty($fields)) $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
     } elseif ($action === 'delete') {
         // Read task before deleting so we can propagate to Habitica
@@ -82,7 +84,7 @@ try {
         $fields = ['status' => 'deleted'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
-        vaultUpdateTask($taskId, $fields);
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
         // Delete from Habitica (best-effort)
         if ($taskForDel && !empty($taskForDel['habitica_id'])) {
             try {
@@ -110,14 +112,14 @@ try {
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         if ($time !== null)    $fields['time']    = $time;
-        vaultUpdateTask($taskId, $fields);
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
     } elseif ($action === 'waiting') {
         $fields = ['task_type' => 'waiting'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         if ($time !== null)    $fields['time']    = $time;
-        vaultUpdateTask($taskId, $fields);
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
     } elseif ($action === 'next_action') {
         $fields = ['task_type' => 'next_action'];
@@ -134,14 +136,14 @@ try {
                 $fields['snoozed_until'] = $date;
             }
         }
-        vaultUpdateTask($taskId, $fields);
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
     } elseif ($action === 'project') {
         $fields = ['task_type' => 'project'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         if ($time !== null)    $fields['time']    = $time;
-        vaultUpdateTask($taskId, $fields);
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
         $firstStep = trim($body['first_step'] ?? '');
         if ($firstStep !== '' && mb_strlen($firstStep) <= 300) {
@@ -217,7 +219,9 @@ try {
         }
     }
 
-    json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
+    $resp = ['ok' => true, 'top3_completed' => top3DrainCompleted()];
+    if ($pipResult) $resp['pip'] = $pipResult;
+    json_response($resp);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

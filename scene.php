@@ -5,6 +5,9 @@ $badgeIds        = [];
 $storyBooksAvail = [];
 $storyCurrentBook = 0;
 $storyPagesAvail  = 0;
+$secondBooksAvail = [];
+$secondCurrentBook = 0;
+$secondPagesAvail  = 0;
 $objectsOut      = false;
 $cycleDay        = 0;
 $cycleLen        = 0;
@@ -32,6 +35,11 @@ if (isUnlocked()) {
         $storyBooksAvail  = $bookState['books_avail'];
         $storyCurrentBook = $bookState['current_book'];
         $storyPagesAvail  = $bookState['pages_avail'];
+        $secondBookState   = getSecondBookSetState();
+        $secondBooksExist  = $secondBookState['books_exist'];
+        $secondBooksAvail  = $secondBookState['books_avail'];
+        $secondCurrentBook = $secondBookState['current_book'];
+        $secondPagesAvail  = $secondBookState['pages_avail'];
     } catch (Throwable $e) {}
     try {
         $obj = getPhysicalObjects();
@@ -51,6 +59,10 @@ if (isUnlocked()) {
   data-story-books-exist="<?= htmlspecialchars(json_encode($storyBooksExist ?? []), ENT_QUOTES) ?>"
   data-story-current-book="<?= (int)$storyCurrentBook ?>"
   data-story-pages-avail="<?= (int)$storyPagesAvail ?>"
+  data-second-books-avail="<?= htmlspecialchars(json_encode($secondBooksAvail), ENT_QUOTES) ?>"
+  data-second-books-exist="<?= htmlspecialchars(json_encode($secondBooksExist ?? []), ENT_QUOTES) ?>"
+  data-second-current-book="<?= (int)$secondCurrentBook ?>"
+  data-second-pages-avail="<?= (int)$secondPagesAvail ?>"
   data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
   data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"
   data-cycle-day="<?= $cycleDay ?>"

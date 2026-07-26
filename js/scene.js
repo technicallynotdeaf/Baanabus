@@ -13,6 +13,10 @@
     // the badge would otherwise stay stuck at whatever it was on page load.
     let STORY_CURRENT_BOOK  = parseInt(canvas.dataset.storyCurrentBook, 10) || 0;
     let STORY_PAGES_AVAIL   = parseInt(canvas.dataset.storyPagesAvail,  10) || 0;
+    const SECOND_BOOKS_AVAIL = JSON.parse(canvas.dataset.secondBooksAvail || '[]');
+    const SECOND_BOOKS_EXIST = JSON.parse(canvas.dataset.secondBooksExist || '[]');
+    let SECOND_CURRENT_BOOK  = parseInt(canvas.dataset.secondCurrentBook, 10) || 0;
+    let SECOND_PAGES_AVAIL   = parseInt(canvas.dataset.secondPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -47,6 +51,17 @@
         { id: 23, color: '#4A7A2A', h: 0.82 }, // Herefordshire
         { id: 24, color: '#A82A4A', h: 0.87 }, // Wales (return)
     ];
+
+    // Second book set (row 2 of the left shelf section) — a new 24-book slot
+    // still being written. No per-book colour of its own like STORY_BOOKS;
+    // instead it cycles through shades of blue, used only once a book is the
+    // current active one (see drawSecondBookSet). Heights vary the same way
+    // for visual texture even though every spine is narrow.
+    const SECOND_BOOKS = Array.from({ length: 24 }, (_, i) => ({
+        id: i + 1,
+        h: 0.70 + ((i * 7) % 18) / 100,
+        activeColor: `hsl(${205 + (i % 6) * 8}, ${52 + (i % 3) * 8}%, ${30 + (i % 4) * 7}%)`,
+    }));
 
     let bookBounds        = [];
     let boardBounds       = null;
@@ -165,78 +180,47 @@
         }
     }
 
+    // All 24 quilt books now share a single narrow row (row 0 of the left shelf
+    // section) — clicking anywhere in the row opens the same book-selector
+    // overlay regardless of which spine was hit, so individual spines don't
+    // need to stay wide enough to read.
     function drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
         bookBounds = [];
         const secW   = Math.floor(innerWidth / 3);
         const shelfH = Math.floor((innerHeight - clearance) / 6);
 
-        const sidePad     = 3;
-        const gap         = 2;
-        const refBkH      = Math.floor(shelfH * 0.75);
-        const narrowBookW = Math.max(10, Math.floor(refBkH / 6));
-
-        const BOOKS_PER_ROW = Math.min(8, Math.floor((secW - sidePad * 2 + gap) / (narrowBookW + gap)));
-        const slotW  = Math.floor((secW - sidePad * 2 + gap) / BOOKS_PER_ROW);
-        const bookW  = Math.max(narrowBookW, Math.min(slotW - gap, Math.floor(refBkH / 3)));
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = STORY_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH;
 
         STORY_BOOKS.forEach((book, i) => {
-            const row = Math.floor(i / BOOKS_PER_ROW);
-            const col = i % BOOKS_PER_ROW;
-
-            const bayBot = innerTop + clearance + (row + 1) * shelfH;
-            const bkH    = Math.floor(shelfH * book.h);
-            const bx     = innerLeft + sidePad + col * (bookW + gap);
-            const by     = bayBot - bkH;
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
 
             const unlocked = STORY_BOOKS_AVAIL.includes(book.id);
             const exists   = STORY_BOOKS_EXIST.includes(book.id);
             const color    = unlocked ? book.color : (exists ? '#606060' : '#c0c0c0');
-            const spineW   = Math.max(3, Math.floor(bookW * 0.20));
 
             // Drop shadow
             ctx.fillStyle = 'rgba(0,0,0,0.22)';
-            ctx.fillRect(bx + 2, by + 2, bookW, bkH);
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
 
-            // Cover face (left portion — spine is on the right for a left-wall shelf)
+            // Spine fill
             ctx.fillStyle = color;
             ctx.fillRect(bx, by, bookW, bkH);
 
-            // Binding strip (right edge)
-            ctx.fillStyle = 'rgba(0,0,0,0.28)';
-            ctx.fillRect(bx + bookW - spineW, by, spineW, bkH);
-
-            // Highlight seam at left edge of spine
+            // Top highlight
             ctx.fillStyle = 'rgba(255,255,255,0.18)';
-            ctx.fillRect(bx + bookW - spineW - 2, by, 2, bkH);
+            ctx.fillRect(bx, by, bookW, 1);
 
-            // Page edges at top (cream strip, cover side only)
-            ctx.fillStyle = 'rgba(255,250,235,0.9)';
-            ctx.fillRect(bx, by, bookW - spineW - 2, 3);
-
-            // Top shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.35)';
-            ctx.fillRect(bx, by, bookW, 2);
-
-            // Left-edge catch-light (viewer-facing edge)
-            ctx.fillStyle = 'rgba(255,255,255,0.12)';
-            ctx.fillRect(bx, by + 3, 2, bkH - 5);
-
-            // Horizontal rule lines across cover face
-            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-            ctx.lineWidth   = 0.5;
-            for (let l = 1; l < 5; l++) {
-                const ly = by + Math.floor(bkH * l / 5);
-                ctx.beginPath();
-                ctx.moveTo(bx + 2, ly);
-                ctx.lineTo(bx + bookW - spineW - 3, ly);
-                ctx.stroke();
-            }
-
-            // Unlocked: gold accent bands on cover face
+            // Unlocked: a thin gold band near the top
             if (unlocked) {
-                ctx.fillStyle = 'rgba(245,166,35,0.75)';
-                ctx.fillRect(bx + 2, by + Math.max(4, Math.floor(bkH * 0.07)),            bookW - spineW - 4, 3);
-                ctx.fillRect(bx + 2, by + bkH - Math.max(6, Math.floor(bkH * 0.13)), bookW - spineW - 4, 3);
+                ctx.fillStyle = 'rgba(245,166,35,0.8)';
+                ctx.fillRect(bx, by + Math.max(2, Math.floor(bkH * 0.1)), bookW, 1);
             }
 
             bookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, unlocked });
@@ -246,7 +230,51 @@
         // book's spine rather than being painted over by it.
         if (STORY_CURRENT_BOOK && STORY_PAGES_AVAIL > 0) {
             const current = bookBounds.find(b => b.id === STORY_CURRENT_BOOK && b.unlocked);
-            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, current.w, STORY_PAGES_AVAIL);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), STORY_PAGES_AVAIL);
+        }
+    }
+
+    // Second 24-book set — row 1 of the same left shelf section, one shelf
+    // below the quilt row. Still being written: every slot is pale grey until
+    // its content/stories/auntie_NN.php file exists (dark grey), and only the
+    // single current in-progress book (if any) shows in its shade of blue.
+    // Not yet wired to a click/overlay handler — visual only for now.
+    function drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        const secW   = Math.floor(innerWidth / 3);
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
+
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = SECOND_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH * 2;
+
+        const bounds = [];
+        SECOND_BOOKS.forEach((book, i) => {
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
+
+            const exists = SECOND_BOOKS_EXIST.includes(book.id);
+            const active = exists && SECOND_CURRENT_BOOK === book.id;
+            const color  = !exists ? '#dcdcdc' : (active ? book.activeColor : '#585858');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.fillRect(bx, by, bookW, 1);
+
+            bounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+        });
+
+        if (SECOND_CURRENT_BOOK && SECOND_PAGES_AVAIL > 0) {
+            const current = bounds.find(b => b.id === SECOND_CURRENT_BOOK && b.active);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), SECOND_PAGES_AVAIL);
         }
     }
 
@@ -992,6 +1020,7 @@
         });
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
         // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);

@@ -1209,27 +1209,32 @@ function getGlobalStoryPages(): int {
 // unread-pages badge (the red "N pages waiting" circle on the current book's
 // spine). Used by scene.php (full render) and api/heartbeat.php (lightweight
 // poll, badge fields only) so the two never compute this differently.
-function getStoryBookState(): array {
-    $storyBooksExist = [];
-    $storyBooksAvail = [];
+// Shared book-set state logic: which books' files exist, which are sequentially
+// unlocked (each requires the previous to be marked ended), and which one (if
+// any) is the current in-progress book with unread pages. Parameterized by
+// filename prefix and story-progress id prefix so more than one 24-book set
+// can share the mechanism (see getStoryBookState / getSecondBookSetState).
+function getBookSetState(string $filePrefix, string $progressPrefix): array {
+    $booksExist = [];
+    $booksAvail = [];
     $prevEnded = true; // book 1 has no prerequisite
     for ($n = 1; $n <= 24; $n++) {
-        $file   = sprintf('quilt_%02d.php', $n);
+        $file   = sprintf('%s%02d.php', $filePrefix, $n);
         $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
-        if ($fileOk) $storyBooksExist[] = $n;
-        if ($fileOk && $prevEnded) $storyBooksAvail[] = $n;
+        if ($fileOk) $booksExist[] = $n;
+        if ($fileOk && $prevEnded) $booksAvail[] = $n;
         $prevEnded = false;
         if ($fileOk) {
-            $prog      = getStoryProgress('q' . $n);
+            $prog      = getStoryProgress($progressPrefix . $n);
             $prevEnded = !empty($prog['ended']);
         }
     }
 
     $currentBook = 0;
     $pagesAvail  = 0;
-    if (!empty($storyBooksAvail)) {
-        $latestBookId   = end($storyBooksAvail);
-        $latestBookProg = getStoryProgress('q' . $latestBookId);
+    if (!empty($booksAvail)) {
+        $latestBookId   = end($booksAvail);
+        $latestBookProg = getStoryProgress($progressPrefix . $latestBookId);
         if (empty($latestBookProg['ended'])) {
             $pagesAvail = getGlobalStoryPages();
             if ($pagesAvail > 0) $currentBook = $latestBookId;
@@ -1237,11 +1242,22 @@ function getStoryBookState(): array {
     }
 
     return [
-        'books_exist'  => $storyBooksExist,
-        'books_avail'  => $storyBooksAvail,
+        'books_exist'  => $booksExist,
+        'books_avail'  => $booksAvail,
         'current_book' => $currentBook,
         'pages_avail'  => $pagesAvail,
     ];
+}
+
+function getStoryBookState(): array {
+    return getBookSetState('quilt_', 'q');
+}
+
+// Second 24-slot book set (top-shelf-row-2). Files not written yet — every
+// slot renders as the "not written" state until content/stories/auntie_NN.php
+// files start appearing.
+function getSecondBookSetState(): array {
+    return getBookSetState('auntie_', 'a');
 }
 
 function incrementGlobalStoryPages(): int {

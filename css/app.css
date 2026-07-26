@@ -264,6 +264,20 @@ input:focus, textarea:focus, select:focus {
     max-height: min(82vh, calc(100vh - 140px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Stop scroll from chaining to the (non-scrolling) backdrop/body once
+       this box's own scroll hits its top/bottom edge — a defensive nicety
+       on top of the max-height fix above, not required by it. */
+    overscroll-behavior: contain;
+}
+/* 100vh on mobile Safari/Chrome is measured against the largest possible
+   viewport (address bar collapsed), not what's actually on screen — so
+   the max-height above can still end up taller than the true visible
+   area, and thus still reach up under the navbar, whenever the address
+   bar is showing. dvh tracks the real visible viewport; browsers that
+   don't support it (very old Safari/Chrome) just ignore this and keep
+   the vh-based rule above. */
+@supports (max-height: 100dvh) {
+    .overlay-content { max-height: min(82dvh, calc(100dvh - 140px)); }
 }
 
 /* Mobile (and landscape phones, which are wide but just as short as
@@ -284,6 +298,9 @@ input:focus, textarea:focus, select:focus {
         max-height: calc(100vh - 116px);
         border-radius: 18px 18px 0 0;
         padding: 1rem 1rem 1.5rem;
+    }
+    @supports (max-height: 100dvh) {
+        .overlay-content { max-height: calc(100dvh - 116px); }
     }
 }
 

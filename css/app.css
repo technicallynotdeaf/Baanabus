@@ -74,8 +74,13 @@ p  { margin: 0.5rem 0; line-height: 1.5; }
 
 .navbar li a:hover { color: #fff; }
 
-/* Mobile: hide nav labels, show emojis only */
-@media (max-width: 600px) {
+/* Compact nav: hide labels, show emojis only. Triggered by narrow width
+   (portrait phones) OR short height (landscape phones) — a landscape phone
+   is wide enough to clear the old width-only breakpoint but has no more
+   vertical room than portrait, and the full 9-item labelled navbar is wide
+   enough to collide with #nav-context-pill (fixed at the same top:8px row)
+   once it's not forced into this compact mode. */
+@media (max-width: 600px), (max-height: 500px) {
     .navbar li a { padding: 0 9px; font-size: 1.2em; }
     .navbar li a .nav-text { display: none; }
 }
@@ -104,7 +109,7 @@ p  { margin: 0.5rem 0; line-height: 1.5; }
     white-space: nowrap;
     pointer-events: none;
 }
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-height: 500px) {
     #habitica-sync-pill {
         font-size: 0.72em;
         padding: 0 10px;
@@ -239,6 +244,13 @@ input:focus, textarea:focus, select:focus {
     z-index: 100;
 }
 
+/* max-height is expressed against viewport height minus a fixed pixel
+   budget, not a plain vh percentage, so overlay content can never grow
+   tall enough for its top edge to reach up under the fixed navbar
+   (top:8px, ~52px tall) — a plain "82vh" only leaves real clearance on
+   tall viewports; on a short one (landscape phone) it let the box reach
+   almost to the top of the screen, hiding the first line or two of any
+   long overlay (story pages were just the tallest, most visible case). */
 .overlay-content {
     position: absolute;
     top: 50%;
@@ -249,13 +261,19 @@ input:focus, textarea:focus, select:focus {
     padding: 1.5rem;
     width: 88%;
     max-width: 760px;
-    max-height: 82vh;
+    max-height: min(82vh, calc(100vh - 140px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Mobile: bottom sheet */
-@media (max-width: 640px) {
+/* Mobile (and landscape phones, which are wide but just as short as
+   portrait — see .navbar): bottom sheet. Reserves 116px off the top
+   unconditionally rather than trying to detect single-row vs. stacked
+   chrome here: that's enough to clear the navbar plus the
+   #nav-context-pill row stacked beneath it (52px + ~64px), which is the
+   binding case in this breakpoint; the odd narrower gap where only the
+   single-row navbar applies just ends up with a little extra headroom. */
+@media (max-width: 640px), (max-height: 500px) {
     .overlay-content {
         top: auto;
         bottom: 0;
@@ -263,7 +281,7 @@ input:focus, textarea:focus, select:focus {
         right: 0;
         transform: none;
         width: 100%;
-        max-height: 88vh;
+        max-height: calc(100vh - 116px);
         border-radius: 18px 18px 0 0;
         padding: 1rem 1rem 1.5rem;
     }
@@ -537,7 +555,11 @@ body.scene-view #scene-total-pips { display: block; }
    desktop. On mobile the navbar (centered, top:8px) takes the full width of
    the row, so the pill drops to its own row underneath instead of being
    hidden entirely — it was previously display:none below 601px with no
-   mobile equivalent, which made location/energy uneditable on phones. */
+   mobile equivalent, which made location/energy uneditable on phones.
+   Same landscape-phone caveat as .navbar: this must drop to its stacked
+   row whenever height is short too, not just when width is narrow, or a
+   landscape phone renders it beside the (now full-width) navbar and the
+   two fixed, same-row elements visually collide/overlap. */
 #nav-context-pill {
     display: flex;
     position: fixed;
@@ -554,7 +576,7 @@ body.scene-view #scene-total-pips { display: block; }
     border-radius: 22px;
     border: 1px solid rgba(120, 140, 220, 0.25);
 }
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-height: 500px) {
     #nav-context-pill {
         top: 60px;
         right: auto;

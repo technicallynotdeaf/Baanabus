@@ -5,63 +5,90 @@ require_once __DIR__ . '/../config_helper.php';
 if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
-$books = [
-    1  => ['title' => 'The Letter in the Attic',    'color' => '#5A7A4A'],
-    2  => ['title' => 'The Chaiwalla\'s Corner',     'color' => '#C8813A'],
-    3  => ['title' => 'The Hollow Oak',              'color' => '#2D5A2D'],
-    4  => ['title' => 'The Ferryman Knows',          'color' => '#4A7AA0'],
-    5  => ['title' => 'The Mountain Shrine',         'color' => '#5A6A80'],
-    6  => ['title' => 'The Tide Caves',              'color' => '#2A8080'],
-    7  => ['title' => 'The Crystal Chambers',        'color' => '#7A5A9A'],
-    8  => ['title' => 'The Grumpy Count',            'color' => '#8A3A5A'],
-    9  => ['title' => 'The Harbour Dispute',         'color' => '#2A6AB0'],
-    10 => ['title' => 'Fred\'s Canal Boat',          'color' => '#C05A1A'],
-    11 => ['title' => 'The Hill Farm Runes',         'color' => '#7A4A8A'],
-    12 => ['title' => 'The Midsummer Fair',          'color' => '#B89020'],
-    13 => ['title' => 'The Sunken Rooms',            'color' => '#5A7A3A'],
-    14 => ['title' => 'The Oasis Chaiwalla',         'color' => '#C8803A'],
-    15 => ['title' => 'The Treehouse Village',       'color' => '#2A7040'],
-    16 => ['title' => 'The Underground River',       'color' => '#2A8070'],
-    17 => ['title' => 'Lars and the Boat Shed',      'color' => '#3A5A8A'],
-    18 => ['title' => 'The Monastery Library',       'color' => '#8A2A2A'],
-    19 => ['title' => 'The Deep Passage',            'color' => '#3A7A6A'],
-    20 => ['title' => 'The Mountain of Her Youth',   'color' => '#5A5A7A'],
-    21 => ['title' => 'The Valley of Stones',        'color' => '#6A5A70'],
-    22 => ['title' => 'The Storm Crossing',          'color' => '#3A4A6A'],
-    23 => ['title' => 'Grandmother\'s Letter',       'color' => '#8A7A3A'],
-    24 => ['title' => 'The Red Door',                'color' => '#9A2A2A'],
-];
+$family = ($_GET['family'] ?? 'quilt') === 'auntie' ? 'auntie' : 'quilt';
+
+if ($family === 'quilt') {
+    $letter      = 'q';
+    $filePrefix  = 'quilt_';
+    $seriesTitle = "The Grandmother's Quilt";
+    $books = [
+        1  => ['title' => 'The Letter in the Attic',    'color' => '#5A7A4A'],
+        2  => ['title' => 'The Chaiwalla\'s Corner',     'color' => '#C8813A'],
+        3  => ['title' => 'The Hollow Oak',              'color' => '#2D5A2D'],
+        4  => ['title' => 'The Ferryman Knows',          'color' => '#4A7AA0'],
+        5  => ['title' => 'The Mountain Shrine',         'color' => '#5A6A80'],
+        6  => ['title' => 'The Tide Caves',              'color' => '#2A8080'],
+        7  => ['title' => 'The Crystal Chambers',        'color' => '#7A5A9A'],
+        8  => ['title' => 'The Grumpy Count',            'color' => '#8A3A5A'],
+        9  => ['title' => 'The Harbour Dispute',         'color' => '#2A6AB0'],
+        10 => ['title' => 'Fred\'s Canal Boat',          'color' => '#C05A1A'],
+        11 => ['title' => 'The Hill Farm Runes',         'color' => '#7A4A8A'],
+        12 => ['title' => 'The Midsummer Fair',          'color' => '#B89020'],
+        13 => ['title' => 'The Sunken Rooms',            'color' => '#5A7A3A'],
+        14 => ['title' => 'The Oasis Chaiwalla',         'color' => '#C8803A'],
+        15 => ['title' => 'The Treehouse Village',       'color' => '#2A7040'],
+        16 => ['title' => 'The Underground River',       'color' => '#2A8070'],
+        17 => ['title' => 'Lars and the Boat Shed',      'color' => '#3A5A8A'],
+        18 => ['title' => 'The Monastery Library',       'color' => '#8A2A2A'],
+        19 => ['title' => 'The Deep Passage',            'color' => '#3A7A6A'],
+        20 => ['title' => 'The Mountain of Her Youth',   'color' => '#5A5A7A'],
+        21 => ['title' => 'The Valley of Stones',        'color' => '#6A5A70'],
+        22 => ['title' => 'The Storm Crossing',          'color' => '#3A4A6A'],
+        23 => ['title' => 'Grandmother\'s Letter',       'color' => '#8A7A3A'],
+        24 => ['title' => 'The Red Door',                'color' => '#9A2A2A'],
+    ];
+} else {
+    $letter      = 'a';
+    $filePrefix  = 'auntie_';
+    $seriesTitle = "Auntie's Mosaic";
+    // Only books that exist get a real title/colour below (from the story
+    // file itself, once it's written) — unwritten slots stay anonymous
+    // ("Book N") rather than guessing ahead at titles that aren't set yet.
+    $books = [];
+    for ($n = 1; $n <= 24; $n++) {
+        $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
+    }
+}
 
 $config      = getConfig() ?? [];
 $activeStory = (string)($config['active_story_id'] ?? '');
 
 $bookEnded = [];
 foreach ($books as $id => $book) {
-    $path = __DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id);
+    $path = __DIR__ . '/../content/stories/' . sprintf('%s%02d.php', $filePrefix, $id);
     if (!file_exists($path)) { $bookEnded[$id] = false; continue; }
-    $prog = getStoryProgress('q' . $id);
+    $prog = getStoryProgress($letter . $id);
     $bookEnded[$id] = !empty($prog['ended']);
+    // Auntie has no curated picker palette (unlike quilt's hand-picked
+    // colours above) — pull title/colour from the file itself once it
+    // exists, so not-yet-written slots are the only ones left anonymous.
+    // Quilt keeps its own hardcoded values untouched.
+    if ($family === 'auntie') {
+        $storyFile = require $path;
+        if (!empty($storyFile['title'])) $books[$id]['title'] = $storyFile['title'];
+        if (!empty($storyFile['color'])) $books[$id]['color'] = $storyFile['color'];
+    }
 }
 ?>
 <div data-init="initStoryBooks" style="max-width:520px;margin:0 auto;">
-  <h2 style="margin:0 0 0.25rem;font-size:1.1rem;letter-spacing:0.02em;">The Grandmother's Quilt</h2>
+  <h2 style="margin:0 0 0.25rem;font-size:1.1rem;letter-spacing:0.02em;"><?= htmlspecialchars($seriesTitle) ?></h2>
   <p style="margin:0 0 1.25rem;font-size:0.8rem;color:#aaa;">24 books &mdash; earn completions to unlock each one</p>
   <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">
     <?php foreach ($books as $id => $book): ?>
       <?php
-        $fileExists  = file_exists(__DIR__ . '/../content/stories/' . sprintf('quilt_%02d.php', $id));
+        $fileExists  = file_exists(__DIR__ . '/../content/stories/' . sprintf('%s%02d.php', $filePrefix, $id));
         $prevDone    = ($id === 1) || ($bookEnded[$id - 1] ?? false);
         $unlocked    = $fileExists && $prevDone;
-        $prog        = $fileExists ? getStoryProgress('q' . $id) : null;
+        $prog        = $fileExists ? getStoryProgress($letter . $id) : null;
         $depth       = $prog ? (int)($prog['depth'] ?? 0) : 0;
         $pagesAvail  = $prog ? (int)($prog['pages_available'] ?? 1) : 1;
         $isEnded     = $bookEnded[$id] ?? false;
-        $isActive    = ($activeStory === 'q' . $id);
+        $isActive    = ($activeStory === $letter . $id);
         $readyChoice = $unlocked && !$isEnded && ($pagesAvail > $depth);
         $bgColor     = $unlocked ? $book['color'] : '#c8c0b8';
-        $qid         = 'q' . $id;
+        $sid         = $letter . $id;
         $onclick     = $unlocked
-            ? ($isEnded ? "window._storyReset('$qid')" : "window._openStory('$qid')")
+            ? ($isEnded ? "window._storyReset('$sid')" : "window._openStory('$sid')")
             : '';
       ?>
       <div onclick="<?= $onclick ?>"

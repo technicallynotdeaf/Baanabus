@@ -1260,6 +1260,49 @@ function getSecondBookSetState(): array {
     return getBookSetState('auntie_', 'a');
 }
 
+// Story "families" — each is an independently-unlocked set of up to 24
+// books. story_id prefix letter selects the family (e.g. "q5" = quilt book
+// 5, "a3" = second-shelf book 3). api/story_read.php, api/story_choose.php,
+// and api/story_books.php all resolve through this rather than each
+// hardcoding the quilt_NN.php pattern — add new arcs here only.
+const STORY_FAMILY_FILE_PREFIX = [
+    'q' => 'quilt_',
+    'a' => 'auntie_',
+];
+
+// Splits a story_id into its family letter, file prefix, and book number.
+// Returns null for anything that doesn't match a known family or isn't a
+// valid book number (1-24).
+function storyFamilyInfo(string $storyId): ?array {
+    if (!preg_match('/^([a-z]+)(\d+)$/', $storyId, $m)) return null;
+    $letter = $m[1];
+    if (!isset(STORY_FAMILY_FILE_PREFIX[$letter])) return null;
+    $n = (int)$m[2];
+    if ($n < 1 || $n > 24) return null;
+    return ['letter' => $letter, 'file_prefix' => STORY_FAMILY_FILE_PREFIX[$letter], 'n' => $n];
+}
+
+// Loads a story's {id, title, color, pages} array by story_id, or null if
+// the story_id is invalid or its file doesn't exist yet.
+function loadStoryById(string $storyId): ?array {
+    $info = storyFamilyInfo($storyId);
+    if (!$info) return null;
+    $path = __DIR__ . '/content/stories/' . sprintf('%s%02d.php', $info['file_prefix'], $info['n']);
+    if (!file_exists($path)) return null;
+    return require $path;
+}
+
+// First existing book in a family, used as a fallback when no/an invalid
+// story_id is given. Defaults to the quilt family to match prior behaviour
+// (the app only ever had one family before the second shelf existed).
+function defaultStoryId(string $letter = 'q'): string {
+    $filePrefix = STORY_FAMILY_FILE_PREFIX[$letter] ?? STORY_FAMILY_FILE_PREFIX['q'];
+    for ($n = 1; $n <= 24; $n++) {
+        if (file_exists(__DIR__ . '/content/stories/' . sprintf('%s%02d.php', $filePrefix, $n))) return $letter . $n;
+    }
+    return $letter . '1';
+}
+
 function incrementGlobalStoryPages(): int {
     $cfg = getConfig() ?? [];
     $cfg['story_pages'] = (int)($cfg['story_pages'] ?? 1) + 1;

@@ -64,6 +64,7 @@
     }));
 
     let bookBounds        = [];
+    let secondBookBounds  = [];
     let boardBounds       = null;
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
@@ -235,11 +236,13 @@
     }
 
     // Second 24-book set — row 1 of the same left shelf section, one shelf
-    // below the quilt row. Still being written: every slot is pale grey until
-    // its content/stories/auntie_NN.php file exists (dark grey), and only the
+    // below the quilt row. Every slot is pale grey until its
+    // content/stories/auntie_NN.php file exists (dark grey), and only the
     // single current in-progress book (if any) shows in its shade of blue.
-    // Not yet wired to a click/overlay handler — visual only for now.
+    // Clicking opens api/story_books.php?family=auntie, same mechanism as
+    // the quilt row.
     function drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        secondBookBounds = [];
         const secW   = Math.floor(innerWidth / 3);
         const shelfH = Math.floor((innerHeight - clearance) / 6);
 
@@ -250,7 +253,6 @@
         const refBkH  = Math.floor(shelfH * 0.75);
         const bayBot  = innerTop + clearance + shelfH * 2;
 
-        const bounds = [];
         SECOND_BOOKS.forEach((book, i) => {
             const bkH = Math.floor(refBkH * book.h);
             const bx  = innerLeft + sidePad + i * (bookW + gap);
@@ -269,11 +271,11 @@
             ctx.fillStyle = 'rgba(255,255,255,0.16)';
             ctx.fillRect(bx, by, bookW, 1);
 
-            bounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+            secondBookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
         });
 
         if (SECOND_CURRENT_BOOK && SECOND_PAGES_AVAIL > 0) {
-            const current = bounds.find(b => b.id === SECOND_CURRENT_BOOK && b.active);
+            const current = secondBookBounds.find(b => b.id === SECOND_CURRENT_BOOK && b.active);
             if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), SECOND_PAGES_AVAIL);
         }
     }
@@ -1156,7 +1158,13 @@
         for (const b of bookBounds) {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
                 loadOverlay('api/story_books.php');
-                break;
+                return;
+            }
+        }
+        for (const b of secondBookBounds) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+                loadOverlay('api/story_books.php?family=auntie');
+                return;
             }
         }
     });
@@ -1165,7 +1173,8 @@
         const rect = this.getBoundingClientRect();
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
-        const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+        const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
+            || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))

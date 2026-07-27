@@ -5,17 +5,14 @@ require_once __DIR__ . '/../config_helper.php';
 if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
-$storyFiles = [];
-for ($i = 1; $i <= 24; $i++) {
-    $f = sprintf('quilt_%02d.php', $i);
-    if (file_exists(__DIR__ . '/../content/stories/' . $f)) {
-        $storyFiles['q' . $i] = $f;
-    }
+$raw     = trim($_GET['story'] ?? '');
+$storyId = $raw;
+$story   = loadStoryById($storyId);
+if (!$story) {
+    $storyId = defaultStoryId();
+    $story   = loadStoryById($storyId);
 }
-$raw = trim($_GET['story'] ?? '');
-$storyId = preg_match('/^q\d+$/', $raw) ? $raw : 'q1';
-if (!isset($storyFiles[$storyId])) $storyId = array_key_first($storyFiles) ?? 'q1';
-$story   = require __DIR__ . '/../content/stories/' . $storyFiles[$storyId];
+if (!$story) { echo '<p>No stories available.</p>'; exit; }
 $prog    = getStoryProgress($storyId);
 $history = $prog['history'] ?? [];
 

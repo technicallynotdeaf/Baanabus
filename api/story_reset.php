@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'POST only'
 
 $input   = json_decode(file_get_contents('php://input'), true);
 $storyId = trim($input['story_id'] ?? '');
-if (!preg_match('/^q\d+$/', $storyId)) json_response(['error' => 'Missing or invalid story_id'], 400);
+if (!storyFamilyInfo($storyId)) json_response(['error' => 'Missing or invalid story_id'], 400);
 
 try {
     $prog = getStoryProgress($storyId);

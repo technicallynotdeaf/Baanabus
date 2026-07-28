@@ -3,7 +3,7 @@
  * api/triage.php — process an inbox triage decision
  * POST {
  *   task_id,
- *   action: 'next_action'|'someday'|'waiting'|'project'|'delete',
+ *   action: 'next_action'|'someday'|'project'|'delete'|'reference'|'waiting_start',
  *   title?: string,
  *   urgency?: 'low'|'medium'|'high',
  *   time?: '5min'|'15min'|'60min'|'hours',
@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'waiting', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'save_urgency', 'save_importance', 'quick_win'];
+$allowed = ['next_action', 'someday', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'save_urgency', 'save_importance', 'quick_win', 'reference', 'waiting_start'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -59,6 +59,27 @@ try {
 
     } elseif ($action === 'quick_win') {
         $pipResult = vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action'])['pip'] ?? null;
+
+    } elseif ($action === 'reference') {
+        // GTD "Reference" endpoint — worth keeping, nothing to do. No further
+        // triage questions needed (no urgency/energy/context for something
+        // that isn't actionable).
+        $pipResult = vaultUpdateTask($taskId, ['task_type' => 'reference'])['pip'] ?? null;
+
+    } elseif ($action === 'waiting_start') {
+        // GTD "Waiting For" endpoint. person_id is optional (not every
+        // waiting-on is a tracked person — could be a delivery, a reply from
+        // an org, etc). "when" is a check-back interval, not a hard deadline —
+        // pick_waiting_followup() in next_activity.php surfaces it once it
+        // passes, as a dedicated "still waiting?" prompt rather than treating
+        // it like an ordinary snoozed task.
+        $personId = isset($body['person_id']) && $body['person_id'] !== '' ? (int)$body['person_id'] : null;
+        $fields = [
+            'task_type'     => 'waiting',
+            'snoozed_until' => waitingUntilTimestamp($body['when'] ?? '1w'),
+        ];
+        if ($personId) $fields['person_id'] = $personId;
+        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
 
     } elseif ($action === 'mark_actionable') {
         vaultUpdateTask($taskId, ['triage_actionable' => true]);
@@ -109,13 +130,6 @@ try {
 
     } elseif ($action === 'someday') {
         $fields = ['task_type' => 'someday'];
-        if ($newTitle !== '')  $fields['title']   = $newTitle;
-        if ($urgency !== null) $fields['urgency'] = $urgency;
-        if ($time !== null)    $fields['time']    = $time;
-        $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
-
-    } elseif ($action === 'waiting') {
-        $fields = ['task_type' => 'waiting'];
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         if ($time !== null)    $fields['time']    = $time;
@@ -175,8 +189,12 @@ try {
     // Habitica: sync time tag on existing tasks + push new next_actions
     $isPushCandidate = in_array($action, ['quick_win', 'next_action'], true)
         || ($action === 'save_time' && $time !== null && $time <= 120);
+    // reference/waiting_start never carry a time and never create a new
+    // Habitica todo (the opposite of "actionable"), but should still push
+    // updated metadata notes to an existing todo, same as save_context etc.
+    $isNotesOnly = in_array($action, ['reference', 'waiting_start'], true);
 
-    if (($time !== null && $action !== 'delete') || $isPushCandidate) {
+    if (($time !== null && $action !== 'delete') || $isPushCandidate || $isNotesOnly) {
         try {
             $data = getTasks();
             $task = null;
@@ -207,7 +225,7 @@ try {
                         }
                         // Push metadata notes for existing tasks when relevant fields change
                         $notesActions = ['save_urgency', 'save_importance', 'save_context', 'next_action', 'someday',
-                                         'waiting', 'project', 'quick_win', 'save_time', 'mark_actionable'];
+                                         'project', 'quick_win', 'save_time', 'mark_actionable', 'reference', 'waiting_start'];
                         if ($habId && empty($task['habitica_item_id']) && in_array($action, $notesActions, true)) {
                             habiticaPushNotes($habId, $task, $habUser, $habKey);
                         }

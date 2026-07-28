@@ -351,7 +351,11 @@ function getDoableTasks(): array {
     return array_values(array_filter($data['tasks'], fn($t) =>
         $t['status'] === 'active' &&
         empty($t['parent_id']) &&
-        ($t['task_type'] ?? '') !== 'inbox' &&
+        // inbox = not yet triaged; reference/waiting are GTD endpoints that are
+        // deliberately not actionable — reference is filed, not done, and
+        // waiting is someone else's move until its follow-up date arrives
+        // (see pick_waiting_followup in next_activity.php).
+        !in_array($t['task_type'] ?? '', ['inbox', 'reference', 'waiting'], true) &&
         (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now) &&
         $prereqsMet($t) &&
         $locationOk($t)
@@ -425,6 +429,16 @@ function awardPip(): array {
         try { incrementStoryPages(1); } catch (Throwable $e) { error_log('awardPip: incrementStoryPages failed: ' . $e->getMessage()); }
     }
     return ['pages' => $data['pages'], 'pages_target' => $target, 'total_pages' => $data['total_pages'], 'newStoryPage' => $newStoryPage];
+}
+
+// Resolves a Waiting-For "check back in" interval to an ISO datetime.
+// Shared by api/triage.php (waiting_start), api/task_action.php (the
+// waiting_on blocked-reason and the waiting_followup "still waiting"
+// response) — one place to keep the interval set consistent.
+function waitingUntilTimestamp(string $when): string {
+    $intervals = ['3d' => '+3 days', '1w' => '+1 week', '2w' => '+2 weeks', '1m' => '+1 month'];
+    $offset = $intervals[$when] ?? '+1 week';
+    return date('c', strtotime($offset . ' 08:00'));
 }
 
 // Returns any Top 3 jars completed as a side effect of this edit (see
@@ -504,7 +518,7 @@ function top3CreditFieldTransitions(?array $before, array $fields): array {
         $completed = array_merge($completed, creditTop3Progress('inbox_triage', 1));
         $inboxAffected = true;
     }
-    if (in_array($newType, ['someday', 'waiting'], true) && $newType !== $oldType) {
+    if (in_array($newType, ['someday', 'waiting', 'reference'], true) && $newType !== $oldType) {
         $completed = array_merge($completed, creditTop3Progress('declutter', 1));
     }
     if (array_key_exists('status', $fields) && $fields['status'] === 'deleted' && ($before['status'] ?? null) !== 'deleted') {

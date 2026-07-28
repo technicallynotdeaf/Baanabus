@@ -523,6 +523,19 @@ try {
     }
 } catch (Throwable $e) {}
 
+// GTD Waiting-For follow-up: any waiting task whose check-back date has arrived.
+$hasWaitingFollowup = false;
+try {
+    $now = time();
+    foreach (getTasks()['tasks'] as $t) {
+        if (($t['task_type'] ?? '') === 'waiting' && ($t['status'] ?? '') === 'active'
+            && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) <= $now) {
+            $hasWaitingFollowup = true;
+            break;
+        }
+    }
+} catch (Throwable $e) {}
+
 // 1-in-3 chance to surface a missing check-in question mid-session; never back-to-back
 if ($missing && $checkinOn && ($_SESSION['last_activity'] ?? '') !== 'missing_info' && rand(1, 3) === 1) {
     $_SESSION['last_activity'] = 'missing_info';
@@ -546,6 +559,7 @@ $pool = array_merge(
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
     array_fill(0, $hasEventPrebrief ? 1 : 0,           'event_prebrief'),
     array_fill(0, $hasEventDebrief  ? 1 : 0,           'event_debrief'),
+    array_fill(0, $hasWaitingFollowup ? 1 : 0,         'waiting_followup'),
     array_fill(0, $hasHouseTasks         ? 1 : 0,        'house_task'),
     array_fill(0, $hasRoomScan          ? 2 : 0,        'room_scan'),
     array_fill(0, $hasPhysicalObjects   ? 2 : 0,        'physical_object_triage'),
@@ -625,6 +639,11 @@ if ($choice === 'event_prebrief') {
 if ($choice === 'event_debrief') {
     $ed = pick_event_debrief();
     if ($ed) json_response($ed);
+    json_response(pick_fun_task());
+}
+if ($choice === 'waiting_followup') {
+    $wf = pick_waiting_followup();
+    if ($wf) json_response($wf);
     json_response(pick_fun_task());
 }
 if ($choice === 'room_scan') {
@@ -765,8 +784,19 @@ function serve_triage_question(array $inboxTasks, array $fillTasks): ?array {
         ));
         usort($triageItems, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
         $triageItems = array_map(fn($s) => $s['title'], $triageItems);
-        return ['type' => 'triage', 'source' => 'inbox', 'id' => (int)$t['id'],
+        $resp = ['type' => 'triage', 'source' => 'inbox', 'id' => (int)$t['id'],
             'title' => $t['title'], 'question' => $q, 'items' => $triageItems];
+        if ($q === 'actionable') {
+            // Powers the "Waiting on someone" sub-form's person picker —
+            // sent up front so choosing it doesn't need a second round trip.
+            try {
+                $people = array_values(array_filter(getPeople()['people'] ?? [], fn($p) => ($p['is_active'] ?? 1) != 0));
+                $resp['people'] = array_map(fn($p) => ['person_id' => (int)$p['person_id'], 'name' => $p['name'] ?? ''], $people);
+            } catch (Throwable $e) {
+                $resp['people'] = [];
+            }
+        }
+        return $resp;
     }
     shuffle($fillTasks);
     foreach ($fillTasks as $t) {
@@ -1007,6 +1037,34 @@ function pick_event_debrief(): ?array {
             'person_id'  => (int)$person['person_id'],
             'name'       => $person['name'] ?? 'them',
             'event_date' => $t['_sched'],
+        ];
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+// GTD "Waiting For" follow-up: surfaces once a waiting task's check-back
+// date (snoozed_until, set at capture time via waiting_start/waiting_on)
+// arrives. Deliberately not routed through getDoableTasks() — waiting
+// tasks are excluded from that pool entirely, this is the one dedicated
+// path back into view for them.
+function pick_waiting_followup(): ?array {
+    try {
+        $now  = time();
+        $candidates = [];
+        foreach (getTasks()['tasks'] as $t) {
+            if (($t['task_type'] ?? '') !== 'waiting' || ($t['status'] ?? '') !== 'active') continue;
+            if (empty($t['snoozed_until']) || strtotime($t['snoozed_until']) > $now) continue;
+            $candidates[] = $t;
+        }
+        if (empty($candidates)) return null;
+        usort($candidates, fn($a, $b) => strtotime($a['snoozed_until']) <=> strtotime($b['snoozed_until']));
+        $t = $candidates[0];
+        return [
+            'type'        => 'waiting_followup',
+            'task_id'     => (int)$t['id'],
+            'title'       => $t['title'],
+            'person_name' => personNameForId(isset($t['person_id']) ? (int)$t['person_id'] : null),
         ];
     } catch (Throwable $e) {
         return null;

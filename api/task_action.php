@@ -39,11 +39,17 @@ try {
                     vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime('+4 hours'))]);
                     break;
                 case 'waiting_on':
-                    vaultUpdateTask($taskId, [
-                        'stuck'         => true,
-                        'stuck_at'      => date('c'),
-                        'snoozed_until' => date('c', strtotime('tomorrow 08:00')),
-                    ]);
+                    // GTD "Waiting For" endpoint, same as the triage flow's
+                    // waiting_start action — a task already in progress just
+                    // turned out to be blocked on someone else's move.
+                    $personId = isset($input['person_id']) && $input['person_id'] !== '' ? (int)$input['person_id'] : null;
+                    $fields = [
+                        'task_type'     => 'waiting',
+                        'stuck'         => false,
+                        'snoozed_until' => waitingUntilTimestamp($input['when'] ?? '1w'),
+                    ];
+                    if ($personId) $fields['person_id'] = $personId;
+                    vaultUpdateTask($taskId, $fields);
                     break;
                 case 'too_vague':
                     // Return to inbox for re-triage
@@ -129,6 +135,22 @@ try {
             if (!in_array($urgency, ['low', 'medium', 'high'], true))
                 json_response(['error' => 'Invalid urgency value'], 400);
             vaultUpdateTask($taskId, ['urgency' => $urgency, 'urgency_set' => true]);
+            json_response(['ok' => true]);
+
+        case 'waiting_followup':
+            // Response to the "still waiting?" prompt (pick_waiting_followup
+            // in next_activity.php) once a waiting task's check-back date
+            // arrives.
+            $response = $input['response'] ?? '';
+            if ($response === 'still') {
+                vaultUpdateTask($taskId, ['snoozed_until' => waitingUntilTimestamp($input['when'] ?? '1w')]);
+            } elseif ($response === 'resolved') {
+                vaultUpdateTask($taskId, ['task_type' => 'next_action', 'snoozed_until' => null]);
+            } elseif ($response === 'cancel') {
+                vaultUpdateTask($taskId, ['status' => 'deleted']);
+            } else {
+                json_response(['error' => 'Unknown response'], 400);
+            }
             json_response(['ok' => true]);
 
         default:

@@ -58,6 +58,7 @@ window.initLetsGo = function() {
       case 'person_review':  renderPersonReview(d);  break;
       case 'event_prebrief': renderEventPrebrief(d); break;
       case 'event_debrief':  renderEventDebrief(d);  break;
+      case 'waiting_followup': renderWaitingFollowup(d); break;
       case 'bible_verse':    renderBibleVerse(d);    break;
       case 'bedtime':        renderBedtime(d);       break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
@@ -270,6 +271,55 @@ window.initLetsGo = function() {
     }, seconds * 1000);
   }
 
+  // Shared "who + how long" sub-form for the GTD Waiting-For endpoint —
+  // used by both renderTriage's "Waiting on someone" choice (which already
+  // has a people list from the server, passed in directly) and
+  // _showBlocked's "waiting_on" reason (which doesn't, so pass null to
+  // fetch it fresh). onConfirm(personId, when, onError) is called with the
+  // picked values; call onError(message) to re-enable the form on failure.
+  function renderWaitingSubform(container, people, onConfirm) {
+    function build(peopleList) {
+      const peopleOpts = peopleList.map(p => `<option value="${p.person_id}">${esc(p.name)}</option>`).join('');
+      container.innerHTML = `
+        <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Who (optional)</label>
+        <select id="wf-person" style="width:100%;box-sizing:border-box;margin-bottom:0.5rem;padding:0.35rem 0.4rem;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;">
+          <option value="">Not tracked / no one specific</option>
+          ${peopleOpts}
+        </select>
+        <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Check back in</label>
+        <select id="wf-when" style="width:100%;box-sizing:border-box;margin-bottom:0.6rem;padding:0.35rem 0.4rem;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;">
+          <option value="3d">3 days</option>
+          <option value="1w" selected>1 week</option>
+          <option value="2w">2 weeks</option>
+          <option value="1m">1 month</option>
+        </select>
+        <button class="action-button" id="wf-confirm" style="width:100%;">Confirm</button>
+        <p id="wf-status" class="muted" style="margin-top:0.4rem;min-height:1.2em;font-size:0.85em;"></p>`;
+      document.getElementById('wf-confirm').addEventListener('click', () => {
+        const personId = document.getElementById('wf-person').value || null;
+        const when = document.getElementById('wf-when').value;
+        document.getElementById('wf-confirm').disabled = true;
+        document.getElementById('wf-status').textContent = 'Saving…';
+        onConfirm(personId, when, (errMsg) => {
+          const status = document.getElementById('wf-status');
+          const btn = document.getElementById('wf-confirm');
+          if (status) status.textContent = errMsg || 'Could not save.';
+          if (btn) btn.disabled = false;
+        });
+      });
+    }
+
+    if (people) {
+      build(people);
+    } else {
+      container.innerHTML = '<p class="muted" style="font-size:0.85em;">Loading…</p>';
+      fetch('api/people_list.php')
+        .then(r => r.json())
+        .then(data => build(data.people || []))
+        .catch(() => { container.innerHTML = '<p class="muted">Could not load people.</p>'; });
+    }
+  }
+
   function renderFunTask(d) {
     const secs = d.seconds || null;
     const uid  = Math.random().toString(36).slice(2);
@@ -443,7 +493,19 @@ window.initLetsGo = function() {
       mkBtn("Wrong place right now",          () => sendBlocked('wrong_place')),
       mkBtn("Not enough energy for this",     () => sendBlocked('low_energy')),
       mkBtn("Need a longer stretch of time",  () => sendBlocked('no_time')),
-      mkBtn("Waiting on something else first",() => sendBlocked('waiting_on')),
+      mkBtn("Waiting on something else first",() => {
+        opts.innerHTML = '';
+        renderWaitingSubform(opts, null, (personId, when, onError) => {
+          fetch('api/task_action.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ task_id: taskId, action: 'blocked', reason: 'waiting_on', person_id: personId, when }),
+          }).then(r => r.json()).then(data => {
+            if (data.ok) setTimeout(() => loadSpeechBubble('lets-go.php'), 400);
+            else onError(data.error);
+          }).catch(() => onError('Network error.'));
+        });
+      }),
       mkBtn("Not sure what to do with it",    () => sendBlocked('too_vague')),
     );
 
@@ -1314,6 +1376,14 @@ window.initLetsGo = function() {
             .then(res => { if (res.success) updateProgressBar(res.pages, res.pages_target, res.total_pages); })
             .finally(() => setTimeout(() => loadSpeechBubble('lets-go.php'), 300));
         }, 'background:#4caf50;'),
+        mkBtn("Waiting on someone", () => {
+          el.innerHTML = '';
+          renderWaitingSubform(el, d.people || [], (personId, when) => {
+            save({action: 'waiting_start', person_id: personId, when});
+          });
+        }, 'background:transparent;color:#553c87;border:1.5px solid #553c87;'),
+        mkBtn("File as reference", () => save({action:'reference'}),
+          'background:transparent;color:#8a7a5a;border:1.5px solid #8a7a5a;'),
         mkBtn("Someday", () => save({action:'someday'}),
           'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);'),
         mkBtn("Delete it", () => save({action:'delete'}),
@@ -1778,6 +1848,64 @@ window.initLetsGo = function() {
         document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
       });
     };
+  }
+
+  function renderWaitingFollowup(d) {
+    const who = d.person_name ? ` — waiting on ${esc(d.person_name)}` : '';
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Still waiting?</p>
+      <p style="font-weight:600;line-height:1.4;margin-bottom:0.75rem;">${esc(d.title)}${who}</p>
+      <div id="wfup-actions" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <p id="wfup-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>`;
+
+    const el     = document.getElementById('wfup-actions');
+    const status = document.getElementById('wfup-status');
+
+    function respond(response, extra) {
+      el.querySelectorAll('button, select').forEach(b => b.disabled = true);
+      status.textContent = 'Saving…';
+      fetch('api/task_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({task_id: d.task_id, action: 'waiting_followup', response, ...extra}),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          earnPip();
+          if (!maybeAffirm()) loadSpeechBubble('lets-go.php');
+        } else {
+          status.textContent = data.error || 'Could not save.';
+          el.querySelectorAll('button, select').forEach(b => b.disabled = false);
+        }
+      }).catch(() => {
+        status.textContent = 'Network error.';
+        el.querySelectorAll('button, select').forEach(b => b.disabled = false);
+      });
+    }
+
+    const stillRow = document.createElement('div');
+    stillRow.style.cssText = 'display:flex;gap:6px;';
+    const whenSel = document.createElement('select');
+    whenSel.style.cssText = 'flex:1;padding:0.35rem 0.4rem;font-size:0.9rem;border:1px solid #ccc;border-radius:6px;';
+    whenSel.innerHTML = `<option value="3d">3 days</option><option value="1w" selected>1 week</option><option value="2w">2 weeks</option><option value="1m">1 month</option>`;
+    const stillBtn = document.createElement('button');
+    stillBtn.className = 'action-button';
+    stillBtn.style.cssText = 'flex-shrink:0;';
+    stillBtn.textContent = 'Still waiting';
+    stillBtn.addEventListener('click', () => respond('still', {when: whenSel.value}));
+    stillRow.append(whenSel, stillBtn);
+
+    const resolvedBtn = document.createElement('button');
+    resolvedBtn.className = 'action-button';
+    resolvedBtn.style.cssText = 'width:100%;';
+    resolvedBtn.textContent = 'Got a response — make it actionable';
+    resolvedBtn.addEventListener('click', () => respond('resolved'));
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'action-button';
+    cancelBtn.style.cssText = 'width:100%;background:transparent;color:#c0392b;border:1.5px solid #c0392b;';
+    cancelBtn.textContent = 'No longer needed';
+    cancelBtn.addEventListener('click', () => respond('cancel'));
+
+    el.append(stillRow, resolvedBtn, cancelBtn);
   }
 
   function renderBibleVerse(d) {

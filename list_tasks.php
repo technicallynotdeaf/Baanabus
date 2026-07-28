@@ -81,12 +81,13 @@ $filter = $_GET['filter'] ?? '';
 
 // Bucket filter views (non-snoozed)
 $bucketFilters = [
-    'inbox'   => ['title' => 'Inbox',          'note' => 'Unprocessed — work through these in the Let\'s Go bubble.', 'type' => 'inbox'],
-    'ready'   => ['title' => 'Ready',           'note' => 'Active next actions you can do now.',                       'type' => 'next_action'],
-    'someday' => ['title' => 'Someday',         'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
-    'waiting' => ['title' => 'Waiting',         'note' => 'Delegated or blocked on someone else.',                    'type' => 'waiting'],
-    'blocked' => ['title' => 'Blocked',         'note' => 'Next actions waiting on another task to be done first.',                        'type' => 'next_action'],
-    'project' => ['title' => 'Projects',          'note' => 'Multi-step tasks. Break any without a next action into a first concrete step.', 'type' => 'project'],
+    'inbox'     => ['title' => 'Inbox',     'note' => 'Unprocessed — work through these in the Let\'s Go bubble.', 'type' => 'inbox'],
+    'ready'     => ['title' => 'Ready',     'note' => 'Active next actions you can do now.',                       'type' => 'next_action'],
+    'someday'   => ['title' => 'Someday',   'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
+    'waiting'   => ['title' => 'Waiting',   'note' => 'Delegated or blocked on someone else — resurfaces on its own for a check-in once the date arrives.', 'type' => 'waiting'],
+    'reference' => ['title' => 'Reference', 'note' => 'Kept for later — not something to do, just something to keep.', 'type' => 'reference'],
+    'blocked'   => ['title' => 'Blocked',   'note' => 'Next actions waiting on another task to be done first.',    'type' => 'next_action'],
+    'project'   => ['title' => 'Projects',  'note' => 'Multi-step tasks. Break any without a next action into a first concrete step.', 'type' => 'project'],
 ];
 if (isset($bucketFilters[$filter])) {
     $completedIds = [];
@@ -98,6 +99,14 @@ if (isset($bucketFilters[$filter])) {
     $taskTitleMap = [];
     foreach ($all as $t2) {
         $taskTitleMap[(int)$t2['id']] = $t2['title'];
+    }
+    $personNameMap = [];
+    if ($filter === 'waiting') {
+        try {
+            foreach (getPeople()['people'] as $p) {
+                $personNameMap[(int)$p['person_id']] = $p['name'] ?? '';
+            }
+        } catch (Throwable $e) {}
     }
 
     $def      = $bucketFilters[$filter];
@@ -126,7 +135,10 @@ if (isset($bucketFilters[$filter])) {
     <?php foreach ($filtered as $t):
         $isSnoozed = !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now;
         $isStuck   = !empty($t['stuck']);
-        $notDoable = $isSnoozed || $isStuck;
+        // Waiting tasks are *always* snoozed by design (that's how the
+        // check-back date works) — dimming every row in this bucket the same
+        // way a genuinely-idle snoozed task dims elsewhere would be noise.
+        $notDoable = ($filter !== 'waiting' && $isSnoozed) || $isStuck;
         $ctx       = trim($t['context'] ?? '');
         $type      = $t['task_type'] ?? '';
     ?>
@@ -145,7 +157,15 @@ if (isset($bucketFilters[$filter])) {
             needs first: <?= htmlspecialchars(implode(', ', $blockers)) ?>
           </div>
         <?php endif;
-        else:
+        elseif ($filter === 'waiting'):
+            $who = !empty($t['person_id']) ? ($personNameMap[(int)$t['person_id']] ?? null) : null;
+            $checkBack = !empty($t['snoozed_until']) ? date('D j M', strtotime($t['snoozed_until'])) : null;
+        ?>
+          <div style="font-size:0.78em;color:#8b7355;margin-top:3px;line-height:1.4;">
+            <?php if ($who): ?>waiting on <?= htmlspecialchars($who) ?><?php else: ?>not tied to anyone specific<?php endif; ?>
+            <?php if ($checkBack): ?> &middot; checking back <?= htmlspecialchars($checkBack) ?><?php endif; ?>
+          </div>
+        <?php else:
           $subs = $subtaskMap[(int)$t['id']] ?? [];
           if ($subs): ?>
           <div style="font-size:0.78em;color:#bbb;margin-top:2px;line-height:1.4;">

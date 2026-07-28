@@ -75,7 +75,7 @@ $pageCount    = 0;
 $pageTarget   = 15;
 $totalPages   = 0;
 $snoozedCount = 0;
-$buckets      = ['routine' => 0, 'inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0];
+$buckets      = ['routine' => 0, 'inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0, 'reference' => 0];
 if (isUnlocked()) {
     try {
         $t = getTasks();
@@ -96,14 +96,19 @@ if (isUnlocked()) {
             $type          = $task['task_type'] ?? '';
             $isSnoozed     = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
             $isFutureSched = !empty($task['scheduled_date']) && $task['scheduled_date'] > $today;
-            // reference is not actionable — intentionally excluded from the bar
-            if      ($type === 'reference')                                  { /* skip */ }
+            // reference isn't actionable, but it IS a real bucket now (GTD
+            // reference endpoint) — shown so filed items stay reachable from
+            // the scene, same as someday/waiting.
+            if      ($type === 'reference')                                  { $buckets['reference']++; }
             elseif  ($type === 'inbox')                                      { $buckets['inbox']++; }
+            // waiting tasks always carry a snoozed_until (the check-back
+            // date) — checked ahead of the generic isSnoozed case so they
+            // land in their own segment instead of being swallowed by it.
+            elseif  ($type === 'waiting')                                    { $buckets['waiting']++; }
             elseif  ($isSnoozed || $isFutureSched)                          { $buckets['snoozed']++; }
             elseif  ($type === 'next_action' && $prereqsMet($task))          { $buckets['ready']++; }
             elseif  ($type === 'next_action' && !$prereqsMet($task))         { $buckets['blocked']++; }
             elseif  ($type === 'someday')                                    { $buckets['someday']++; }
-            elseif  ($type === 'waiting')                                    { $buckets['waiting']++; }
             elseif  ($type === 'project')                                    { $buckets['project']++; }
             // unknown types also intentionally excluded rather than shown as noise
         }
@@ -121,6 +126,7 @@ $bucketDefs = [
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],
     'waiting' => ['label' => 'waiting',      'color' => '#553c87', 'filter' => 'waiting'],
     'project' => ['label' => 'projects',     'color' => '#2a2a2a', 'filter' => 'project'],
+    'reference' => ['label' => 'reference',  'color' => '#8a7a5a', 'filter' => 'reference'],
 ];
 $scoreboardSegs = [];
 foreach ($bucketDefs as $key => $def) {

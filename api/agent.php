@@ -35,6 +35,9 @@
  * POST {"action":"add_person_note","person_id":N,"note_content":"..."}
  *      → append a note to a person record
  *
+ * POST {"action":"delete_person_note","note_id":N}
+ *      → remove a note from a person record
+ *
  * POST {"action":"update_person","person_id":N,"fields":{...}}
  *      → update fields on a person record (name, birthday, circles, next_review_date, etc.)
  *
@@ -1170,6 +1173,18 @@ if ($method === 'POST') {
         if (mb_strlen($contents) > 2000) json_response(['error' => 'Note too long (max 2000 chars)'], 400);
         try {
             $noteId = vaultAddPeopleNote($personId, $contents);
+            json_response(['ok' => true, 'note_id' => $noteId]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_person_note') {
+        $noteId = (int)($body['note_id'] ?? 0);
+        if (!$noteId) json_response(['error' => 'Missing note_id'], 400);
+        try {
+            $deleted = vaultDeletePeopleNote($noteId);
+            if (!$deleted) json_response(['error' => 'Note not found'], 404);
             json_response(['ok' => true, 'note_id' => $noteId]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);

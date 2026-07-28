@@ -1192,6 +1192,15 @@ function vaultAddPeopleNote(int $personId, string $contents): int {
     return $noteId;
 }
 
+function vaultDeletePeopleNote(int $noteId): bool {
+    $data   = getPeopleNotes();
+    $before = count($data['notes']);
+    $data['notes'] = array_values(array_filter($data['notes'], fn($n) => (int)$n['note_id'] !== $noteId));
+    if (count($data['notes']) === $before) return false;
+    savePeopleNotes($data);
+    return true;
+}
+
 // ---------- Story progress (stored in config.enc under config['stories'][$id]) ----------
 
 function getStoryProgress(string $storyId): array {

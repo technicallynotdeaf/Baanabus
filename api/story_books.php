@@ -5,7 +5,8 @@ require_once __DIR__ . '/../config_helper.php';
 if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
-$family = ($_GET['family'] ?? 'quilt') === 'auntie' ? 'auntie' : 'quilt';
+$family = $_GET['family'] ?? 'quilt';
+if (!in_array($family, ['quilt', 'auntie', 'wayfarer'], true)) $family = 'quilt';
 
 if ($family === 'quilt') {
     $letter      = 'q';
@@ -37,13 +38,22 @@ if ($family === 'quilt') {
         23 => ['title' => 'Grandmother\'s Letter',       'color' => '#8A7A3A'],
         24 => ['title' => 'The Red Door',                'color' => '#9A2A2A'],
     ];
-} else {
+} elseif ($family === 'auntie') {
     $letter      = 'a';
     $filePrefix  = 'auntie_';
     $seriesTitle = "Auntie's Mosaic";
     // Only books that exist get a real title/colour below (from the story
     // file itself, once it's written) — unwritten slots stay anonymous
     // ("Book N") rather than guessing ahead at titles that aren't set yet.
+    $books = [];
+    for ($n = 1; $n <= 24; $n++) {
+        $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
+    }
+} else {
+    $letter      = 'w';
+    $filePrefix  = 'wayfarer_';
+    $seriesTitle = "The Wayfarer's Instrument";
+    // Same "pull from the file once it exists" convention as auntie above.
     $books = [];
     for ($n = 1; $n <= 24; $n++) {
         $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
@@ -59,11 +69,11 @@ foreach ($books as $id => $book) {
     if (!file_exists($path)) { $bookEnded[$id] = false; continue; }
     $prog = getStoryProgress($letter . $id);
     $bookEnded[$id] = !empty($prog['ended']);
-    // Auntie has no curated picker palette (unlike quilt's hand-picked
-    // colours above) — pull title/colour from the file itself once it
-    // exists, so not-yet-written slots are the only ones left anonymous.
-    // Quilt keeps its own hardcoded values untouched.
-    if ($family === 'auntie') {
+    // Auntie and Wayfarer have no curated picker palette (unlike quilt's
+    // hand-picked colours above) — pull title/colour from the file itself
+    // once it exists, so not-yet-written slots are the only ones left
+    // anonymous. Quilt keeps its own hardcoded values untouched.
+    if ($family === 'auntie' || $family === 'wayfarer') {
         $storyFile = require $path;
         if (!empty($storyFile['title'])) $books[$id]['title'] = $storyFile['title'];
         if (!empty($storyFile['color'])) $books[$id]['color'] = $storyFile['color'];

@@ -17,6 +17,10 @@
     const SECOND_BOOKS_EXIST = JSON.parse(canvas.dataset.secondBooksExist || '[]');
     let SECOND_CURRENT_BOOK  = parseInt(canvas.dataset.secondCurrentBook, 10) || 0;
     let SECOND_PAGES_AVAIL   = parseInt(canvas.dataset.secondPagesAvail,  10) || 0;
+    const THIRD_BOOKS_AVAIL  = JSON.parse(canvas.dataset.thirdBooksAvail || '[]');
+    const THIRD_BOOKS_EXIST  = JSON.parse(canvas.dataset.thirdBooksExist || '[]');
+    let THIRD_CURRENT_BOOK   = parseInt(canvas.dataset.thirdCurrentBook, 10) || 0;
+    let THIRD_PAGES_AVAIL    = parseInt(canvas.dataset.thirdPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -63,8 +67,19 @@
         activeColor: `hsl(${205 + (i % 6) * 8}, ${52 + (i % 3) * 8}%, ${30 + (i % 4) * 7}%)`,
     }));
 
+    // Third 24-book set (row 2 of the left shelf section, one shelf below the
+    // second row) — "The Wayfarer's Instrument". Same slot mechanism as
+    // SECOND_BOOKS, but cycles through warm brass/amber shades instead of
+    // blue, so the shelf reads as a visually distinct arc at a glance.
+    const THIRD_BOOKS = Array.from({ length: 24 }, (_, i) => ({
+        id: i + 1,
+        h: 0.70 + ((i * 5) % 18) / 100,
+        activeColor: `hsl(${32 + (i % 6) * 6}, ${58 + (i % 3) * 8}%, ${34 + (i % 4) * 6}%)`,
+    }));
+
     let bookBounds        = [];
     let secondBookBounds  = [];
+    let thirdBookBounds   = [];
     let boardBounds       = null;
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
@@ -277,6 +292,50 @@
         if (SECOND_CURRENT_BOOK && SECOND_PAGES_AVAIL > 0) {
             const current = secondBookBounds.find(b => b.id === SECOND_CURRENT_BOOK && b.active);
             if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), SECOND_PAGES_AVAIL);
+        }
+    }
+
+    // Third 24-book set — row 2 of the same left shelf section, one shelf
+    // below the second row. Same "not written yet" pale-grey / dark-grey /
+    // active-shade mechanism as drawSecondBookSet, just one bay lower and
+    // warm-toned instead of blue. Clicking opens
+    // api/story_books.php?family=wayfarer.
+    function drawThirdBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        thirdBookBounds = [];
+        const secW   = Math.floor(innerWidth / 3);
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
+
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = THIRD_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH * 3;
+
+        THIRD_BOOKS.forEach((book, i) => {
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
+
+            const exists = THIRD_BOOKS_EXIST.includes(book.id);
+            const active = exists && THIRD_CURRENT_BOOK === book.id;
+            const color  = !exists ? '#dcdcdc' : (active ? book.activeColor : '#585858');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.fillRect(bx, by, bookW, 1);
+
+            thirdBookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+        });
+
+        if (THIRD_CURRENT_BOOK && THIRD_PAGES_AVAIL > 0) {
+            const current = thirdBookBounds.find(b => b.id === THIRD_CURRENT_BOOK && b.active);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), THIRD_PAGES_AVAIL);
         }
     }
 
@@ -1023,6 +1082,7 @@
 
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawThirdBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
         // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);
@@ -1167,6 +1227,12 @@
                 return;
             }
         }
+        for (const b of thirdBookBounds) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+                loadOverlay('api/story_books.php?family=wayfarer');
+                return;
+            }
+        }
     });
 
     canvas.addEventListener('mousemove', function(e) {
@@ -1174,7 +1240,8 @@
         const cx   = e.clientX - rect.left;
         const cy   = e.clientY - rect.top;
         const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
-            || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+            || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
+            || thirdBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))

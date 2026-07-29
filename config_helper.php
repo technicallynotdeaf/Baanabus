@@ -1283,6 +1283,13 @@ function getSecondBookSetState(): array {
     return getBookSetState('auntie_', 'a');
 }
 
+// Third 24-slot book set (left-shelf-row-3), "The Wayfarer's Instrument".
+// Files not written yet — every slot renders as the "not written" state
+// until content/stories/wayfarer_NN.php files start appearing.
+function getThirdBookSetState(): array {
+    return getBookSetState('wayfarer_', 'w');
+}
+
 // Story "families" — each is an independently-unlocked set of up to 24
 // books. story_id prefix letter selects the family (e.g. "q5" = quilt book
 // 5, "a3" = second-shelf book 3). api/story_read.php, api/story_choose.php,
@@ -1291,6 +1298,7 @@ function getSecondBookSetState(): array {
 const STORY_FAMILY_FILE_PREFIX = [
     'q' => 'quilt_',
     'a' => 'auntie_',
+    'w' => 'wayfarer_',
 ];
 
 // Splits a story_id into its family letter, file prefix, and book number.

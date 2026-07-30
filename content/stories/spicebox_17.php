@@ -2,7 +2,7 @@
 return [
     'id'    => 17,
     'title' => 'The Only Ingredient That Can\'t Be Bought',
-    'color' => '#B85A2A',
+    'color' => '#C4952A',
 
     'pages' => [
         '1_start' => [

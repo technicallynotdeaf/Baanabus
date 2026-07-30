@@ -1300,6 +1300,11 @@ function getFifthBookSetState(): array {
     return getBookSetState('spicebox_', 'spice');
 }
 
+// Sixth 24-slot book set (left-shelf-row-6, the final row), "Everything Overhead".
+function getSixthBookSetState(): array {
+    return getBookSetState('skyatlas_', 'sky');
+}
+
 // Story "families" — each is an independently-unlocked set of up to 24
 // books. story_id prefix letter selects the family (e.g. "q5" = quilt book
 // 5, "a3" = second-shelf book 3). api/story_read.php, api/story_choose.php,
@@ -1311,6 +1316,7 @@ const STORY_FAMILY_FILE_PREFIX = [
     'w' => 'wayfarer_',
     'salt' => 'saltroad_',
     'spice' => 'spicebox_',
+    'sky' => 'skyatlas_',
 ];
 
 // Splits a story_id into its family letter, file prefix, and book number.

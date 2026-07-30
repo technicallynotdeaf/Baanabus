@@ -29,6 +29,10 @@
     const FIFTH_BOOKS_EXIST  = JSON.parse(canvas.dataset.fifthBooksExist || '[]');
     let FIFTH_CURRENT_BOOK   = parseInt(canvas.dataset.fifthCurrentBook, 10) || 0;
     let FIFTH_PAGES_AVAIL    = parseInt(canvas.dataset.fifthPagesAvail,  10) || 0;
+    const SIXTH_BOOKS_AVAIL  = JSON.parse(canvas.dataset.sixthBooksAvail || '[]');
+    const SIXTH_BOOKS_EXIST  = JSON.parse(canvas.dataset.sixthBooksExist || '[]');
+    let SIXTH_CURRENT_BOOK   = parseInt(canvas.dataset.sixthCurrentBook, 10) || 0;
+    let SIXTH_PAGES_AVAIL    = parseInt(canvas.dataset.sixthPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -104,11 +108,21 @@
         activeColor: `hsl(${5 + (i % 6) * 10}, ${55 + (i % 3) * 8}%, ${32 + (i % 4) * 6}%)`,
     }));
 
+    // Sixth 24-book set (row 5 of the left shelf section, the final row) —
+    // "Everything Overhead". Same mechanism again, cycling through deep
+    // night-sky blues/violets to stay visually distinct from the rows above.
+    const SIXTH_BOOKS = Array.from({ length: 24 }, (_, i) => ({
+        id: i + 1,
+        h: 0.70 + ((i * 11) % 18) / 100,
+        activeColor: `hsl(${215 + (i % 6) * 9}, ${48 + (i % 3) * 9}%, ${28 + (i % 4) * 6}%)`,
+    }));
+
     let bookBounds        = [];
     let secondBookBounds  = [];
     let thirdBookBounds   = [];
     let fourthBookBounds  = [];
     let fifthBookBounds   = [];
+    let sixthBookBounds   = [];
     let boardBounds       = null;
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
@@ -449,6 +463,48 @@
         if (FIFTH_CURRENT_BOOK && FIFTH_PAGES_AVAIL > 0) {
             const current = fifthBookBounds.find(b => b.id === FIFTH_CURRENT_BOOK && b.active);
             if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), FIFTH_PAGES_AVAIL);
+        }
+    }
+
+    // Sixth 24-book set — row 5 of the same left shelf section, the final
+    // row (the shelf has exactly 6 row-bays). Clicking opens
+    // api/story_books.php?family=skyatlas.
+    function drawSixthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        sixthBookBounds = [];
+        const secW   = Math.floor(innerWidth / 3);
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
+
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = SIXTH_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH * 6;
+
+        SIXTH_BOOKS.forEach((book, i) => {
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
+
+            const exists = SIXTH_BOOKS_EXIST.includes(book.id);
+            const active = exists && SIXTH_CURRENT_BOOK === book.id;
+            const color  = !exists ? '#dcdcdc' : (active ? book.activeColor : '#585858');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.fillRect(bx, by, bookW, 1);
+
+            sixthBookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+        });
+
+        if (SIXTH_CURRENT_BOOK && SIXTH_PAGES_AVAIL > 0) {
+            const current = sixthBookBounds.find(b => b.id === SIXTH_CURRENT_BOOK && b.active);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), SIXTH_PAGES_AVAIL);
         }
     }
 
@@ -1198,6 +1254,7 @@
         drawThirdBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawFourthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawFifthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawSixthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
         // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);
@@ -1360,6 +1417,12 @@
                 return;
             }
         }
+        for (const b of sixthBookBounds) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+                loadOverlay('api/story_books.php?family=skyatlas');
+                return;
+            }
+        }
     });
 
     canvas.addEventListener('mousemove', function(e) {
@@ -1370,7 +1433,8 @@
             || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
             || thirdBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
             || fourthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
-            || fifthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+            || fifthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
+            || sixthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))

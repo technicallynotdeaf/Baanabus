@@ -1237,10 +1237,13 @@ function getGlobalStoryPages(): int {
 // any) is the current in-progress book with unread pages. Parameterized by
 // filename prefix and story-progress id prefix so more than one 24-book set
 // can share the mechanism (see getStoryBookState / getSecondBookSetState).
-function getBookSetState(string $filePrefix, string $progressPrefix): array {
+// $seriesUnlocked gates book 1 itself — false means the whole series is still
+// locked behind an earlier series (see isSeriesUnlocked()), so books_avail
+// stays empty and no current_book/pages_avail badge is shown for it.
+function getBookSetState(string $filePrefix, string $progressPrefix, bool $seriesUnlocked = true): array {
     $booksExist = [];
     $booksAvail = [];
-    $prevEnded = true; // book 1 has no prerequisite
+    $prevEnded = $seriesUnlocked; // book 1 has no in-series prerequisite, but still needs the series itself unlocked
     for ($n = 1; $n <= 24; $n++) {
         $file   = sprintf('%s%02d.php', $filePrefix, $n);
         $fileOk = file_exists(__DIR__ . '/content/stories/' . $file);
@@ -1276,40 +1279,41 @@ function getStoryBookState(): array {
     return getBookSetState('quilt_', 'q');
 }
 
-// Second 24-slot book set (top-shelf-row-2). Files not written yet — every
-// slot renders as the "not written" state until content/stories/auntie_NN.php
-// files start appearing.
+// Second 24-slot book set (top-shelf-row-2), "Auntie's Mosaic". Locked until
+// the quilt series (row 1) is fully finished — see isSeriesUnlocked().
 function getSecondBookSetState(): array {
-    return getBookSetState('auntie_', 'a');
+    return getBookSetState('auntie_', 'a', isSeriesUnlocked('a'));
 }
 
 // Third 24-slot book set (left-shelf-row-3), "The Wayfarer's Instrument".
-// Files not written yet — every slot renders as the "not written" state
-// until content/stories/wayfarer_NN.php files start appearing.
+// Locked until Auntie's Mosaic (row 2) is fully finished.
 function getThirdBookSetState(): array {
-    return getBookSetState('wayfarer_', 'w');
+    return getBookSetState('wayfarer_', 'w', isSeriesUnlocked('w'));
 }
 
-// Fourth 24-slot book set (left-shelf-row-4), "The Salt Road".
+// Fourth 24-slot book set (left-shelf-row-4), "The Salt Road". Locked until
+// The Wayfarer's Instrument (row 3) is fully finished.
 function getFourthBookSetState(): array {
-    return getBookSetState('saltroad_', 'salt');
+    return getBookSetState('saltroad_', 'salt', isSeriesUnlocked('salt'));
 }
 
-// Fifth 24-slot book set (left-shelf-row-5), "The Spice Box".
+// Fifth 24-slot book set (left-shelf-row-5), "The Spice Box". Locked until
+// The Salt Road (row 4) is fully finished.
 function getFifthBookSetState(): array {
-    return getBookSetState('spicebox_', 'spice');
+    return getBookSetState('spicebox_', 'spice', isSeriesUnlocked('spice'));
 }
 
-// Sixth 24-slot book set (left-shelf-row-6, the final row), "Everything Overhead".
+// Sixth 24-slot book set (left-shelf-row-6, the final row), "Everything
+// Overhead". Locked until The Spice Box (row 5) is fully finished.
 function getSixthBookSetState(): array {
-    return getBookSetState('skyatlas_', 'sky');
+    return getBookSetState('skyatlas_', 'sky', isSeriesUnlocked('sky'));
 }
 
-// Story "families" — each is an independently-unlocked set of up to 24
-// books. story_id prefix letter selects the family (e.g. "q5" = quilt book
-// 5, "a3" = second-shelf book 3). api/story_read.php, api/story_choose.php,
-// and api/story_books.php all resolve through this rather than each
-// hardcoding the quilt_NN.php pattern — add new arcs here only.
+// Story "families" — each is a 24-book set. story_id prefix letter selects
+// the family (e.g. "q5" = quilt book 5, "a3" = second-shelf book 3).
+// api/story_read.php, api/story_choose.php, and api/story_books.php all
+// resolve through this rather than each hardcoding the quilt_NN.php pattern
+// — add new arcs here only.
 const STORY_FAMILY_FILE_PREFIX = [
     'q' => 'quilt_',
     'a' => 'auntie_',
@@ -1318,6 +1322,31 @@ const STORY_FAMILY_FILE_PREFIX = [
     'spice' => 'spicebox_',
     'sky' => 'skyatlas_',
 ];
+
+// Series unlock ordering: each family only becomes available once the family
+// before it in this list has its book 24 marked ended. The first family is
+// always unlocked. Add new arcs to the end of this list, in shelf-row order.
+const STORY_FAMILY_ORDER = ['q', 'a', 'w', 'salt', 'spice', 'sky'];
+
+// True once a family's final (24th) book exists and has been marked ended.
+function isBookSetComplete(string $filePrefix, string $progressPrefix): bool {
+    $path = __DIR__ . '/content/stories/' . sprintf('%s24.php', $filePrefix);
+    if (!file_exists($path)) return false;
+    $prog = getStoryProgress($progressPrefix . '24');
+    return !empty($prog['ended']);
+}
+
+// True if this family letter is allowed to be played at all — the first
+// family in STORY_FAMILY_ORDER always is; every later one requires the
+// previous family to be fully complete (isBookSetComplete()).
+function isSeriesUnlocked(string $letter): bool {
+    $idx = array_search($letter, STORY_FAMILY_ORDER, true);
+    if ($idx === false || $idx === 0) return true;
+    $prevLetter = STORY_FAMILY_ORDER[$idx - 1];
+    $prevPrefix = STORY_FAMILY_FILE_PREFIX[$prevLetter] ?? null;
+    if ($prevPrefix === null) return true;
+    return isBookSetComplete($prevPrefix, $prevLetter);
+}
 
 // Splits a story_id into its family letter, file prefix, and book number.
 // Returns null for anything that doesn't match a known family or isn't a

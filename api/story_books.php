@@ -87,8 +87,9 @@ if ($family === 'quilt') {
     }
 }
 
-$config      = getConfig() ?? [];
-$activeStory = (string)($config['active_story_id'] ?? '');
+$config         = getConfig() ?? [];
+$activeStory    = (string)($config['active_story_id'] ?? '');
+$seriesUnlocked = isSeriesUnlocked($letter);
 
 $bookEnded = [];
 foreach ($books as $id => $book) {
@@ -109,12 +110,16 @@ foreach ($books as $id => $book) {
 ?>
 <div data-init="initStoryBooks" style="max-width:520px;margin:0 auto;">
   <h2 style="margin:0 0 0.25rem;font-size:1.1rem;letter-spacing:0.02em;"><?= htmlspecialchars($seriesTitle) ?></h2>
-  <p style="margin:0 0 1.25rem;font-size:0.8rem;color:#aaa;">24 books &mdash; earn completions to unlock each one</p>
+  <?php if ($seriesUnlocked): ?>
+    <p style="margin:0 0 1.25rem;font-size:0.8rem;color:#aaa;">24 books &mdash; earn completions to unlock each one</p>
+  <?php else: ?>
+    <p style="margin:0 0 1.25rem;font-size:0.8rem;color:#c88;">Locked &mdash; finish the previous shelf's series first</p>
+  <?php endif; ?>
   <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">
     <?php foreach ($books as $id => $book): ?>
       <?php
         $fileExists  = file_exists(__DIR__ . '/../content/stories/' . sprintf('%s%02d.php', $filePrefix, $id));
-        $prevDone    = ($id === 1) || ($bookEnded[$id - 1] ?? false);
+        $prevDone    = ($id === 1) ? $seriesUnlocked : ($bookEnded[$id - 1] ?? false);
         $unlocked    = $fileExists && $prevDone;
         $prog        = $fileExists ? getStoryProgress($letter . $id) : null;
         $depth       = $prog ? (int)($prog['depth'] ?? 0) : 0;

@@ -255,6 +255,21 @@ if ($actCount === 0 && $returnGap >= 1) {
 // Surface the check-in on the first or second activity of a session
 if ($missing && $actCount <= 1 && $checkinOn) json_response($missing);
 
+// Bedtime wind-down — replaces tasking/triage/games with a pre-bed checklist,
+// then calm wind-down activities, for the configured evening window. Sits
+// ahead of morning dailies/review and both triage windows below so nothing
+// cognitively effortful can preempt it once the window is active. Explicit
+// requests (?reset=1, ?force=room_scan) already exit above this point, so
+// they remain untouched, deliberate bypasses.
+$bedtimeCfg = $cfg['bedtime'] ?? ['enabled' => true, 'start_hour' => 21, 'end_hour' => 6];
+$btHour     = (int)(new DateTime('now'))->format('H'); // no explicit DateTimeZone — init.php already sets the per-user zone
+$inBedtimeWindow = !empty($bedtimeCfg['enabled']) && ($btHour >= (int)$bedtimeCfg['start_hour'] || $btHour < (int)$bedtimeCfg['end_hour']);
+
+if ($inBedtimeWindow) {
+    $resp = serve_bedtime($cfg, $bedtimeCfg, $btHour);
+    if ($resp) json_response($resp);
+}
+
 // Split active dailies by horizon. Morning items are forced one-at-a-time, but not
 // back-to-back — the last_activity check ensures a game/task appears in between.
 // Day/evening items enter the normal pool below ($otherDailies).
@@ -365,24 +380,6 @@ if ($sessionCleared >= $nextNotify && $sessionCleared > 0) {
     elseif ($inboxCount <= 30) $msg = "Under 30 in the inbox. Keep going.";
     else                       $msg = "You've cleared {$sessionCleared} items from the inbox this session.";
     json_response(['type' => 'inbox_milestone', 'message' => $msg, 'inbox_count' => $inboxCount]);
-}
-
-// Bedtime mode — after 9pm Melbourne time, wind down instead of tasking
-$melbHour = (int)(new DateTime('now', new DateTimeZone('Australia/Melbourne')))->format('H');
-if ($melbHour >= 21) {
-    $bedtimeMessages = [
-        "You've done enough for today.",
-        "Yawn.",
-        "Close your eyes and take a deep breath.",
-        "Go fill up a hot water bottle.",
-        "Go get ready for bed.",
-        "The to-do list will still be there tomorrow.",
-        "Time to put the phone down.",
-        "Wind down. Tomorrow is another day.",
-        "You showed up today. That counts.",
-        "Rest is part of the work.",
-    ];
-    json_response(['type' => 'bedtime', 'message' => $bedtimeMessages[array_rand($bedtimeMessages)]]);
 }
 
 // Energy-aware + fatigue pool:
@@ -1104,6 +1101,88 @@ function pick_quote(): ?array {
     if (empty($pool)) return null;
     $pick = $pool[array_rand($pool)];
     return ['type' => 'quote', 'id' => $pick['id'], 'text' => $pick['text']];
+}
+
+// Decides checklist vs. wind-down for the active bedtime window and returns
+// the response payload, or null if nothing to show (shouldn't normally
+// happen — getBedtimeChecklistPool() always has the defaults as a floor).
+// $cfg is the already-loaded config from the top of the file; $bedtimeCfg is
+// its 'bedtime' sub-array; $hour is the current hour in the user's timezone.
+function serve_bedtime(array $cfg, array $bedtimeCfg, int $hour): ?array {
+    $nightKey = ($hour < (int)$bedtimeCfg['start_hour']) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+    $state    = $cfg['bedtime_state'][$nightKey] ?? ['checklist_done' => [], 'phase' => 'checklist'];
+
+    // Explicit phase switch (the checklist's "Not tired yet" / wind-down's
+    // "N prep steps left" links) — flips phase without losing checked items.
+    $choice  = $_GET['bedtime_choice'] ?? '';
+    $changed = false;
+    if ($choice === 'winddown' && $state['phase'] !== 'winddown')   { $state['phase'] = 'winddown';  $changed = true; }
+    if ($choice === 'checklist' && $state['phase'] !== 'checklist') { $state['phase'] = 'checklist';  $changed = true; }
+
+    if ($changed) {
+        $cfg['bedtime_state'][$nightKey] = $state;
+        $cutoff = date('Y-m-d', strtotime('-3 days'));
+        foreach (array_keys($cfg['bedtime_state']) as $k) {
+            if ($k < $cutoff) unset($cfg['bedtime_state'][$k]);
+        }
+        try { saveConfig($cfg); } catch (Throwable $e) { /* non-fatal — phase just won't persist this pull */ }
+    }
+
+    $pool      = getBedtimeChecklistPool();
+    $unchecked = array_values(array_filter($pool, fn($i) => !in_array($i['id'], $state['checklist_done'], true)));
+
+    if (!empty($unchecked) && $state['phase'] === 'checklist') {
+        return [
+            'type'            => 'bedtime_checklist',
+            'items'           => array_map(fn($i) => ['id' => $i['id'], 'text' => $i['text']], $unchecked),
+            'remaining_count' => count($unchecked),
+            'night_key'       => $nightKey,
+        ];
+    }
+
+    return pick_bedtime_winddown(count($unchecked));
+}
+
+// Picks the next wind-down activity — weighted toward calming prompts over
+// the gentle puzzle so the puzzle is a change of pace, not the main event.
+function pick_bedtime_winddown(int $checklistRemaining): array {
+    $prompt = null;
+    if (rand(1, 10) > 3) { // ~70% prompt, ~30% puzzle
+        $prompt = pickBedtimeWindDown();
+    }
+    if (!$prompt) {
+        $puzzle = pick_gentle_puzzle();
+        $puzzle['checklist_remaining'] = $checklistRemaining;
+        return $puzzle;
+    }
+    return [
+        'type'                => 'winddown',
+        'kind'                => 'prompt',
+        'prompt_id'           => $prompt['id'],
+        'text'                => $prompt['text'],
+        'category'            => $prompt['category'],
+        'is_custom'           => !empty($prompt['is_custom']),
+        'seconds'             => $prompt['seconds'] ?? null,
+        'checklist_remaining' => $checklistRemaining,
+    ];
+}
+
+// "Sort the shades" — a handful of colour swatches of one hue at varying
+// lightness, tapped in order light-to-dark at the user's own pace. No timer,
+// no score, no fail state: a wrong tap just doesn't advance. Each swatch's
+// 'id' IS its correct tap order (0 = lightest) so the client needs no
+// separate answer key — just track the next expected id.
+function pick_gentle_puzzle(): array {
+    $hues = [210, 150, 280, 30, 340]; // blue, green, violet, amber, rose
+    $hue  = $hues[array_rand($hues)];
+    $n    = rand(5, 6);
+    $swatches = [];
+    for ($i = 0; $i < $n; $i++) {
+        $lightness  = 82 - (int)round(($i / ($n - 1)) * 55);
+        $swatches[] = ['id' => $i, 'color' => "hsl({$hue}, 40%, {$lightness}%)"];
+    }
+    shuffle($swatches);
+    return ['type' => 'gentle_puzzle', 'swatches' => $swatches];
 }
 
 function pick_dance(): array {

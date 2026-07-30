@@ -60,7 +60,9 @@ window.initLetsGo = function() {
       case 'event_debrief':  renderEventDebrief(d);  break;
       case 'waiting_followup': renderWaitingFollowup(d); break;
       case 'bible_verse':    renderBibleVerse(d);    break;
-      case 'bedtime':        renderBedtime(d);       break;
+      case 'bedtime_checklist': renderBedtimeChecklist(d); break;
+      case 'winddown':       renderWinddown(d);      break;
+      case 'gentle_puzzle':  renderGentlePuzzle(d);  break;
       case 'inbox_milestone': renderInboxMilestone(d); break;
       case 'house_task':            renderHouseTask(d);           break;
       case 'room_scan':              renderRoomScan(d);             break;
@@ -1115,10 +1117,120 @@ window.initLetsGo = function() {
     drawRound();
   }
 
-  function renderBedtime(d) {
+  function renderBedtimeChecklist(d) {
+    const rows = d.items.map(item => `
+      <div class="subtask-row" data-id="${item.id}" style="display:flex;align-items:flex-start;gap:8px;padding:0.35rem 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+        <span style="flex:1;line-height:1.4;font-size:0.95em;">${esc(item.text)}</span>
+        <button class="action-button" data-id="${item.id}"
+          style="flex-shrink:0;padding:0.2rem 0.6rem;font-size:0.82em;"
+          onclick="window._bedtimeChecklistDone(${item.id}, this)">Done</button>
+      </div>`).join('');
     c.innerHTML = `
-      <p style="font-size:1.05em;line-height:1.5;margin-bottom:0.9rem;">${esc(d.message)}</p>
-      <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">...</button>`;
+      <p style="font-size:0.75em;color:#aaa;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.05em;">Getting ready for bed</p>
+      <div class="bedtime-checklist" id="bedtime-checklist-list" style="margin-bottom:0.7rem;">${rows}</div>
+      <button class="action-button" style="background:transparent;color:#888;border:1px solid #ccc;" onclick="loadSpeechBubble('lets-go.php?bedtime_choice=winddown')">Not tired yet &rarr;</button>`;
+    window._bedtimeChecklistDone = function(itemId, btn) {
+      const row = btn.closest('.subtask-row');
+      btn.disabled = true;
+      row.style.transition = 'opacity 0.2s';
+      row.style.opacity = '0';
+      fetch('api/bedtime_checklist.php', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action: 'check', id: itemId})})
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            updateProgressBar(data.pages, data.pages_target, data.total_pages);
+            setTimeout(() => {
+              row.remove();
+              const listEl = document.getElementById('bedtime-checklist-list');
+              if (listEl && !listEl.querySelector('.subtask-row')) {
+                // Whole checklist done for the night — a small extra flourish, then roll into wind-down
+                if (typeof spawnStarPip === 'function') {
+                  setTimeout(spawnStarPip, 150);
+                  setTimeout(spawnStarPip, 300);
+                }
+                setTimeout(() => loadSpeechBubble('lets-go.php'), 400);
+              }
+            }, 220);
+          } else {
+            btn.disabled = false;
+            row.style.opacity = '1';
+          }
+        })
+        .catch(() => { btn.disabled = false; row.style.opacity = '1'; });
+    };
+  }
+
+  function renderWinddown(d) {
+    const catLabels = {
+      movement: 'movement', breath: 'breath', sensory: 'sensory',
+      cognitive: 'thinking', self_compassion: 'self-compassion', somatic: 'body', custom: 'yours'
+    };
+    const cat  = catLabels[d.category] || d.category;
+    const secs = d.seconds || null;
+    const uid  = Math.random().toString(36).slice(2);
+    const hourglass = secs ? hourglassMarkup(secs, uid) : '';
+    const checklistLink = d.checklist_remaining > 0
+      ? `<p style="margin-top:0.6rem;"><a href="#" onclick="event.preventDefault();loadSpeechBubble('lets-go.php?bedtime_choice=checklist')" style="font-size:0.78em;color:#8b7355;">${d.checklist_remaining} prep step${d.checklist_remaining === 1 ? '' : 's'} left — do ${d.checklist_remaining === 1 ? 'it' : 'them'}</a></p>`
+      : '';
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">wind down &middot; ${esc(cat)}</p>
+      <p style="margin-bottom:0.85rem;line-height:1.5;">${esc(d.text)}</p>
+      ${hourglass}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.6rem;">
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Try another</button>
+        <button class="action-button" onclick="_winddownNotForMe(${d.prompt_id}, ${d.is_custom ? 'true' : 'false'})">Not for me</button>
+        <button class="action-button" id="winddown-done-btn" style="background:transparent;color:#888;border:1px solid #ccc;${secs ? 'visibility:hidden;' : ''}" onclick="_winddownDone()">Done</button>
+      </div>
+      ${checklistLink}`;
+    if (secs) armHourglass(secs, uid, 'winddown-done-btn');
+    window._winddownDone = function() { earnPip(); loadSpeechBubble('lets-go.php'); };
+    window._winddownNotForMe = function(promptId, isCustom) {
+      const action = isCustom ? 'delete_custom' : 'disable';
+      fetch('api/regulation_prompt.php', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action, id: promptId})})
+        .then(() => loadSpeechBubble('lets-go.php'));
+    };
+  }
+
+  function renderGentlePuzzle(d) {
+    const checklistLink = d.checklist_remaining > 0
+      ? `<p style="margin-top:0.6rem;"><a href="#" onclick="event.preventDefault();loadSpeechBubble('lets-go.php?bedtime_choice=checklist')" style="font-size:0.78em;color:#8b7355;">${d.checklist_remaining} prep step${d.checklist_remaining === 1 ? '' : 's'} left — do ${d.checklist_remaining === 1 ? 'it' : 'them'}</a></p>`
+      : '';
+    const swatchesHtml = d.swatches.map(s => `
+      <div class="puzzle-swatch" data-id="${s.id}" style="width:15%;aspect-ratio:1;border-radius:8px;background:${s.color};cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+    `).join('');
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">wind down &middot; sort the shades</p>
+      <p style="margin-bottom:0.7rem;line-height:1.5;">Tap the shades in order, lightest to darkest. No rush.</p>
+      <div id="puzzle-swatches" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.8rem;">${swatchesHtml}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="action-button" onclick="loadSpeechBubble('lets-go.php')">Try another</button>
+        <button class="action-button" id="puzzle-done-btn" style="background:transparent;color:#888;border:1px solid #ccc;visibility:hidden;" onclick="_puzzleDone()">Done</button>
+      </div>
+      ${checklistLink}`;
+    let nextExpected = 0;
+    const total = d.swatches.length;
+    document.querySelectorAll('.puzzle-swatch').forEach(el => {
+      el.addEventListener('click', function() {
+        const id = parseInt(this.dataset.id, 10);
+        if (id !== nextExpected) {
+          this.style.transition = 'transform 0.15s';
+          this.style.transform = 'scale(0.92)';
+          setTimeout(() => { this.style.transform = ''; }, 150);
+          return;
+        }
+        this.style.outline = '2px solid rgba(255,255,255,0.6)';
+        this.style.cursor = 'default';
+        this.style.pointerEvents = 'none';
+        nextExpected++;
+        if (nextExpected >= total) {
+          const doneBtn = document.getElementById('puzzle-done-btn');
+          if (doneBtn) doneBtn.style.visibility = '';
+        }
+      });
+    });
+    window._puzzleDone = function() { earnPip(); loadSpeechBubble('lets-go.php'); };
   }
 
   function renderHouseTask(d) {

@@ -2043,3 +2043,80 @@ function pickRegulationPrompt(): ?array {
     return $pool[array_rand($pool)];
 }
 
+// ---------- Bedtime checklist vault ----------
+// Same shape/pattern as the regulation vault above: a per-user encrypted
+// preference file layered over a content-file default list, so a user can
+// disable defaults or add their own prep steps without touching the shared
+// content file.
+
+function bedtimeChecklistPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/bedtime.enc";
+}
+
+function getBedtimeChecklist(): array {
+    $path = bedtimeChecklistPath();
+    if (!is_file($path)) return ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Bedtime checklist: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Bedtime checklist decrypt failed');
+    return json_decode($plain, true) ?? ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+}
+
+function saveBedtimeChecklist(array $data): void {
+    $path = bedtimeChecklistPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+// Returns every enabled checklist item (defaults minus disabled, plus custom)
+// — unlike pickRegulationPrompt() this returns the whole pool, not one random
+// pick: a checklist shows everything left to do tonight, it doesn't sample.
+function getBedtimeChecklistPool(): array {
+    $defaults = require __DIR__ . '/content/bedtime_checklist.php';
+    $bt       = getBedtimeChecklist();
+    $disabled = $bt['disabled_defaults'] ?? [];
+    $custom   = $bt['custom'] ?? [];
+    $available = array_values(array_filter($defaults, fn($i) => !in_array($i['id'], $disabled)));
+    $customMapped = array_map(fn($c) => array_merge($c, ['is_custom' => true]), $custom);
+    return array_merge($available, $customMapped);
+}
+
+// Wind-down activities during the bedtime window — a filtered view of the
+// regulation-prompt pool (see pickRegulationPrompt() above), restricted to
+// prompts tagged 'bedtime_suitable' => true (custom prompts are included
+// unconditionally: a user's own addition is implicitly bedtime-appropriate).
+// Deliberately reuses the same disabled/custom vault (regulation.enc) rather
+// than a separate one, so "Not for me" on a wind-down prompt also removes it
+// from daytime Reset mode, and vice versa — one pool, one disabled-list.
+function pickBedtimeWindDown(): ?array {
+    $defaults = require __DIR__ . '/content/regulation_prompts.php';
+    $reg      = getRegulation();
+    $disabled = $reg['disabled_defaults'] ?? [];
+    $custom   = $reg['custom'] ?? [];
+    $available = array_values(array_filter($defaults,
+        fn($p) => !in_array($p['id'], $disabled) && !empty($p['bedtime_suitable'])));
+    $customMapped = array_map(fn($c) => array_merge($c, ['category' => 'custom', 'is_custom' => true]), $custom);
+    $pool = array_merge($available, $customMapped);
+    if (empty($pool)) return null;
+    return $pool[array_rand($pool)];
+}
+

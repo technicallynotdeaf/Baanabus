@@ -14,6 +14,13 @@ try {
     if (array_key_exists('checkin_enabled', $in)) {
         $cfg['checkin_enabled'] = (bool)$in['checkin_enabled'];
     }
+    if (array_key_exists('bedtime_enabled', $in) || array_key_exists('bedtime_start_hour', $in) || array_key_exists('bedtime_end_hour', $in)) {
+        $bt = $cfg['bedtime'] ?? ['enabled' => true, 'start_hour' => 21, 'end_hour' => 6];
+        if (array_key_exists('bedtime_enabled', $in))    $bt['enabled']    = (bool)$in['bedtime_enabled'];
+        if (array_key_exists('bedtime_start_hour', $in)) $bt['start_hour'] = max(0, min(23, (int)$in['bedtime_start_hour']));
+        if (array_key_exists('bedtime_end_hour', $in))   $bt['end_hour']   = max(0, min(23, (int)$in['bedtime_end_hour']));
+        $cfg['bedtime'] = $bt;
+    }
     saveConfig($cfg);
     json_response(['ok' => true]);
 } catch (Throwable $e) {

@@ -372,6 +372,38 @@ window.initSettings = function() {
     });
   }
 
+  // ── Wellness: bedtime wind-down window ──────────────────────────────
+  const bedtimeToggle    = document.getElementById('bedtime-enabled');
+  const bedtimeHours      = document.getElementById('bedtime-hours');
+  const bedtimeStartHour  = document.getElementById('bedtime-start-hour');
+  const bedtimeEndHour    = document.getElementById('bedtime-end-hour');
+
+  async function saveBedtimePref(payload) {
+    const statusEl = document.getElementById('bedtime-status');
+    try {
+      const resp = await fetch('api/save_wellness_pref.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.ok && statusEl) { statusEl.textContent = 'Saved.'; setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000); }
+    } catch(e) {}
+  }
+
+  if (bedtimeToggle) {
+    bedtimeToggle.addEventListener('change', function() {
+      if (bedtimeHours) bedtimeHours.hidden = !this.checked;
+      saveBedtimePref({ bedtime_enabled: this.checked });
+    });
+  }
+  if (bedtimeStartHour) {
+    bedtimeStartHour.addEventListener('change', () => saveBedtimePref({ bedtime_start_hour: parseInt(bedtimeStartHour.value, 10) }));
+  }
+  if (bedtimeEndHour) {
+    bedtimeEndHour.addEventListener('change', () => saveBedtimePref({ bedtime_end_hour: parseInt(bedtimeEndHour.value, 10) }));
+  }
+
   // ── Wellness: period tracking ──────────────────────────────────────
   const periodToggle   = document.getElementById('period-tracking-enabled');
   const periodFields   = document.getElementById('period-fields');

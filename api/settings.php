@@ -21,6 +21,8 @@ $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
 $checkinOn      = $cfg['checkin_enabled'] ?? true;
 $weeklySchedule = $cfg['weekly_schedule'] ?? [];
 
+$bedtimeCfg = $cfg['bedtime'] ?? ['enabled' => true, 'start_hour' => 21, 'end_hour' => 6];
+
 $regulationData = ['disabled_defaults' => [], 'custom' => []];
 if ($vaultOpen) {
     try { $regulationData = getRegulation(); } catch (Throwable $e) {}
@@ -389,6 +391,34 @@ if ($database) {
         <p class="muted">Vault locked.</p>
       <?php endif; ?>
     </div>
+
+    <?php if ($vaultOpen): ?>
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.75rem;">Bedtime wind-down</h3>
+      <label class="settings-toggle-row" style="margin-bottom:0.5rem;">
+        <span>Switch to wind-down mode overnight</span>
+        <input type="checkbox" id="bedtime-enabled" <?= $bedtimeCfg['enabled'] ? 'checked' : '' ?>>
+      </label>
+      <p class="muted" style="font-size:0.85em;margin-bottom:0.6rem;">Replaces tasks and games with a pre-bed checklist and calm wind-down activities during this window.</p>
+      <div id="bedtime-hours" <?= $bedtimeCfg['enabled'] ? '' : 'hidden' ?> style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+        <label style="font-size:0.85em;color:#555;">From
+          <select id="bedtime-start-hour" style="margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;">
+            <?php for ($h = 0; $h < 24; $h++): ?>
+              <option value="<?= $h ?>" <?= $bedtimeCfg['start_hour'] == $h ? 'selected' : '' ?>><?= sprintf('%02d:00', $h) ?></option>
+            <?php endfor; ?>
+          </select>
+        </label>
+        <label style="font-size:0.85em;color:#555;">until
+          <select id="bedtime-end-hour" style="margin-left:4px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;">
+            <?php for ($h = 0; $h < 24; $h++): ?>
+              <option value="<?= $h ?>" <?= $bedtimeCfg['end_hour'] == $h ? 'selected' : '' ?>><?= sprintf('%02d:00', $h) ?></option>
+            <?php endfor; ?>
+          </select>
+        </label>
+      </div>
+      <p id="bedtime-status" class="muted" style="margin-top:0.5rem;min-height:1.2em;font-size:0.85em;"></p>
+    </div>
+    <?php endif; ?>
 
     <?php if ($vaultOpen && $diaryEntries): ?>
     <div class="card">

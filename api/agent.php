@@ -62,6 +62,11 @@
  * POST {"action":"add_context","context":"...","description":"..."}
  *      → add a new context option to the lookup table (INSERT OR IGNORE)
  *
+ * POST {"action":"rename_context","old_context":"...","new_context":"..."}
+ *      → renames a context: updates the contexts lookup row (context is its
+ *        primary key) and bulk-renames the context field on every matching
+ *        task in the vault. Fails if new_context already exists.
+ *
  * POST {"action":"set_story_pages","pages":N}
  *      → overwrite the global story_pages pool (use to correct pages_available)
  */
@@ -607,6 +612,34 @@ if ($method === 'POST') {
             $stmt->execute([$ctx, $desc]);
             $inserted = $database->lastInsertId() > 0;
             json_response(['ok' => true, 'context' => $ctx, 'inserted' => $inserted]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'rename_context') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $old = trim($body['old_context'] ?? '');
+        $new = trim($body['new_context'] ?? '');
+        if (!$old || !$new) json_response(['error' => 'Missing old_context or new_context'], 400);
+        if ($old === $new) json_response(['ok' => true, 'renamed' => 0, 'tasks_updated' => 0]);
+        try {
+            $stmt = $database->prepare("UPDATE contexts SET context = ? WHERE context = ?");
+            $stmt->execute([$new, $old]);
+            $renamed = $stmt->rowCount();
+
+            $data = getTasks();
+            $tasksUpdated = 0;
+            foreach ($data['tasks'] as &$t) {
+                if (($t['context'] ?? null) === $old) {
+                    $t['context'] = $new;
+                    $tasksUpdated++;
+                }
+            }
+            unset($t);
+            if ($tasksUpdated > 0) saveTasks($data);
+
+            json_response(['ok' => true, 'renamed' => $renamed, 'tasks_updated' => $tasksUpdated]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

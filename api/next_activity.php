@@ -1143,11 +1143,21 @@ function serve_bedtime(array $cfg, array $bedtimeCfg, int $hour): ?array {
     return pick_bedtime_winddown(count($unchecked));
 }
 
-// Picks the next wind-down activity — weighted toward calming prompts over
-// the gentle puzzle so the puzzle is a change of pace, not the main event.
+// Picks the next wind-down activity — weighted toward calming prompts, with
+// the gentle puzzle and Gem Match as an occasional change of pace, not the
+// main event. Gem Match is move-limited, not clock-timed (self-paced, no
+// reflex pressure) so it fits the wind-down brief; 'reaction' (a literal
+// millisecond reflex test) and every other minigame are deliberately never
+// offered here — too stimulating for winding down before sleep.
 function pick_bedtime_winddown(int $checklistRemaining): array {
+    global $gamesEnabled, $gameToggles;
+    $gemMatchAvailable = $gamesEnabled && ($gameToggles['gemMatch'] ?? true);
+    if ($gemMatchAvailable && rand(1, 10) <= 2) { // ~20%
+        return ['type' => 'minigame', 'game' => 'gemMatch'];
+    }
+
     $prompt = null;
-    if (rand(1, 10) > 3) { // ~70% prompt, ~30% puzzle
+    if (rand(1, 10) > 3) { // of the remainder: ~70% prompt, ~30% puzzle
         $prompt = pickBedtimeWindDown();
     }
     if (!$prompt) {

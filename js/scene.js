@@ -25,6 +25,10 @@
     const FOURTH_BOOKS_EXIST = JSON.parse(canvas.dataset.fourthBooksExist || '[]');
     let FOURTH_CURRENT_BOOK  = parseInt(canvas.dataset.fourthCurrentBook, 10) || 0;
     let FOURTH_PAGES_AVAIL   = parseInt(canvas.dataset.fourthPagesAvail,  10) || 0;
+    const FIFTH_BOOKS_AVAIL  = JSON.parse(canvas.dataset.fifthBooksAvail || '[]');
+    const FIFTH_BOOKS_EXIST  = JSON.parse(canvas.dataset.fifthBooksExist || '[]');
+    let FIFTH_CURRENT_BOOK   = parseInt(canvas.dataset.fifthCurrentBook, 10) || 0;
+    let FIFTH_PAGES_AVAIL    = parseInt(canvas.dataset.fifthPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -91,10 +95,20 @@
         activeColor: `hsl(${18 + (i % 6) * 7}, ${50 + (i % 3) * 9}%, ${36 + (i % 4) * 6}%)`,
     }));
 
+    // Fifth 24-book set (row 4 of the left shelf section) — "The Spice Box".
+    // Same mechanism again, cycling through deep reds/greens (spice/herb
+    // toned) to stay visually distinct from the rows above it.
+    const FIFTH_BOOKS = Array.from({ length: 24 }, (_, i) => ({
+        id: i + 1,
+        h: 0.70 + ((i * 9) % 18) / 100,
+        activeColor: `hsl(${5 + (i % 6) * 10}, ${55 + (i % 3) * 8}%, ${32 + (i % 4) * 6}%)`,
+    }));
+
     let bookBounds        = [];
     let secondBookBounds  = [];
     let thirdBookBounds   = [];
     let fourthBookBounds  = [];
+    let fifthBookBounds   = [];
     let boardBounds       = null;
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
@@ -393,6 +407,48 @@
         if (FOURTH_CURRENT_BOOK && FOURTH_PAGES_AVAIL > 0) {
             const current = fourthBookBounds.find(b => b.id === FOURTH_CURRENT_BOOK && b.active);
             if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), FOURTH_PAGES_AVAIL);
+        }
+    }
+
+    // Fifth 24-book set — row 4 of the same left shelf section, one shelf
+    // below the fourth row. Clicking opens
+    // api/story_books.php?family=spicebox.
+    function drawFifthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        fifthBookBounds = [];
+        const secW   = Math.floor(innerWidth / 3);
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
+
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = FIFTH_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH * 5;
+
+        FIFTH_BOOKS.forEach((book, i) => {
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
+
+            const exists = FIFTH_BOOKS_EXIST.includes(book.id);
+            const active = exists && FIFTH_CURRENT_BOOK === book.id;
+            const color  = !exists ? '#dcdcdc' : (active ? book.activeColor : '#585858');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.fillRect(bx, by, bookW, 1);
+
+            fifthBookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+        });
+
+        if (FIFTH_CURRENT_BOOK && FIFTH_PAGES_AVAIL > 0) {
+            const current = fifthBookBounds.find(b => b.id === FIFTH_CURRENT_BOOK && b.active);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), FIFTH_PAGES_AVAIL);
         }
     }
 
@@ -1141,6 +1197,7 @@
         drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawThirdBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawFourthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawFifthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
         // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);
@@ -1297,6 +1354,12 @@
                 return;
             }
         }
+        for (const b of fifthBookBounds) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+                loadOverlay('api/story_books.php?family=spicebox');
+                return;
+            }
+        }
     });
 
     canvas.addEventListener('mousemove', function(e) {
@@ -1306,7 +1369,8 @@
         const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
             || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
             || thirdBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
-            || fourthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+            || fourthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
+            || fifthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))

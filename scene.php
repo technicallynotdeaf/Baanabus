@@ -14,6 +14,9 @@ $thirdPagesAvail  = 0;
 $fourthBooksAvail  = [];
 $fourthCurrentBook = 0;
 $fourthPagesAvail  = 0;
+$fifthBooksAvail  = [];
+$fifthCurrentBook = 0;
+$fifthPagesAvail  = 0;
 $objectsOut      = false;
 $cycleDay        = 0;
 $cycleLen        = 0;
@@ -56,6 +59,11 @@ if (isUnlocked()) {
         $fourthBooksAvail  = $fourthBookState['books_avail'];
         $fourthCurrentBook = $fourthBookState['current_book'];
         $fourthPagesAvail  = $fourthBookState['pages_avail'];
+        $fifthBookState   = getFifthBookSetState();
+        $fifthBooksExist  = $fifthBookState['books_exist'];
+        $fifthBooksAvail  = $fifthBookState['books_avail'];
+        $fifthCurrentBook = $fifthBookState['current_book'];
+        $fifthPagesAvail  = $fifthBookState['pages_avail'];
     } catch (Throwable $e) {}
     try {
         $obj = getPhysicalObjects();
@@ -87,6 +95,10 @@ if (isUnlocked()) {
   data-fourth-books-exist="<?= htmlspecialchars(json_encode($fourthBooksExist ?? []), ENT_QUOTES) ?>"
   data-fourth-current-book="<?= (int)$fourthCurrentBook ?>"
   data-fourth-pages-avail="<?= (int)$fourthPagesAvail ?>"
+  data-fifth-books-avail="<?= htmlspecialchars(json_encode($fifthBooksAvail), ENT_QUOTES) ?>"
+  data-fifth-books-exist="<?= htmlspecialchars(json_encode($fifthBooksExist ?? []), ENT_QUOTES) ?>"
+  data-fifth-current-book="<?= (int)$fifthCurrentBook ?>"
+  data-fifth-pages-avail="<?= (int)$fifthPagesAvail ?>"
   data-objects-out="<?= $objectsOut ? '1' : '0' ?>"
   data-objects-resolved="<?= ($objectsResolved ?? false) ? '1' : '0' ?>"
   data-cycle-day="<?= $cycleDay ?>"

@@ -6,7 +6,7 @@ if (empty($_SESSION['is_authenticated'])) { http_response_code(403); exit; }
 if (empty($_SESSION['DEK']))              { http_response_code(423); exit; }
 
 $family = $_GET['family'] ?? 'quilt';
-if (!in_array($family, ['quilt', 'auntie', 'wayfarer'], true)) $family = 'quilt';
+if (!in_array($family, ['quilt', 'auntie', 'wayfarer', 'saltroad'], true)) $family = 'quilt';
 
 if ($family === 'quilt') {
     $letter      = 'q';
@@ -49,11 +49,20 @@ if ($family === 'quilt') {
     for ($n = 1; $n <= 24; $n++) {
         $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
     }
-} else {
+} elseif ($family === 'wayfarer') {
     $letter      = 'w';
     $filePrefix  = 'wayfarer_';
     $seriesTitle = "The Wayfarer's Instrument";
     // Same "pull from the file once it exists" convention as auntie above.
+    $books = [];
+    for ($n = 1; $n <= 24; $n++) {
+        $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
+    }
+} else {
+    $letter      = 'salt';
+    $filePrefix  = 'saltroad_';
+    $seriesTitle = "The Salt Road";
+    // Same "pull from the file once it exists" convention as above.
     $books = [];
     for ($n = 1; $n <= 24; $n++) {
         $books[$n] = ['title' => "Book $n", 'color' => '#8a8a8a'];
@@ -73,7 +82,7 @@ foreach ($books as $id => $book) {
     // hand-picked colours above) — pull title/colour from the file itself
     // once it exists, so not-yet-written slots are the only ones left
     // anonymous. Quilt keeps its own hardcoded values untouched.
-    if ($family === 'auntie' || $family === 'wayfarer') {
+    if ($family === 'auntie' || $family === 'wayfarer' || $family === 'saltroad') {
         $storyFile = require $path;
         if (!empty($storyFile['title'])) $books[$id]['title'] = $storyFile['title'];
         if (!empty($storyFile['color'])) $books[$id]['color'] = $storyFile['color'];

@@ -1290,6 +1290,11 @@ function getThirdBookSetState(): array {
     return getBookSetState('wayfarer_', 'w');
 }
 
+// Fourth 24-slot book set (left-shelf-row-4), "The Salt Road".
+function getFourthBookSetState(): array {
+    return getBookSetState('saltroad_', 'salt');
+}
+
 // Story "families" — each is an independently-unlocked set of up to 24
 // books. story_id prefix letter selects the family (e.g. "q5" = quilt book
 // 5, "a3" = second-shelf book 3). api/story_read.php, api/story_choose.php,
@@ -1299,6 +1304,7 @@ const STORY_FAMILY_FILE_PREFIX = [
     'q' => 'quilt_',
     'a' => 'auntie_',
     'w' => 'wayfarer_',
+    'salt' => 'saltroad_',
 ];
 
 // Splits a story_id into its family letter, file prefix, and book number.

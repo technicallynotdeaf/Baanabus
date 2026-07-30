@@ -21,6 +21,10 @@
     const THIRD_BOOKS_EXIST  = JSON.parse(canvas.dataset.thirdBooksExist || '[]');
     let THIRD_CURRENT_BOOK   = parseInt(canvas.dataset.thirdCurrentBook, 10) || 0;
     let THIRD_PAGES_AVAIL    = parseInt(canvas.dataset.thirdPagesAvail,  10) || 0;
+    const FOURTH_BOOKS_AVAIL = JSON.parse(canvas.dataset.fourthBooksAvail || '[]');
+    const FOURTH_BOOKS_EXIST = JSON.parse(canvas.dataset.fourthBooksExist || '[]');
+    let FOURTH_CURRENT_BOOK  = parseInt(canvas.dataset.fourthCurrentBook, 10) || 0;
+    let FOURTH_PAGES_AVAIL   = parseInt(canvas.dataset.fourthPagesAvail,  10) || 0;
     const OBJECTS_OUT         = canvas.dataset.objectsOut === '1';
     const OBJECTS_RESOLVED    = canvas.dataset.objectsResolved === '1';
     const CYCLE_DAY           = parseInt(canvas.dataset.cycleDay, 10) || 0;
@@ -77,9 +81,20 @@
         activeColor: `hsl(${32 + (i % 6) * 6}, ${58 + (i % 3) * 8}%, ${34 + (i % 4) * 6}%)`,
     }));
 
+    // Fourth 24-book set (row 3 of the left shelf section) — "The Salt Road".
+    // Same slot mechanism again, cycling through sandy/terracotta shades to
+    // stay visually distinct from the brass (third row) and blue (second row)
+    // sets above it.
+    const FOURTH_BOOKS = Array.from({ length: 24 }, (_, i) => ({
+        id: i + 1,
+        h: 0.70 + ((i * 3) % 18) / 100,
+        activeColor: `hsl(${18 + (i % 6) * 7}, ${50 + (i % 3) * 9}%, ${36 + (i % 4) * 6}%)`,
+    }));
+
     let bookBounds        = [];
     let secondBookBounds  = [];
     let thirdBookBounds   = [];
+    let fourthBookBounds  = [];
     let boardBounds       = null;
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
@@ -336,6 +351,48 @@
         if (THIRD_CURRENT_BOOK && THIRD_PAGES_AVAIL > 0) {
             const current = thirdBookBounds.find(b => b.id === THIRD_CURRENT_BOOK && b.active);
             if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), THIRD_PAGES_AVAIL);
+        }
+    }
+
+    // Fourth 24-book set — row 3 of the same left shelf section, one shelf
+    // below the third row. Same mechanism as the rows above, sandy/terracotta
+    // toned. Clicking opens api/story_books.php?family=saltroad.
+    function drawFourthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance) {
+        fourthBookBounds = [];
+        const secW   = Math.floor(innerWidth / 3);
+        const shelfH = Math.floor((innerHeight - clearance) / 6);
+
+        const sidePad = 3;
+        const gap     = 1;
+        const n       = FOURTH_BOOKS.length;
+        const bookW   = Math.max(1, Math.floor((secW - sidePad * 2 - gap * (n - 1)) / n));
+        const refBkH  = Math.floor(shelfH * 0.75);
+        const bayBot  = innerTop + clearance + shelfH * 4;
+
+        FOURTH_BOOKS.forEach((book, i) => {
+            const bkH = Math.floor(refBkH * book.h);
+            const bx  = innerLeft + sidePad + i * (bookW + gap);
+            const by  = bayBot - bkH;
+
+            const exists = FOURTH_BOOKS_EXIST.includes(book.id);
+            const active = exists && FOURTH_CURRENT_BOOK === book.id;
+            const color  = !exists ? '#dcdcdc' : (active ? book.activeColor : '#585858');
+
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(bx + 1, by + 1, bookW, bkH);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, by, bookW, bkH);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.fillRect(bx, by, bookW, 1);
+
+            fourthBookBounds.push({ id: book.id, x: bx, y: by, w: bookW, h: bkH, active });
+        });
+
+        if (FOURTH_CURRENT_BOOK && FOURTH_PAGES_AVAIL > 0) {
+            const current = fourthBookBounds.find(b => b.id === FOURTH_CURRENT_BOOK && b.active);
+            if (current) drawUnreadBadge(ctx, current.x + current.w, current.y, Math.max(current.w, 10), FOURTH_PAGES_AVAIL);
         }
     }
 
@@ -1083,6 +1140,7 @@
         drawStoryBooks(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawSecondBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
         drawThirdBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
+        drawFourthBookSet(ctx, innerLeft, innerTop, innerWidth, innerHeight, clearance);
 
         // Middle section top bay: three Top 3 challenge jars
         const midShelfH = Math.floor((innerHeight - clearance) / 7);
@@ -1233,6 +1291,12 @@
                 return;
             }
         }
+        for (const b of fourthBookBounds) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+                loadOverlay('api/story_books.php?family=saltroad');
+                return;
+            }
+        }
     });
 
     canvas.addEventListener('mousemove', function(e) {
@@ -1241,7 +1305,8 @@
         const cy   = e.clientY - rect.top;
         const onBook = bookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
             || secondBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
-            || thirdBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+            || thirdBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h)
+            || fourthBookBounds.some(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
         const pointer = ptInQuad(cx, cy, kitchenDoorBounds)
             || (calendarBounds && ptInQuad(cx, cy, calendarBounds))
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))

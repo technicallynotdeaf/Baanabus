@@ -1564,7 +1564,9 @@ window.initLetsGo = function() {
         mkBtn("High — moves something that really matters",     () => save({action:'save_importance', importance:'high'})),
         mkBtn("Medium — worth doing, not a big deal either way", () => save({action:'save_importance', importance:'medium'})),
         mkBtn("Low — minor, wouldn't lose sleep over it",       () => save({action:'save_importance', importance:'low'})),
-        mkBtn("Not sure — skip for now",                        () => save({action:'save_importance', importance:'medium'}), skipStyle)
+        mkBtn("Not sure — skip for now",                        () => save({action:'save_importance', importance:'medium'}), skipStyle),
+        mkBtn("You know what — delete it",                      () => save({action:'delete'}),
+          'background:transparent;color:#c0392b;border:1.5px solid #c0392b;')
       );
     }
   }

@@ -26,16 +26,17 @@ try {
         case 'blocked':
             $reason = $input['reason'] ?? '';
             switch ($reason) {
-                case 'wrong_place':
-                    vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime('+4 hours'))]);
-                    break;
-                case 'low_energy':
-                    vaultUpdateTask($taskId, [
-                        'energy'        => 'high',
-                        'snoozed_until' => date('c', strtotime('tomorrow 08:00')),
-                    ]);
-                    break;
-                case 'no_time':
+                // The three "metadata mismatch" reasons all just apply the
+                // same light 4h snooze as a safety net — the real fix
+                // happens client-side, which opens the task detail overlay
+                // deep-linked to the field(s) this reason implicates
+                // (js/lets_go.js's _showBlocked). Previously 'low_energy'
+                // silently guessed the task's energy should be 'high'
+                // instead of asking — dropped in favour of letting the user
+                // actually set the correct value themselves.
+                case 'wrong_location':
+                case 'wrong_time':
+                case 'wrong_effort':
                     vaultUpdateTask($taskId, ['snoozed_until' => date('c', strtotime('+4 hours'))]);
                     break;
                 case 'waiting_on':

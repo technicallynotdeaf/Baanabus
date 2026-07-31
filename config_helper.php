@@ -314,8 +314,9 @@ function saveTasks(array $data): void {
 }
 
 function getDoableTasks(): array {
-    $data = getTasks();
-    $now  = time();
+    $data    = getTasks();
+    $now     = time();
+    $timeStr = (new DateTime('now'))->format('H:i');
 
     $completedIds = [];
     foreach ($data['tasks'] as $t) {
@@ -348,6 +349,14 @@ function getDoableTasks(): array {
         return true; // Rest (4): no suppression
     };
 
+    // Time-of-day window: same mechanism as dailies' relevant_after/irrelevant_after
+    // (getActiveDailies() below) — a task can be tagged "not relevant before X" /
+    // "not relevant after Y", mirroring how Blocked's "Wrong time of day" reason
+    // lets the user fix a genuine time-window mismatch instead of just snoozing.
+    $timeWindowOk = fn($t) =>
+        (empty($t['relevant_after'])   || $timeStr >= $t['relevant_after']) &&
+        (empty($t['irrelevant_after']) || $timeStr <  $t['irrelevant_after']);
+
     return array_values(array_filter($data['tasks'], fn($t) =>
         $t['status'] === 'active' &&
         empty($t['parent_id']) &&
@@ -358,7 +367,8 @@ function getDoableTasks(): array {
         !in_array($t['task_type'] ?? '', ['inbox', 'reference', 'waiting'], true) &&
         (!$t['snoozed_until'] || strtotime($t['snoozed_until']) <= $now) &&
         $prereqsMet($t) &&
-        $locationOk($t)
+        $locationOk($t) &&
+        $timeWindowOk($t)
     ));
 }
 
@@ -540,9 +550,19 @@ function top3CreditFieldTransitions(?array $before, array $fields): array {
 // metadata to Habitica notes when a synced field changes. Throws on bad input.
 function updateTaskFieldsShared(int $taskId, array $rawFields): array {
     $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
-                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id', 'goal_id'];
+                'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id', 'goal_id',
+                'relevant_after', 'irrelevant_after'];
     $fields  = array_intersect_key($rawFields, array_flip($allowed));
     if (!$fields) throw new Exception('No valid fields to update');
+    // Time-of-day window fields — same HH:MM validation used for dailies
+    // (api/daily_action.php); reject rather than silently store a garbage
+    // value that would corrupt the string comparison in getDoableTasks().
+    foreach (['relevant_after', 'irrelevant_after'] as $tf) {
+        if (array_key_exists($tf, $fields)) {
+            $v = trim((string)($fields[$tf] ?? ''));
+            $fields[$tf] = preg_match('/^\d{2}:\d{2}$/', $v) ? $v : null;
+        }
+    }
 
     vaultUpdateTask($taskId, $fields);
 
@@ -2156,6 +2176,61 @@ function pickBedtimeWindDown(): ?array {
     $available = array_values(array_filter($defaults,
         fn($p) => !in_array($p['id'], $disabled) && !empty($p['bedtime_suitable'])));
     $customMapped = array_map(fn($c) => array_merge($c, ['category' => 'custom', 'is_custom' => true]), $custom);
+    $pool = array_merge($available, $customMapped);
+    if (empty($pool)) return null;
+    return $pool[array_rand($pool)];
+}
+
+// ---------- Unstuck-technique vault ----------
+// Same pattern as the regulation vault: per-user encrypted preference file
+// layered over the content-file defaults, so a user can disable defaults
+// that don't work for them or add their own technique.
+
+function unstuckPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/unstuck.enc";
+}
+
+function getUnstuck(): array {
+    $path = unstuckPath();
+    if (!is_file($path)) return ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Unstuck: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Unstuck decrypt failed');
+    return json_decode($plain, true) ?? ['disabled_defaults' => [], 'custom' => [], 'next_custom_id' => 1];
+}
+
+function saveUnstuck(array $data): void {
+    $path = unstuckPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+function pickUnstuckTechnique(): ?array {
+    $defaults = require __DIR__ . '/content/unstuck_techniques.php';
+    $u        = getUnstuck();
+    $disabled = $u['disabled_defaults'] ?? [];
+    $custom   = $u['custom'] ?? [];
+    $available    = array_values(array_filter($defaults, fn($t) => !in_array($t['id'], $disabled)));
+    $customMapped = array_map(fn($c) => array_merge($c, ['kind' => 'nudge', 'is_custom' => true]), $custom);
     $pool = array_merge($available, $customMapped);
     if (empty($pool)) return null;
     return $pool[array_rand($pool)];

@@ -654,4 +654,111 @@ window.initSettings = function() {
       } catch(e) { regMsg(e.message, true); }
     });
   }
+
+  // ── Wellness: unstuck techniques ────────────────────────────────────
+  const unstuckStatus = document.getElementById('unstuck-status');
+  function unstuckMsg(msg, isErr) {
+    if (!unstuckStatus) return;
+    unstuckStatus.textContent = msg;
+    unstuckStatus.style.color = isErr ? 'crimson' : '';
+    if (!isErr) setTimeout(() => { if (unstuckStatus) unstuckStatus.textContent = ''; }, 2000);
+  }
+
+  document.querySelectorAll('.unstuck-default-toggle').forEach(cb => {
+    cb.addEventListener('change', async function() {
+      const id = parseInt(this.dataset.id);
+      const action = this.checked ? 'enable' : 'disable';
+      const label = this.closest('label');
+      const span  = label ? label.querySelector('span') : null;
+      try {
+        const r = await fetch('api/unstuck_technique.php', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action, id})
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Failed');
+        if (span) span.style.color = this.checked ? '' : '#bbb';
+      } catch(e) {
+        this.checked = !this.checked;
+        unstuckMsg(e.message, true);
+      }
+    });
+  });
+
+  document.querySelectorAll('.unstuck-delete-custom').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const id = parseInt(this.dataset.id);
+      try {
+        const r = await fetch('api/unstuck_technique.php', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'delete_custom', id})
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Failed');
+        this.closest('div').remove();
+        unstuckMsg('Removed.');
+      } catch(e) { unstuckMsg(e.message, true); }
+    });
+  });
+
+  const unstuckAddBtn = document.getElementById('unstuck-add-custom');
+  if (unstuckAddBtn) {
+    unstuckAddBtn.addEventListener('click', async function() {
+      const ta   = document.getElementById('unstuck-custom-text');
+      const text = ta ? ta.value.trim() : '';
+      if (!text) { unstuckMsg('Enter some text first.', true); return; }
+      try {
+        const r = await fetch('api/unstuck_technique.php', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'add_custom', text})
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Failed');
+        if (ta) ta.value = '';
+        unstuckMsg('Added — it will appear in your rotation.');
+        const container = unstuckAddBtn.closest('.card');
+        let yourSection = container ? container.querySelector('[data-unstuck-custom-list]') : null;
+        if (!yourSection && container) {
+          const hdr = document.createElement('div');
+          hdr.style.cssText = 'margin-top:0.75rem;';
+          hdr.setAttribute('data-unstuck-custom-list', '1');
+          hdr.innerHTML = '<div style="font-size:0.85em;font-weight:600;color:#5a4a1e;margin-bottom:0.4rem;">Your own</div>';
+          unstuckAddBtn.parentElement.before(hdr);
+          yourSection = hdr;
+        }
+        if (yourSection) {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #f5f0e8;';
+          row.innerHTML = `<span style="flex:1;font-size:0.85em;line-height:1.45;">${esc(text)}</span><button class="unstuck-delete-custom" data-id="${d.id}" style="font-size:0.75em;color:#c06060;background:none;border:none;cursor:pointer;padding:0 2px;flex-shrink:0;">Remove</button>`;
+          row.querySelector('.unstuck-delete-custom').addEventListener('click', async function() {
+            const cid = parseInt(this.dataset.id);
+            const r2 = await fetch('api/unstuck_technique.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'delete_custom', id: cid})});
+            const d2 = await r2.json();
+            if (d2.ok) { this.closest('div').remove(); unstuckMsg('Removed.'); }
+          });
+          yourSection.appendChild(row);
+        }
+      } catch(e) { unstuckMsg(e.message, true); }
+    });
+  }
+
+  const unstuckResetBtn = document.getElementById('unstuck-reset-defaults');
+  if (unstuckResetBtn) {
+    unstuckResetBtn.addEventListener('click', async function() {
+      try {
+        const r = await fetch('api/unstuck_technique.php', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'reset'})
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Failed');
+        document.querySelectorAll('.unstuck-default-toggle').forEach(cb => {
+          cb.checked = true;
+          const span = cb.closest('label')?.querySelector('span');
+          if (span) span.style.color = '';
+        });
+        unstuckMsg('All defaults re-enabled.');
+      } catch(e) { unstuckMsg(e.message, true); }
+    });
+  }
 };

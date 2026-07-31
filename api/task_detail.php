@@ -43,8 +43,13 @@ if ($database) {
 $isDone = ($task['status'] ?? '') === 'complete';
 $esc = fn($v) => htmlspecialchars((string)($v ?? ''));
 $sel = fn($val, $opt) => ((string)($val ?? '') === (string)$opt) ? 'selected' : '';
+
+// Optional deep-link from the Blocked flow (e.g. ?focus=location or
+// ?focus=relevant_after,irrelevant_after) — read here, consumed by
+// initTaskDetail() to scroll/highlight/focus the named field(s) on load.
+$focusFields = preg_replace('/[^a-z_,]/', '', strtolower($_GET['focus'] ?? ''));
 ?>
-<div data-init="initTaskDetail" data-task-id="<?= $taskId ?>" style="padding-bottom:1rem;">
+<div data-init="initTaskDetail" data-task-id="<?= $taskId ?>" data-focus-fields="<?= $esc($focusFields) ?>" style="padding-bottom:1rem;">
   <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:0.75rem;">
     <input type="checkbox" id="td-done" <?= $isDone ? 'checked' : '' ?>
            style="margin-top:6px;width:20px;height:20px;flex-shrink:0;">
@@ -113,6 +118,14 @@ $sel = fn($val, $opt) => ((string)($val ?? '') === (string)$opt) ? 'selected' : 
     <div style="flex:1;min-width:130px;">
       <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Deadline</label>
       <input type="date" id="td-deadline" value="<?= $esc(substr($task['deadline'] ?? '', 0, 10)) ?>" style="width:100%;">
+    </div>
+    <div style="flex:1;min-width:110px;">
+      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Not relevant before</label>
+      <input type="time" id="td-relevant_after" value="<?= $esc($task['relevant_after'] ?? '') ?>" style="width:100%;">
+    </div>
+    <div style="flex:1;min-width:110px;">
+      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Not relevant after</label>
+      <input type="time" id="td-irrelevant_after" value="<?= $esc($task['irrelevant_after'] ?? '') ?>" style="width:100%;">
     </div>
   </div>
 

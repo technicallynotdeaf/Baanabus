@@ -29,6 +29,12 @@ if ($vaultOpen) {
 }
 $regulationDefaults = require __DIR__ . '/../content/regulation_prompts.php';
 
+$unstuckData = ['disabled_defaults' => [], 'custom' => []];
+if ($vaultOpen) {
+    try { $unstuckData = getUnstuck(); } catch (Throwable $e) {}
+}
+$unstuckDefaults = require __DIR__ . '/../content/unstuck_techniques.php';
+
 $periodTracking = $cfg['period_tracking'] ?? [];
 $periodEnabled  = (bool)($periodTracking['enabled']   ?? false);
 $periodLmp      = $periodTracking['lmp']       ?? '';
@@ -547,6 +553,44 @@ if ($database) {
         <button class="action-button" id="reg-add-custom" style="font-size:0.85em;">Add</button>
         <button class="action-button" id="reg-reset-defaults" style="font-size:0.85em;background:transparent;color:#aaa;border:1px solid #ddd;margin-left:6px;">Re-enable all defaults</button>
         <p id="reg-status" class="muted" style="min-height:1.2em;font-size:0.82em;margin-top:0.35rem;"></p>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($vaultOpen): ?>
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.4rem;">Unstuck techniques</h3>
+      <p class="muted" style="font-size:0.85em;margin-bottom:0.75rem;">Offered from a task's Blocked button when it's genuine resistance, not a wrong setting. Turn off anything that doesn't work for you, or add your own.</p>
+
+      <?php $unstuckDisabled = $unstuckData['disabled_defaults'] ?? []; ?>
+      <?php foreach ($unstuckDefaults as $t): ?>
+        <?php $isDisabled = in_array($t['id'], $unstuckDisabled); ?>
+        <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #f5f0e8;cursor:pointer;">
+          <input type="checkbox" class="unstuck-default-toggle" data-id="<?= $t['id'] ?>"
+                 style="margin-top:3px;flex-shrink:0;" <?= $isDisabled ? '' : 'checked' ?>>
+          <span style="font-size:0.85em;line-height:1.45;<?= $isDisabled ? 'color:#bbb;' : '' ?>"><?= htmlspecialchars($t['text']) ?></span>
+        </label>
+      <?php endforeach; ?>
+
+      <?php if (!empty($unstuckData['custom'])): ?>
+        <div style="margin-top:0.75rem;">
+          <div style="font-size:0.85em;font-weight:600;color:#5a4a1e;margin-bottom:0.4rem;">Your own</div>
+          <?php foreach ($unstuckData['custom'] as $c): ?>
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #f5f0e8;">
+              <span style="flex:1;font-size:0.85em;line-height:1.45;"><?= htmlspecialchars($c['text']) ?></span>
+              <button class="unstuck-delete-custom" data-id="<?= (int)$c['id'] ?>"
+                      style="font-size:0.75em;color:#c06060;background:none;border:none;cursor:pointer;padding:0 2px;flex-shrink:0;">Remove</button>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+      <div style="margin-top:0.85rem;">
+        <textarea id="unstuck-custom-text" rows="2" placeholder="Add your own unstuck technique..."
+                  style="width:100%;box-sizing:border-box;font-size:0.85em;padding:6px;border:1px solid #ddd;border-radius:6px;resize:vertical;margin-bottom:5px;"></textarea>
+        <button class="action-button" id="unstuck-add-custom" style="font-size:0.85em;">Add</button>
+        <button class="action-button" id="unstuck-reset-defaults" style="font-size:0.85em;background:transparent;color:#aaa;border:1px solid #ddd;margin-left:6px;">Re-enable all defaults</button>
+        <p id="unstuck-status" class="muted" style="min-height:1.2em;font-size:0.82em;margin-top:0.35rem;"></p>
       </div>
     </div>
     <?php endif; ?>

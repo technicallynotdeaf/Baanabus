@@ -10,7 +10,25 @@ window.initTaskDetail = function() {
   const statusEl = document.getElementById('td-status');
   const saveBtn  = document.getElementById('td-save');
 
-  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'location', 'context', 'time', 'deadline', 'description'];
+  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'location', 'context', 'time', 'deadline',
+                     'relevant_after', 'irrelevant_after', 'description'];
+
+  // Deep-link from the Blocked flow (?focus=field1,field2 on task_detail.php) —
+  // scroll to and highlight the field(s) that prompted opening this overlay.
+  const focusFields = (root.dataset.focusFields || '').split(',').filter(Boolean);
+  if (focusFields.length) {
+    let first = null;
+    focusFields.forEach(id => {
+      const el = document.getElementById('td-' + id);
+      if (!el) return;
+      if (!first) first = el;
+      const wrap = el.closest('div') || el;
+      wrap.style.outline = '2px solid #c9922e';
+      wrap.style.borderRadius = '6px';
+      setTimeout(() => { wrap.style.outline = ''; }, 3000);
+    });
+    if (first) setTimeout(() => { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); first.focus(); }, 50);
+  }
 
   function refreshList() {
     if (typeof window.refreshTaskListRow === 'function') window.refreshTaskListRow(taskId);

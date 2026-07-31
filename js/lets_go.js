@@ -5,6 +5,7 @@ window.initLetsGo = function() {
   if (!c) return;
 
   let skippedDailyIds = [];
+  let _currentTaskData = null; // last-rendered task card's data, for returning to it without a refetch
 
   function esc(s) {
     return String(s)
@@ -86,6 +87,7 @@ window.initLetsGo = function() {
   }
 
   function renderTask(d) {
+    _currentTaskData = d;
     const hasSubs = d.subtasks && d.subtasks.length > 0;
     const info    = window.renderTaskInfo ? window.renderTaskInfo(d, {interactive: hasSubs}) : '';
     const label   = hasSubs
@@ -491,10 +493,19 @@ window.initLetsGo = function() {
         .catch(() => { status.textContent = 'Network error.'; opts.querySelectorAll('button').forEach(b => b.disabled = false); });
     }
 
+    // Genuine metadata mismatch — snoozes lightly (same as before) so it
+    // doesn't immediately resurface, and opens the task detail overlay
+    // scrolled/focused straight to the field(s) that need fixing, rather
+    // than just deferring the same wrong data again.
+    function fixMetadata(reason, focusFields) {
+      sendBlocked(reason);
+      loadOverlay('api/task_detail.php?id=' + taskId + '&focus=' + encodeURIComponent(focusFields));
+    }
+
     opts.append(
-      mkBtn("Wrong place right now",          () => sendBlocked('wrong_place')),
-      mkBtn("Not enough energy for this",     () => sendBlocked('low_energy')),
-      mkBtn("Need a longer stretch of time",  () => sendBlocked('no_time')),
+      mkBtn("Wrong location",                 () => fixMetadata('wrong_location', 'location')),
+      mkBtn("Wrong time of day",              () => fixMetadata('wrong_time', 'relevant_after,irrelevant_after')),
+      mkBtn("Duration or energy tagged wrong",() => fixMetadata('wrong_effort', 'time,energy')),
       mkBtn("Waiting on something else first",() => {
         opts.innerHTML = '';
         renderWaitingSubform(opts, null, (personId, when, onError) => {
@@ -509,6 +520,11 @@ window.initLetsGo = function() {
         });
       }),
       mkBtn("Not sure what to do with it",    () => sendBlocked('too_vague')),
+      mkBtn("I just don't want to do this right now", () => {
+        opts.innerHTML = '';
+        status.textContent = '';
+        loadUnstuckTechnique(taskId);
+      }, 'background:transparent;color:#6b5b95;border:1.5px solid #6b5b95;'),
     );
 
     // "Waiting for a date" needs inline date input
@@ -528,6 +544,94 @@ window.initLetsGo = function() {
     });
     dateRow.append(dateInput, dateBtn);
     opts.append(dateRow);
+  };
+
+  // Category-2 "genuine resistance" flow — the task's metadata is already
+  // correct, offer an actual unstuck technique rather than another snooze.
+  function loadUnstuckTechnique(taskId) {
+    c.innerHTML = `<p class="muted">${(window.pickLoadingLine || (() => 'Loading…'))()}</p>`;
+    fetch(`api/unstuck_technique.php?task_id=${taskId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) renderUnstuckTechnique(taskId, d);
+        else c.innerHTML = `<p class="muted">${esc(d.error || 'Could not load a technique.')}</p>`;
+      })
+      .catch(() => { c.innerHTML = '<p class="muted">Could not load a technique.</p>'; });
+  }
+
+  function renderUnstuckTechnique(taskId, d) {
+    if (d.kind === 'break_smaller') { renderBreakSmaller(taskId, d); return; }
+
+    const secs = d.seconds || null;
+    const uid  = Math.random().toString(36).slice(2);
+    const hourglass = secs ? hourglassMarkup(secs, uid) : '';
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">getting unstuck</p>
+      <p style="margin-bottom:0.85rem;line-height:1.5;">${esc(d.text)}</p>
+      ${hourglass}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.6rem;">
+        <button class="action-button" onclick="window._loadUnstuck(${taskId})">Try another</button>
+        <button class="action-button" onclick="window._unstuckNotForMe(${taskId}, ${d.id}, ${d.is_custom ? 'true' : 'false'})">Not for me</button>
+        <button class="action-button" id="unstuck-ready-btn" style="background:transparent;color:#888;border:1px solid #ccc;${secs ? 'visibility:hidden;' : ''}" onclick="window._unstuckReady(${taskId})">Ready to try</button>
+      </div>
+      <p style="margin-top:0.4rem;"><a href="#" onclick="event.preventDefault();snoozeTask(${taskId})" style="font-size:0.78em;color:#8b7355;">None of these — snooze it</a></p>`;
+    if (secs) armHourglass(secs, uid, 'unstuck-ready-btn');
+  }
+
+  function renderBreakSmaller(taskId, d) {
+    c.innerHTML = `
+      <p style="font-size:0.75em;color:#aaa;margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.05em;">getting unstuck</p>
+      <p style="margin-bottom:0.7rem;line-height:1.5;">${esc(d.text)}</p>
+      <input id="unstuck-step-input" type="text" placeholder="e.g. Open the document" style="width:100%;box-sizing:border-box;margin-bottom:0.5rem;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.6rem;">
+        <button class="action-button" id="unstuck-step-add">Add & I'm on it</button>
+        <button class="action-button" onclick="window._loadUnstuck(${taskId})">Try another</button>
+        <button class="action-button" onclick="window._unstuckNotForMe(${taskId}, ${d.id}, ${d.is_custom ? 'true' : 'false'})">Not for me</button>
+      </div>
+      <p style="margin-top:0.4rem;"><a href="#" onclick="event.preventDefault();snoozeTask(${taskId})" style="font-size:0.78em;color:#8b7355;">None of these — snooze it</a></p>`;
+    const inp = document.getElementById('unstuck-step-input');
+    const addBtn = document.getElementById('unstuck-step-add');
+    function submit() {
+      const title = inp.value.trim();
+      if (!title) { inp.focus(); return; }
+      addBtn.disabled = true;
+      fetch('api/add_task.php', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title, task_type: 'next_action', parent_id: taskId }),
+      }).then(r => r.json()).then(data => {
+        addBtn.disabled = false;
+        if (!data.ok) return;
+        earnPip();
+        if (_currentTaskData && _currentTaskData.id === taskId) {
+          _currentTaskData.subtasks = _currentTaskData.subtasks || [];
+          _currentTaskData.subtasks.push({ id: data.task_id, title });
+          renderTask(_currentTaskData);
+        } else {
+          loadSpeechBubble('lets-go.php');
+        }
+      }).catch(() => { addBtn.disabled = false; });
+    }
+    addBtn.addEventListener('click', submit);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    inp.focus();
+  }
+
+  window._loadUnstuck = function(taskId) { loadUnstuckTechnique(taskId); };
+
+  window._unstuckReady = function(taskId) {
+    earnPip();
+    if (_currentTaskData && _currentTaskData.id === taskId) {
+      renderTask(_currentTaskData);
+    } else {
+      loadSpeechBubble('lets-go.php');
+    }
+  };
+
+  window._unstuckNotForMe = function(taskId, techId, isCustom) {
+    const action = isCustom ? 'delete_custom' : 'disable';
+    fetch('api/unstuck_technique.php', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, id: techId})})
+      .then(() => loadUnstuckTechnique(taskId));
   };
 
   function recordQuestionSeen(id, correct) {

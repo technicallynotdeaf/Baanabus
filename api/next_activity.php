@@ -656,7 +656,11 @@ if ($choice === 'physical_object_triage') {
 if ($choice === 'bible_verse') json_response(pick_bible_verse());
 if ($choice === 'fun_task')  json_response(pick_fun_task());
 if ($choice === 'easy_task') json_response(pick_easy_task());
-if ($choice === 'joke')      json_response(pick_joke());
+if ($choice === 'joke') {
+    $j = pick_joke();
+    if ($j) json_response($j);
+    json_response(pick_fun_task()); // fallback if every joke has hit the repeat cap
+}
 if ($choice === 'nutrition') json_response(pick_nutrition());
 if ($choice === 'trivia') json_response(pick_trivia() ?? pick_fun_task());
 if ($choice === 'study') {
@@ -1323,40 +1327,21 @@ function pick_nutrition(): array {
     return ['type' => 'nutrition', 'text' => $facts[array_rand($facts)]];
 }
 
-function pick_joke(): array {
-    $jokes = [
-        ['setup' => "Why don't scientists trust atoms?",                   'punchline' => "Because they make up everything."],
-        ['setup' => "I told my doctor I broke my arm in two places.",       'punchline' => "He told me to stop going to those places."],
-        ['setup' => "Why did the scarecrow win an award?",                  'punchline' => "He was outstanding in his field."],
-        ['setup' => "What do you call cheese that isn't yours?",            'punchline' => "Nacho cheese."],
-        ['setup' => "Why can't a bicycle stand on its own?",                'punchline' => "Because it's two-tired."],
-        ['setup' => "What do you call a factory that makes okay products?", 'punchline' => "A satisfactory."],
-        ['setup' => "I'm reading a book about anti-gravity.",               'punchline' => "It's impossible to put down."],
-        ['setup' => "Did you hear about the claustrophobic astronaut?",     'punchline' => "He just needed a little space."],
-        ['setup' => "Why do cows wear bells?",                              'punchline' => "Because their horns don't work."],
-        ['setup' => "What do you call an alligator in a vest?",             'punchline' => "An investigator."],
-        ['setup' => "How do you organise a space party?",                   'punchline' => "You planet."],
-        ['setup' => "What did the ocean say to the beach?",                 'punchline' => "Nothing. It just waved."],
-        ['setup' => "Why couldn't the leopard play hide and seek?",         'punchline' => "Because he was always spotted."],
-        ['setup' => "What's a computer's favourite snack?",                 'punchline' => "Microchips."],
-        ['setup' => "Why do we tell actors to 'break a leg'?",              'punchline' => "Because every play has a cast."],
-        ['setup' => "What do you call a parade of rabbits hopping backwards?", 'punchline' => "A receding hare-line."],
-        ['setup' => "I asked my dog what two minus two is.",                'punchline' => "He said nothing."],
-        ['setup' => "What did one wall say to the other wall?",             'punchline' => "I'll meet you at the corner."],
-        ['setup' => "Why did the math book look so sad?",                   'punchline' => "It had too many problems."],
-        ['setup' => "I used to hate facial hair.",                          'punchline' => "Then it grew on me."],
-        ['setup' => "Time flies like an arrow.",                            'punchline' => "Fruit flies like a banana."],
-        ['setup' => "What do you call a sleeping dinosaur?",               'punchline' => "A dino-snore."],
-        ['setup' => "I tried to come up with a joke about infinity.",       'punchline' => "But I couldn't find an ending."],
-        ['setup' => "Why don't eggs tell jokes?",                          'punchline' => "They'd crack each other up."],
-        ['setup' => "What do you call a fish without eyes?",               'punchline' => "A fsh."],
-        ['setup' => "I only know 25 letters of the alphabet.",             'punchline' => "I don't know y."],
-        ['setup' => "What's brown and sticky?",                            'punchline' => "A stick."],
-        ['setup' => "Why did the golfer bring an extra pair of pants?",    'punchline' => "In case he got a hole in one."],
-        ['setup' => "I have a joke about paper.",                          'punchline' => "It's tearable."],
-        ['setup' => "What do you call a bear with no teeth?",              'punchline' => "A gummy bear."],
-    ];
-    $j = $jokes[array_rand($jokes)];
+// Caps each joke at 3 showings (tracked in config['jokes_seen'], same pattern
+// as tips_seen in pick_tip() above) — otherwise pure random selection repeats
+// the same handful of jokes far too often over time. Returns null once every
+// joke in the pool has hit the cap, so the pool clearly needs expanding.
+function pick_joke(): ?array {
+    global $cfg;
+    $jokes = require __DIR__ . '/../content/jokes.php';
+    if (!$jokes) return null;
+    $jokesSeen = $cfg['jokes_seen'] ?? [];
+    $available = array_values(array_filter($jokes, fn($j) => ($jokesSeen[(string)$j['id']] ?? 0) < 3));
+    if (!$available) return null;
+    $j = $available[array_rand($available)];
+    $jokesSeen[(string)$j['id']] = ($jokesSeen[(string)$j['id']] ?? 0) + 1;
+    $cfg['jokes_seen'] = $jokesSeen;
+    try { saveConfig($cfg); } catch (Throwable $e) {}
     return ['type' => 'joke', 'setup' => $j['setup'], 'punchline' => $j['punchline']];
 }
 

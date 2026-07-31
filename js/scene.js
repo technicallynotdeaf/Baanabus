@@ -1006,9 +1006,16 @@
         const t1  = 0.22, t2 = 0.58, v1 = 0.09, v2 = 0.26;
         const pad = 0.025;
 
+        // wallPt('right', ...) maps smaller t to a LARGER on-screen x (the
+        // right wall recedes toward the vanishing point as t grows), the
+        // opposite of the left wall — so t1/t2 are paired with TR/TL (not
+        // TL/TR) below to keep "TL" genuinely on-screen-left. Getting this
+        // backwards previously mirrored the whole calendar (day-of-week
+        // labels and date grid both use the same left-to-right bp(s,...)).
+
         // Frame shadow
-        const fTL = rp(t1-pad, v1-pad), fTR = rp(t2+pad, v1-pad);
-        const fBL = rp(t1-pad, v2+pad), fBR = rp(t2+pad, v2+pad);
+        const fTL = rp(t2+pad, v1-pad), fTR = rp(t1-pad, v1-pad);
+        const fBL = rp(t2+pad, v2+pad), fBR = rp(t1-pad, v2+pad);
         ctx.fillStyle = 'rgba(0,0,0,0.18)';
         quadPath(ctx, [fTL[0]+2,fTL[1]+2],[fTR[0]+2,fTR[1]+2],[fBL[0]+2,fBL[1]+2],[fBR[0]+2,fBR[1]+2]);
         ctx.fill();
@@ -1019,8 +1026,8 @@
         ctx.fill();
 
         // Paper background
-        const TL = rp(t1, v1), TR = rp(t2, v1);
-        const BL = rp(t1, v2), BR = rp(t2, v2);
+        const TL = rp(t2, v1), TR = rp(t1, v1);
+        const BL = rp(t2, v2), BR = rp(t1, v2);
         ctx.fillStyle = '#f5f2e8';
         quadPath(ctx, TL, TR, BL, BR);
         ctx.fill();
@@ -1030,7 +1037,7 @@
         const bp = (s, t) => bilerp(TL, TR, BL, BR, s, t);
 
         // Red header band
-        const hBL = rp(t1, v1 + 0.048), hBR = rp(t2, v1 + 0.048);
+        const hBL = rp(t2, v1 + 0.048), hBR = rp(t1, v1 + 0.048);
         ctx.fillStyle = '#c0392b';
         quadPath(ctx, TL, TR, hBL, hBR);
         ctx.fill();

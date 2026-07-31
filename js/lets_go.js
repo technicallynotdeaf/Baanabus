@@ -2282,25 +2282,11 @@ window.initLetsGo = function() {
 
     const TARGET   = 300;
     const SAVE_KEY = 'baan_gm_save';
-    const PB_KEY   = 'baan_gm_pb'; // legacy localStorage key — one-time migration only, see below
-
     // Best score now lives server-side (config.enc via api/gem_match_score.php)
-    // so it's the same number everywhere, not a different one per browser/
-    // device. One-time migration: if this browser still has an old
-    // localStorage best from before that change, submit it as a claim (the
-    // endpoint only ever keeps the higher value) so nobody's best score
-    // silently resets to 0 the first time they play after the fix, then
-    // stop tracking it locally.
-    try {
-      const oldPb = parseInt(localStorage.getItem(PB_KEY) || '0');
-      if (oldPb > 0) {
-        fetch('api/gem_match_score.php', { method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ score: oldPb }) })
-          .then(r => r.json())
-          .then(d => { if (d.ok) localStorage.removeItem(PB_KEY); })
-          .catch(() => {});
-      }
-    } catch (e) {}
+    // instead of the old localStorage-only baan_gm_pb key — deliberately
+    // starting fresh at 0 rather than migrating the old per-browser value up,
+    // since an uncapped cascade-combo multiplier could produce outlier scores
+    // not representative of normal play.
 
     let grid = [], score = 0, moves = START_MOVES, sel = null, cascadeDepth = 0;
     let state = 'IDLE', rafId = null;
@@ -2688,10 +2674,9 @@ window.initLetsGo = function() {
       }
       renderMsg(''); // show the score immediately; best-info fills in once the server responds
 
-      // Best score is server-side (api/gem_match_score.php) so it's the same
-      // number regardless of browser/device — see the PB_KEY migration note
-      // above. A give-up never counts toward it (matches prior behaviour),
-      // so that path only reads the current best rather than submitting one.
+      // Best score is server-side (api/gem_match_score.php), starting fresh
+      // at 0. A give-up never counts toward it (matches prior behaviour), so
+      // that path only reads the current best rather than submitting one.
       if (!gaveUp && score > 0) {
         fetch('api/gem_match_score.php', { method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ score }) })

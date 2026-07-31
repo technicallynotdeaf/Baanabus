@@ -2692,6 +2692,7 @@ window.initLetsGo = function() {
     .then(r => r.json())
     .then(d => {
       if (!d.ok) return;
+      earnPip();
       if (d.all_done) {
         window.location.reload();
       } else {

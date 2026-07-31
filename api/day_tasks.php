@@ -117,7 +117,7 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
     <ul id="day-task-list" style="list-style:none;margin:0 0 1rem;padding:0;">
       <?php foreach ($scheduled as $t): ?>
         <?php $id = (int)$t['id']; $isWoke = !empty($t['_woke']); ?>
-        <li data-id="<?= $id ?>" data-location="<?= htmlspecialchars($t['location'] ?? '') ?>" style="padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
+        <li data-id="<?= $id ?>" data-location="<?= htmlspecialchars(implode(',', (array)($t['location'] ?? []))) ?>" style="padding:0.5rem 0;border-bottom:1px solid #f0ede6;">
           <div style="line-height:1.4;margin-bottom:0.35rem;">
             <?= htmlspecialchars($t['title']) ?>
             <?php if ($isWoke): ?>

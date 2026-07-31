@@ -10,24 +10,28 @@ window.initTaskDetail = function() {
   const statusEl = document.getElementById('td-status');
   const saveBtn  = document.getElementById('td-save');
 
-  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'location', 'context', 'time', 'deadline',
+  // 'location' is handled separately below — a checkbox group, not a single
+  // element with a .value.
+  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'context', 'time', 'deadline',
                      'relevant_after', 'irrelevant_after', 'description'];
 
   // Deep-link from the Blocked flow (?focus=field1,field2 on task_detail.php) —
   // scroll to and highlight the field(s) that prompted opening this overlay.
+  // 'location' maps to its checkbox-group container, not a 'td-location' element.
   const focusFields = (root.dataset.focusFields || '').split(',').filter(Boolean);
   if (focusFields.length) {
     let first = null;
     focusFields.forEach(id => {
-      const el = document.getElementById('td-' + id);
+      const elId = id === 'location' ? 'td-location-group' : 'td-' + id;
+      const el = document.getElementById(elId);
       if (!el) return;
       if (!first) first = el;
-      const wrap = el.closest('div') || el;
+      const wrap = id === 'location' ? el : (el.closest('div') || el);
       wrap.style.outline = '2px solid #c9922e';
       wrap.style.borderRadius = '6px';
       setTimeout(() => { wrap.style.outline = ''; }, 3000);
     });
-    if (first) setTimeout(() => { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); first.focus(); }, 50);
+    if (first) setTimeout(() => { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (first.focus) first.focus(); }, 50);
   }
 
   function refreshList() {
@@ -44,6 +48,8 @@ window.initTaskDetail = function() {
       if (id === 'deadline') v = v === '' ? null : v;
       fields[id] = v === '' ? null : v;
     });
+    const checkedLocs = Array.from(document.querySelectorAll('.td-location-cb:checked')).map(cb => cb.value);
+    fields.location = checkedLocs.length ? checkedLocs : null;
 
     saveBtn.disabled = true;
     statusEl.textContent = 'Saving…';

@@ -1,7 +1,7 @@
 <?php
 /**
  * api/add_task.php — add a task to the vault
- * POST { title, urgency?: 'low'|'medium'|'high', context?: string, location?: string, task_type?: string }
+ * POST { title, urgency?: 'low'|'medium'|'high', context?: string, location?: string[]|string, task_type?: string }
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -18,7 +18,12 @@ if (mb_strlen($title) > 300) json_response(['error' => 'Title too long'], 400);
 $urgency   = in_array($body['urgency']   ?? '', ['low','medium','high'], true) ? $body['urgency']   : 'medium';
 $taskType  = in_array($body['task_type'] ?? '', ['next_action','someday','inbox'], true) ? $body['task_type'] : 'next_action';
 $context   = trim($body['context']  ?? '') ?: null;
-$location  = trim($body['location'] ?? '') ?: null;
+$rawLoc    = $body['location'] ?? null;
+$locRaw    = is_array($rawLoc) ? $rawLoc : (is_string($rawLoc) && $rawLoc !== '' ? [$rawLoc] : []);
+$location  = array_values(array_unique(array_filter(array_map(
+    fn($l) => strtolower(trim((string)$l)),
+    $locRaw
+), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true)))) ?: null;
 $personId  = isset($body['person_id']) && is_int($body['person_id']) ? $body['person_id'] : null;
 $parentId  = isset($body['parent_id']) && (int)$body['parent_id'] > 0 ? (int)$body['parent_id'] : null;
 

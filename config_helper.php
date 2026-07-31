@@ -335,18 +335,28 @@ function getDoableTasks(): array {
         $physicalLocation = isset($entry['location']) ? (int)$entry['location'] : $dayType;
     } catch (Throwable $e) {}
 
-    // Location filtering: task 'location' field = where/how the task can be done.
-    // Values: home, work, shops, phone, online, or null (anywhere).
+    // Location filtering: task 'location' field = where/how the task can be done —
+    // an array, since a task can be doable at more than one place (e.g. Home AND
+    // Work but not Transit). A task with any tagged location matching today's
+    // physical location is doable; no locations tagged means "anywhere".
+    // Same multi-location semantics as getActiveDailies()'s $locationOk below.
     // 'context' is a planning tag (area of life) and is NOT used for filtering.
     $locationOk = function(array $t) use ($physicalLocation): bool {
-        $loc = strtolower(trim($t['location'] ?? ''));
-        if (!$loc || !$physicalLocation) return true;
-        if ($physicalLocation === 1) return $loc !== 'work';
-        if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
-        if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
-        if ($physicalLocation === 5) return $loc !== 'shops';
-        if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
-        return true; // Rest (4): no suppression
+        $raw  = $t['location'] ?? null;
+        $locs = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
+        if (empty($locs) || !$physicalLocation) return true;
+        $canDo = function(string $loc) use ($physicalLocation): bool {
+            if ($physicalLocation === 1) return $loc !== 'work';
+            if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
+            if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+            if ($physicalLocation === 5) return $loc !== 'shops';
+            if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+            return true; // Rest (4): no suppression
+        };
+        foreach ($locs as $loc) {
+            if ($canDo(strtolower(trim($loc)))) return true;
+        }
+        return false;
     };
 
     // Time-of-day window: same mechanism as dailies' relevant_after/irrelevant_after
@@ -562,6 +572,19 @@ function updateTaskFieldsShared(int $taskId, array $rawFields): array {
             $v = trim((string)($fields[$tf] ?? ''));
             $fields[$tf] = preg_match('/^\d{2}:\d{2}$/', $v) ? $v : null;
         }
+    }
+    // Location — multi-select array (a task can be doable at more than one
+    // place), same shape/validation as Dailies' location field. Accepts an
+    // array or a single legacy string for backward compatibility, normalizes
+    // to a deduped array of valid values, or null for "anywhere".
+    if (array_key_exists('location', $fields)) {
+        $raw  = $fields['location'];
+        $locs = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
+        $locs = array_values(array_unique(array_filter(array_map(
+            fn($l) => strtolower(trim((string)$l)),
+            $locs
+        ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true))));
+        $fields['location'] = $locs ?: null;
     }
 
     vaultUpdateTask($taskId, $fields);

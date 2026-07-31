@@ -145,7 +145,7 @@ if (isset($bucketFilters[$filter])) {
     <div class="task-row" data-id="<?= (int)$t['id'] ?>"
          data-title="<?= htmlspecialchars(strtolower($t['title'])) ?>"
          data-context="<?= htmlspecialchars($ctx) ?>"
-         data-location="<?= htmlspecialchars($t['location'] ?? '') ?>"
+         data-location="<?= htmlspecialchars(implode(',', (array)($t['location'] ?? []))) ?>"
          style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
       <div style="flex:1;min-width:0;">
         <div style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></div>
@@ -259,16 +259,15 @@ $typeLabels = [
           <option value="low">Later</option>
         </select>
       </div>
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Location</label>
-        <select id="new-task-location">
-          <option value="">Anywhere</option>
-          <option value="home">Home</option>
-          <option value="work">Work</option>
-          <option value="shops">Shops</option>
-          <option value="online">Online</option>
-          <option value="phone">Phone call</option>
-        </select>
+      <div style="flex:2;min-width:200px;">
+        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Location (any that apply)</label>
+        <div id="new-task-location-group" style="display:flex;flex-wrap:wrap;gap:4px 10px;padding:4px 0;">
+          <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone'] as $loc => $label): ?>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;white-space:nowrap;cursor:pointer;">
+            <input type="checkbox" class="new-task-location-cb" value="<?= $loc ?>"> <?= $label ?>
+          </label>
+          <?php endforeach; ?>
+        </div>
       </div>
       <div style="flex:1;min-width:120px;">
         <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Context</label>
@@ -333,7 +332,7 @@ $typeLabels = [
         <div class="task-row" data-id="<?= (int)$t['id'] ?>"
              data-title="<?= htmlspecialchars(strtolower($t['title']) . ' ' . $subSearch) ?>"
              data-context="<?= htmlspecialchars(trim($t['context'] ?? '')) ?>"
-             data-location="<?= htmlspecialchars($t['location'] ?? '') ?>"
+             data-location="<?= htmlspecialchars(implode(',', (array)($t['location'] ?? []))) ?>"
              style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
           <div style="flex:1;min-width:0;">
             <span style="line-height:1.4;word-break:break-word;"><?= htmlspecialchars($t['title']) ?></span>

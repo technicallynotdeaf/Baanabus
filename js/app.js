@@ -23,16 +23,21 @@
 // ===========================
 // Snooze picker option builder — used by list_tasks, day_tasks, lets_go
 // Returns {suggested: [[label,when],...], rest: [[label,when],...]}
-// 'suggested' = upcoming days whose scheduled type matches the task's location
-window.buildSnoozeOpts = function(taskLocation) {
+// 'suggested' = upcoming days whose scheduled type matches any one of the
+// task's (possibly multiple) locations — a task doable at Home OR Work
+// should be suggested for a day matching either.
+window.buildSnoozeOpts = function(taskLocations) {
   const compatMap = {
     work:  [2, 5],
     home:  [1, 4, 5],
     shops: [1, 3],
     phone: [1, 2, 4, 5],
-    // online/null/anywhere: no preference — skip suggested
+    // online/anywhere: no preference — skip suggested
   };
-  const compatible = compatMap[taskLocation] || null;
+  const locs = Array.isArray(taskLocations) ? taskLocations.filter(Boolean) : (taskLocations ? [taskLocations] : []);
+  const compatUnion = new Set();
+  locs.forEach(l => (compatMap[l] || []).forEach(dt => compatUnion.add(dt)));
+  const compatible = compatUnion.size ? Array.from(compatUnion) : null;
   const schedule   = window._weeklySchedule || {};
   const upcoming   = window._upcomingDayTypes || {};
   const hasData    = compatible !== null && (

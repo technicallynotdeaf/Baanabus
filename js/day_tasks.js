@@ -108,7 +108,7 @@ window.initDayTasks = function() {
   window._showSnoozePicker = function(taskId, btn) {
     document.querySelectorAll('.day-snooze-picker').forEach(p => p.remove());
     const li = btn.closest('li');
-    const taskLocation = li ? (li.dataset.location || null) : null;
+    const taskLocation = li && li.dataset.location ? li.dataset.location.split(',').filter(Boolean) : [];
 
     const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(taskLocation);
     const allOpts = suggested.length

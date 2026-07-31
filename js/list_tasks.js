@@ -18,19 +18,20 @@ window.initListTasks = function() {
       const title    = titleIn.value.trim();
       const urgency  = document.getElementById('new-task-urgency').value;
       const context  = document.getElementById('new-task-context').value.trim();
-      const location = document.getElementById('new-task-location').value;
+      const location = Array.from(document.querySelectorAll('.new-task-location-cb:checked')).map(cb => cb.value);
       const status   = document.getElementById('add-task-status');
       if (!title) { status.textContent = 'Enter a title first.'; return; }
       status.textContent = 'Saving…';
       fetch('api/add_task.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, urgency, context: context || null, location: location || null }),
+        body: JSON.stringify({ title, urgency, context: context || null, location: location.length ? location : null }),
       })
       .then(r => r.json())
       .then(d => {
         if (!d.ok) throw new Error(d.error || 'Failed');
         titleIn.value = '';
+        document.querySelectorAll('.new-task-location-cb:checked').forEach(cb => cb.checked = false);
         status.textContent = 'Saved.';
         setTimeout(() => { status.textContent = ''; }, 2000);
         addRowToGroup({ id: d.task_id, title, urgency, context });
@@ -128,7 +129,7 @@ window.initListTasks = function() {
 
     document.querySelectorAll('.snooze-picker').forEach(p => p.remove());
 
-    const taskLocation = row ? (row.dataset.location || null) : null;
+    const taskLocation = row && row.dataset.location ? row.dataset.location.split(',').filter(Boolean) : [];
     const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(taskLocation);
     const allOpts = suggested.length
       ? [['-- suits this task --', null], ...suggested, ['-- other days --', null], ...rest]

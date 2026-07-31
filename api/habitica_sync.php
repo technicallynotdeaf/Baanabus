@@ -227,16 +227,16 @@ try {
         $task  = &$data['tasks'][$k];
         $habId = $task['habitica_id'];
 
-        $snoozed = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
-        $locTag  = match($task['location'] ?? null) {
-            'home'   => 'location:home',
-            'work'   => 'location:work',
-            'shops'  => 'location:shops',
-            'phone'  => 'location:phone',
-            'online' => 'location:online',
-            default  => 'location:anywhere',
-        };
-        $desired = [$snoozed ? 'snoozed' : 'doable', $locTag];
+        $snoozed  = !empty($task['snoozed_until']) && strtotime($task['snoozed_until']) > $nowTs;
+        $rawLocs  = $task['location'] ?? null;
+        $taskLocs = is_array($rawLocs) ? $rawLocs : (is_string($rawLocs) && $rawLocs !== '' ? [$rawLocs] : []);
+        $locTags  = [];
+        foreach ($taskLocs as $l) {
+            $l = strtolower(trim((string)$l));
+            if (in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true)) $locTags[] = 'location:' . $l;
+        }
+        if (!$locTags) $locTags = ['location:anywhere'];
+        $desired = array_merge([$snoozed ? 'snoozed' : 'doable'], $locTags);
         sort($desired);
 
         $stored = $task['_hab_tags'] ?? [];

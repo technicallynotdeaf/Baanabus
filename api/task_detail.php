@@ -44,6 +44,11 @@ $isDone = ($task['status'] ?? '') === 'complete';
 $esc = fn($v) => htmlspecialchars((string)($v ?? ''));
 $sel = fn($val, $opt) => ((string)($val ?? '') === (string)$opt) ? 'selected' : '';
 
+// Location — multi-select array; tolerate legacy single-string data from
+// before the array conversion.
+$rawLoc = $task['location'] ?? null;
+$taskLocations = is_array($rawLoc) ? $rawLoc : (is_string($rawLoc) && $rawLoc !== '' ? [$rawLoc] : []);
+
 // Optional deep-link from the Blocked flow (e.g. ?focus=location or
 // ?focus=relevant_after,irrelevant_after) — read here, consumed by
 // initTaskDetail() to scroll/highlight/focus the named field(s) on load.
@@ -93,14 +98,17 @@ $focusFields = preg_replace('/[^a-z_,]/', '', strtolower($_GET['focus'] ?? ''));
         <option value="high"   <?= $sel($task['energy'] ?? '', 'high') ?>>High</option>
       </select>
     </div>
-    <div style="flex:1;min-width:110px;">
-      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Location</label>
-      <select id="td-location" style="width:100%;">
-        <option value="" <?= $sel($task['location'] ?? '', '') ?>>Anywhere</option>
-        <?php foreach (['home','work','shops','online','phone'] as $loc): ?>
-        <option value="<?= $loc ?>" <?= $sel($task['location'] ?? '', $loc) ?>><?= ucfirst($loc) ?></option>
+    <div style="flex:2;min-width:220px;">
+      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Location (any that apply)</label>
+      <div id="td-location-group" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding:6px 0 2px;">
+        <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone'] as $loc => $label): ?>
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.88em;white-space:nowrap;cursor:pointer;">
+          <input type="checkbox" class="td-location-cb" value="<?= $loc ?>" <?= in_array($loc, $taskLocations, true) ? 'checked' : '' ?>>
+          <?= $label ?>
+        </label>
         <?php endforeach; ?>
-      </select>
+      </div>
+      <p class="muted" style="font-size:0.72em;margin:2px 0 0;">Leave all unchecked for "anywhere"</p>
     </div>
     <div style="flex:1;min-width:110px;">
       <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Context</label>

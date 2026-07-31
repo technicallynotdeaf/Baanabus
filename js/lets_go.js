@@ -156,7 +156,7 @@ window.initLetsGo = function() {
     };
     window._mrShowSnooze = function(id, btn) {
       document.querySelectorAll('.mr-snooze-picker').forEach(p => p.remove());
-      const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(d.location || null);
+      const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(d.location || []);
       const allOpts = suggested.length
         ? [['-- suits this task --', null], ...suggested, ['-- other days --', null], ...rest]
         : rest;
@@ -502,8 +502,43 @@ window.initLetsGo = function() {
       loadOverlay('api/task_detail.php?id=' + taskId + '&focus=' + encodeURIComponent(focusFields));
     }
 
+    // "Wrong location" actually asks where it'd need to be done, inline —
+    // opening the overlay and hoping the user engages with it doesn't
+    // capture anything on its own. Location is multi-select: a task can be
+    // doable at more than one place.
+    function renderLocationSubform() {
+      status.textContent = '';
+      const locs    = ['home', 'work', 'shops', 'online', 'phone'];
+      const labels  = { home: 'Home', work: 'Work', shops: 'Shops', online: 'Online', phone: 'Phone call' };
+      const current = (_currentTaskData && Array.isArray(_currentTaskData.location)) ? _currentTaskData.location : [];
+      opts.innerHTML = `
+        <p style="font-size:0.85em;color:#555;margin-bottom:0.5rem;">Where would this actually need to be done? (pick any that apply)</p>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:0.6rem;">
+          ${locs.map(l => `<label style="display:flex;align-items:center;gap:8px;font-size:0.92em;cursor:pointer;">
+            <input type="checkbox" class="wl-cb" value="${l}" ${current.includes(l) ? 'checked' : ''}> ${labels[l]}
+          </label>`).join('')}
+        </div>
+        <button class="action-button" id="wl-save">Save</button>
+        <p style="margin-top:0.5rem;"><a href="#" id="wl-skip" style="font-size:0.78em;color:#8b7355;">Not sure — snooze it instead</a></p>`;
+      document.getElementById('wl-save').addEventListener('click', function() {
+        const selected = Array.from(opts.querySelectorAll('.wl-cb:checked')).map(cb => cb.value);
+        this.disabled = true;
+        status.textContent = 'Saving…';
+        fetch('api/update_task.php', { method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ task_id: taskId, fields: { location: selected } }) })
+          .then(r => r.json()).then(data => {
+            if (data.ok) { status.textContent = 'Saved.'; setTimeout(() => loadSpeechBubble('lets-go.php'), 350); }
+            else { this.disabled = false; status.textContent = data.error || 'Could not save.'; }
+          }).catch(() => { this.disabled = false; status.textContent = 'Network error.'; });
+      });
+      document.getElementById('wl-skip').addEventListener('click', function(e) {
+        e.preventDefault();
+        sendBlocked('wrong_location');
+      });
+    }
+
     opts.append(
-      mkBtn("Wrong location",                 () => fixMetadata('wrong_location', 'location')),
+      mkBtn("Wrong location",                 renderLocationSubform),
       mkBtn("Wrong time of day",              () => fixMetadata('wrong_time', 'relevant_after,irrelevant_after')),
       mkBtn("Duration or energy tagged wrong",() => fixMetadata('wrong_effort', 'time,energy')),
       mkBtn("Waiting on something else first",() => {

@@ -2282,7 +2282,25 @@ window.initLetsGo = function() {
 
     const TARGET   = 300;
     const SAVE_KEY = 'baan_gm_save';
-    const PB_KEY   = 'baan_gm_pb';
+    const PB_KEY   = 'baan_gm_pb'; // legacy localStorage key — one-time migration only, see below
+
+    // Best score now lives server-side (config.enc via api/gem_match_score.php)
+    // so it's the same number everywhere, not a different one per browser/
+    // device. One-time migration: if this browser still has an old
+    // localStorage best from before that change, submit it as a claim (the
+    // endpoint only ever keeps the higher value) so nobody's best score
+    // silently resets to 0 the first time they play after the fix, then
+    // stop tracking it locally.
+    try {
+      const oldPb = parseInt(localStorage.getItem(PB_KEY) || '0');
+      if (oldPb > 0) {
+        fetch('api/gem_match_score.php', { method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ score: oldPb }) })
+          .then(r => r.json())
+          .then(d => { if (d.ok) localStorage.removeItem(PB_KEY); })
+          .catch(() => {});
+      }
+    } catch (e) {}
 
     let grid = [], score = 0, moves = START_MOVES, sel = null, cascadeDepth = 0;
     let state = 'IDLE', rafId = null;
@@ -2658,20 +2676,35 @@ window.initLetsGo = function() {
         drawSlot(r,c); const[x,y]=gxy(r,c); drawGem(x,y,grid[r][c],0.35,1);
       }
       const msg=document.getElementById('gm-msg'),btns=document.getElementById('gm-btns');
-      const pb    = parseInt(localStorage.getItem(PB_KEY)||'0');
-      const newPb = score > pb && !gaveUp;
-      if (newPb) localStorage.setItem(PB_KEY, score);
-      const pbText = newPb ? ' — new best!' : (pb > 0 ? ` — best: ${pb}` : '');
       const won = score >= TARGET && !gaveUp;
-      if (won) {
-        earnPip();
-        if (msg) msg.textContent = `Level complete! ${score}${pbText}`;
-      } else if (gaveUp) {
-        if (msg) msg.textContent = `${score} / ${TARGET}${pbText}`;
-      } else if (score >= TARGET * 0.7) {
-        if (msg) msg.textContent = `${score} / ${TARGET} — so close!${pbText}`;
+      if (won) earnPip();
+
+      function renderMsg(pbText) {
+        if (!msg) return;
+        if (won)            msg.textContent = `Level complete! ${score}${pbText}`;
+        else if (gaveUp)    msg.textContent = `${score} / ${TARGET}${pbText}`;
+        else if (score >= TARGET * 0.7) msg.textContent = `${score} / ${TARGET} — so close!${pbText}`;
+        else                msg.textContent = `${score} / ${TARGET}${pbText}`;
+      }
+      renderMsg(''); // show the score immediately; best-info fills in once the server responds
+
+      // Best score is server-side (api/gem_match_score.php) so it's the same
+      // number regardless of browser/device — see the PB_KEY migration note
+      // above. A give-up never counts toward it (matches prior behaviour),
+      // so that path only reads the current best rather than submitting one.
+      if (!gaveUp && score > 0) {
+        fetch('api/gem_match_score.php', { method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ score }) })
+          .then(r => r.json())
+          .then(d => {
+            if (!d.ok) return;
+            renderMsg(d.new_best ? ' — new best!' : (d.best > 0 ? ` — best: ${d.best}` : ''));
+          }).catch(() => {});
       } else {
-        if (msg) msg.textContent = `${score} / ${TARGET}${pbText}`;
+        fetch('api/gem_match_score.php')
+          .then(r => r.json())
+          .then(d => { if (d.ok && d.best > 0) renderMsg(` — best: ${d.best}`); })
+          .catch(() => {});
       }
       if (btns) btns.innerHTML=`
           <button class="action-button" onclick="window._gmRestart()">Play again</button>

@@ -106,26 +106,9 @@ try {
         if ($newTitle !== '')  $fields['title']   = $newTitle;
         if ($urgency !== null) $fields['urgency'] = $urgency;
         $pipResult = vaultUpdateTask($taskId, $fields)['pip'] ?? null;
-        // Delete from Habitica (best-effort)
-        if ($taskForDel && !empty($taskForDel['habitica_id'])) {
-            try {
-                $cfg = getConfig() ?? [];
-                if (!empty($cfg['preferences']['uses_habitica'])) {
-                    require_once __DIR__ . '/habitica_helper.php';
-                    $cass    = getCassowary();
-                    $habUser = $cass['habitica']['user_id'] ?? '';
-                    $habKey  = $cass['habitica']['api_key']  ?? '';
-                    if ($habUser && $habKey) {
-                        if (!empty($taskForDel['habitica_item_id'])) {
-                            habiticaRequest('DELETE', "/tasks/{$taskForDel['habitica_id']}/checklist/{$taskForDel['habitica_item_id']}", $habUser, $habKey);
-                        } else {
-                            habiticaRequest('DELETE', "/tasks/{$taskForDel['habitica_id']}", $habUser, $habKey);
-                        }
-                    }
-                }
-            } catch (Throwable $e) {
-                // non-fatal
-            }
+        if ($taskForDel) {
+            require_once __DIR__ . '/habitica_helper.php';
+            habiticaDeleteTaskBestEffort($taskForDel);
         }
 
     } elseif ($action === 'someday') {

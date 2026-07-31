@@ -148,7 +148,15 @@ try {
             } elseif ($response === 'resolved') {
                 vaultUpdateTask($taskId, ['task_type' => 'next_action', 'snoozed_until' => null]);
             } elseif ($response === 'cancel') {
+                $taskForDel = null;
+                foreach (getTasks()['tasks'] as $t) {
+                    if ((int)$t['id'] === $taskId) { $taskForDel = $t; break; }
+                }
                 vaultUpdateTask($taskId, ['status' => 'deleted']);
+                if ($taskForDel) {
+                    require_once __DIR__ . '/habitica_helper.php';
+                    habiticaDeleteTaskBestEffort($taskForDel);
+                }
             } else {
                 json_response(['error' => 'Unknown response'], 400);
             }

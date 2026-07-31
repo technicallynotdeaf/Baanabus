@@ -415,6 +415,15 @@ function vaultLinkSubtask(array &$data, int $parentId, int $childId): void {
             $ids = $p['subtask_ids'] ?? [];
             if (!in_array($childId, $ids, true)) $ids[] = $childId;
             $p['subtask_ids'] = $ids;
+            // A 'next_action' task that gains a defining first-step subtask is no
+            // longer itself a single actionable step — reclassify to 'project',
+            // mirroring what api/triage.php's own 'project' action already does
+            // explicitly. Narrowly scoped to 'next_action' only: 'someday',
+            // 'waiting', 'reference', 'inbox' have their own deliberate GTD
+            // semantics and shouldn't be silently reclassified by this side effect.
+            if (($p['task_type'] ?? null) === 'next_action') {
+                $p['task_type'] = 'project';
+            }
             break;
         }
     }

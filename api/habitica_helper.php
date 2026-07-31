@@ -147,3 +147,30 @@ function habiticaPushNotes(string $habId, array $task, string $userId, string $a
         error_log('Habitica notes push failed (' . $habId . '): ' . $e->getMessage());
     }
 }
+
+// Deletes a task (or, if it's a synced checklist item, just that checklist
+// entry) from Habitica. Best-effort and self-contained — checks
+// uses_habitica/credentials itself and never throws — so every local-delete
+// call site can call this one function instead of duplicating the
+// config/credential boilerplate, which is exactly how one call site
+// (api/task_action.php's waiting_followup 'cancel' response) previously
+// ended up with no Habitica propagation at all. A failure here just logs;
+// the reconciliation sweep in api/habitica_sync.php retries later.
+function habiticaDeleteTaskBestEffort(array $task): void {
+    if (empty($task['habitica_id'])) return;
+    try {
+        $cfg = getConfig() ?? [];
+        if (empty($cfg['preferences']['uses_habitica'])) return;
+        $cass    = getCassowary();
+        $habUser = $cass['habitica']['user_id'] ?? '';
+        $habKey  = $cass['habitica']['api_key']  ?? '';
+        if (!$habUser || !$habKey) return;
+        if (!empty($task['habitica_item_id'])) {
+            habiticaRequest('DELETE', "/tasks/{$task['habitica_id']}/checklist/{$task['habitica_item_id']}", $habUser, $habKey);
+        } else {
+            habiticaRequest('DELETE', "/tasks/{$task['habitica_id']}", $habUser, $habKey);
+        }
+    } catch (Throwable $e) {
+        error_log('Habitica delete failed for task ' . ($task['id'] ?? '?') . ': ' . $e->getMessage());
+    }
+}

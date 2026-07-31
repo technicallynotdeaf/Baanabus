@@ -1055,26 +1055,9 @@ if ($method === 'POST') {
                 try { creditTop3Progress('declutter', 1); } catch (Throwable $e) {}
             }
 
-            // Delete from Habitica (best-effort)
-            if ($taskToDelete && !empty($taskToDelete['habitica_id'])) {
-                try {
-                    $cfg = getConfig() ?? [];
-                    if (!empty($cfg['preferences']['uses_habitica'])) {
-                        require_once __DIR__ . '/habitica_helper.php';
-                        $cass    = getCassowary();
-                        $habUser = $cass['habitica']['user_id'] ?? '';
-                        $habKey  = $cass['habitica']['api_key']  ?? '';
-                        if ($habUser && $habKey) {
-                            if (!empty($taskToDelete['habitica_item_id'])) {
-                                habiticaRequest('DELETE', "/tasks/{$taskToDelete['habitica_id']}/checklist/{$taskToDelete['habitica_item_id']}", $habUser, $habKey);
-                            } else {
-                                habiticaRequest('DELETE', "/tasks/{$taskToDelete['habitica_id']}", $habUser, $habKey);
-                            }
-                        }
-                    }
-                } catch (Throwable $e) {
-                    error_log('Habitica delete failed for task ' . $taskId . ': ' . $e->getMessage());
-                }
+            if ($taskToDelete) {
+                require_once __DIR__ . '/habitica_helper.php';
+                habiticaDeleteTaskBestEffort($taskToDelete);
             }
 
             json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);

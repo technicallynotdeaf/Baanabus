@@ -275,6 +275,50 @@ try {
     }
     // --- end tag sync ---
 
+    // --- Delete reconciliation sweep ---
+    // Every local-delete call site attempts a best-effort Habitica delete at
+    // the moment of deletion, but a transient failure there (timeout,
+    // momentary rate limit) previously just got logged and left the task
+    // orphaned on Habitica forever — nothing ever retried. This sweep finds
+    // any locally-deleted task that still carries a habitica_id and retries,
+    // self-healing both the existing backlog and any future one-off
+    // failures over the next few daily syncs. A 404 ("already gone") counts
+    // as success, not a failure, since that's the actual goal state.
+    $delBudget    = 10; // small, separate budget so this can't starve tag sync's own budget
+    $delCallsUsed = 0;
+    $delCleaned   = 0;
+    foreach ($data['tasks'] as $k => $t) {
+        if ($delCallsUsed >= $delBudget) break;
+        if (($t['status'] ?? '') !== 'deleted' || empty($t['habitica_id'])) continue;
+
+        $task = &$data['tasks'][$k];
+        $done = false;
+        try {
+            if (!empty($task['habitica_item_id'])) {
+                habiticaRequest('DELETE', "/tasks/{$task['habitica_id']}/checklist/{$task['habitica_item_id']}", $userId, $apiKey);
+            } else {
+                habiticaRequest('DELETE', "/tasks/{$task['habitica_id']}", $userId, $apiKey);
+            }
+            $done = true;
+        } catch (Throwable $e) {
+            if (stripos($e->getMessage(), 'not found') !== false) {
+                $done = true; // already gone — that's the goal state, not a failure
+            } else {
+                error_log('Habitica delete reconciliation (task ' . ($task['id'] ?? '?') . '): ' . $e->getMessage());
+            }
+        }
+        if ($done) {
+            $task['habitica_id']      = null;
+            $task['habitica_item_id'] = null;
+            $tasksDirty = true;
+            $delCleaned++;
+        }
+        $delCallsUsed++;
+        habiticaThrottle();
+        unset($task);
+    }
+    // --- end delete reconciliation sweep ---
+
     if ($synced > 0 || $deleted > 0 || $tasksDirty || $descBackfilled > 0) saveTasks($data);
 
     $cfg['habitica_sync_date'] = $today;
@@ -343,7 +387,8 @@ try {
     json_response(['synced' => $synced, 'deleted' => $deleted, 'daily_synced' => $dailySynced,
                    'parents' => count($existingParents), 'items_checked' => count($existingItems),
                    'tags_updated' => $tagsUpdated, 'tag_calls' => $tagCallsUsed,
-                   'descriptions_backfilled' => $descBackfilled]);
+                   'descriptions_backfilled' => $descBackfilled,
+                   'delete_reconciled' => $delCleaned, 'delete_calls' => $delCallsUsed]);
 
 } catch (Throwable $e) {
     error_log('Habitica sync error: ' . $e->getMessage());

@@ -384,12 +384,18 @@ if ($sessionCleared >= $nextNotify && $sessionCleared > 0) {
 
 // Energy-aware + fatigue pool:
 //   task slots    = energy level (1–5); minigame slots = 6 - energy (inverse)
-//   fatigue shift: every 4 activities, move 1 slot from task → minigame
+//   fatigue shift: every 4 activities, move 1 slot from minigame's inverse
+//   baseline upward — but only erodes TASK slots at the lowest ("Exhausted",
+//   energy=1) tier. At every other energy level, doing/snoozing/categorizing
+//   a real task is itself soothing rather than draining, so a long session
+//   shouldn't push tasks out of rotation the way it fairly should when the
+//   user is genuinely exhausted.
 //   Triage slots scale with inbox count when inbox is non-empty (dominates the pool).
 //   Short doable tasks surface at half-weight alongside inbox triage.
-$fatigue   = (int)floor($actCount / 4);
-$taskSlots = max(0, $energy - $fatigue);
-$gameSlots = min(8, (6 - $energy) + $fatigue);
+$fatigue     = (int)floor($actCount / 4);
+$taskFatigue = ($energy <= 1) ? $fatigue : 0;
+$taskSlots   = max(0, $energy - $taskFatigue);
+$gameSlots   = min(8, (6 - $energy) + $fatigue);
 
 if ($hasInbox) {
     $triageSlots = min($inboxCount * 2 + $taskSlots, 10);

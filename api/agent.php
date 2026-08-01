@@ -74,6 +74,10 @@
  * POST {"action":"set_story_pages","pages":N}
  *      → overwrite the global story_pages pool (use to correct pages_available)
  *
+ * POST {"action":"set_active_story","story_id":"q9"}
+ *      → set which unlocked book is the current/highlighted one on the shelf
+ *        (story_id is a family letter + book number, e.g. q1..q24, a1..a24)
+ *
  * POST {"action":"add_food_pack","food_id":N,"store":"Coles","pack_size_g":N,"cost_per_pack":N,
  *       "pack_label"?:"400g tin","last_seen_date"?:"YYYY-MM-DD","provenance"?:"user_reported","notes"?:"..."}
  *      → record/refresh a pack-size+cost observation for a food at a store. Same
@@ -839,6 +843,7 @@ if ($method === 'POST') {
         $now = date('c');
         $today = date('Y-m-d');
         try {
+            $existsStmt = $database->prepare("SELECT COUNT(*) FROM foods WHERE food_id = ?");
             $stmt = $database->prepare(
                 "INSERT INTO food_packs
                     (food_id, store, pack_label, pack_size_g, cost_per_pack, last_seen_date, provenance, notes, created_at, updated_at)
@@ -861,16 +866,25 @@ if ($method === 'POST') {
                     $results[] = ['index' => $i, 'ok' => false, 'error' => 'missing food_id/store/pack_size_g/cost_per_pack'];
                     continue;
                 }
-                $stmt->execute([
-                    ':food_id' => $foodId, ':store' => $store,
-                    ':pack_label' => isset($e['pack_label']) ? trim($e['pack_label']) : null,
-                    ':pack_size_g' => $sizeG, ':cost_per_pack' => $cost,
-                    ':last_seen_date' => $e['last_seen_date'] ?? $today,
-                    ':provenance' => $defaultProv,
-                    ':notes' => isset($e['notes']) ? trim($e['notes']) : null,
-                    ':created_at' => $now, ':updated_at' => $now,
-                ]);
-                $results[] = ['index' => $i, 'ok' => true, 'food_id' => $foodId, 'store' => $store];
+                $existsStmt->execute([$foodId]);
+                if (!(int)$existsStmt->fetchColumn()) {
+                    $results[] = ['index' => $i, 'ok' => false, 'error' => "food_id $foodId not found"];
+                    continue;
+                }
+                try {
+                    $stmt->execute([
+                        ':food_id' => $foodId, ':store' => $store,
+                        ':pack_label' => isset($e['pack_label']) ? trim($e['pack_label']) : null,
+                        ':pack_size_g' => $sizeG, ':cost_per_pack' => $cost,
+                        ':last_seen_date' => $e['last_seen_date'] ?? $today,
+                        ':provenance' => $defaultProv,
+                        ':notes' => isset($e['notes']) ? trim($e['notes']) : null,
+                        ':created_at' => $now, ':updated_at' => $now,
+                    ]);
+                    $results[] = ['index' => $i, 'ok' => true, 'food_id' => $foodId, 'store' => $store];
+                } catch (Throwable $rowErr) {
+                    $results[] = ['index' => $i, 'ok' => false, 'error' => $rowErr->getMessage()];
+                }
             }
             json_response(['ok' => true, 'results' => $results]);
         } catch (Throwable $e) {
@@ -1871,6 +1885,17 @@ if ($method === 'POST') {
             unset($p);
             savePeople($data);
             json_response(['ok' => true, 'migrated' => $migrated]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'set_active_story') {
+        $storyId = trim($body['story_id'] ?? '');
+        if (!storyFamilyInfo($storyId)) json_response(['error' => 'Missing or invalid story_id'], 400);
+        try {
+            setActiveStoryId($storyId);
+            json_response(['ok' => true, 'active_story_id' => $storyId]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

@@ -1463,7 +1463,11 @@ function migrateStoryPagesToGlobal(): void {
 // Legacy stubs kept so nothing crashes if called during transition
 function incrementStoryPages(string $storyId): int { return incrementGlobalStoryPages(); }
 function getActiveStoryId(): ?string { $cfg = getConfig() ?? []; return isset($cfg['active_story_id']) ? (string)$cfg['active_story_id'] : null; }
-function setActiveStoryId(string $storyId): void {}
+function setActiveStoryId(string $storyId): void {
+    $cfg = getConfig() ?? [];
+    $cfg['active_story_id'] = $storyId;
+    saveConfig($cfg);
+}
 function consumePendingStoryPages(string $storyId): void { migrateStoryPagesToGlobal(); }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------

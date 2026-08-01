@@ -16,6 +16,10 @@
  * GET ?view=recipes             → all saved recipes
  * GET ?view=meal_plan&date=YYYY-MM-DD → meal plan for a date (defaults to today)
  * GET ?view=goals                → all goals (id, title, created_at)
+ * GET ?view=physical_objects     → items left out (status/task_id/room/created_at/resolved_at)
+ * GET ?view=food_packs&food_id=N → pack-size/cost entries for a food (all stores)
+ * GET ?view=food_pack_gaps&limit=N → foods with zero recorded pack-size entries (prompt queue)
+ * GET ?view=food_pack_stale&days=90&limit=N → pack entries not confirmed in `days`, oldest first (recheck queue)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
  *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status / parent_id / goal_id
@@ -69,6 +73,27 @@
  *
  * POST {"action":"set_story_pages","pages":N}
  *      → overwrite the global story_pages pool (use to correct pages_available)
+ *
+ * POST {"action":"add_food_pack","food_id":N,"store":"Coles","pack_size_g":N,"cost_per_pack":N,
+ *       "pack_label"?:"400g tin","last_seen_date"?:"YYYY-MM-DD","provenance"?:"user_reported","notes"?:"..."}
+ *      → record/refresh a pack-size+cost observation for a food at a store. Same
+ *        (food_id, store, pack_size_g) upserts: price + last_seen_date are
+ *        refreshed rather than creating a duplicate row. last_seen_date defaults
+ *        to today; provenance defaults to 'user_reported'.
+ *
+ * POST {"action":"add_food_packs_batch","entries":[{food_id,store,pack_size_g,cost_per_pack,
+ *       pack_label?,last_seen_date?,notes?},...],"provenance"?:"receipt_extract"}
+ *      → bulk version of add_food_pack, for recording several items parsed from a
+ *        receipt or shopping description in one call (parsing happens in the
+ *        calling Claude session, not server-side — no OCR/NLP here).
+ *
+ * POST {"action":"update_food_pack","pack_id":N,"fields":{...}}
+ *      → update store/pack_label/pack_size_g/cost_per_pack/last_seen_date/notes on
+ *        an existing pack row (e.g. bump last_seen_date alone to confirm a price
+ *        is still current without changing it)
+ *
+ * POST {"action":"delete_food_pack","pack_id":N}
+ *      → remove a pack-size entry
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -516,6 +541,117 @@ if ($method === 'GET') {
         json_response(['ok' => true, 'goals' => $data['items']]);
     }
 
+    if ($view === 'physical_objects') {
+        try { $data = getPhysicalObjects(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        $roomMap = [];
+        foreach ($data['rooms'] ?? [] as $r) { $roomMap[(int)$r['id']] = $r['label'] ?? $r['name'] ?? ''; }
+        $objMap = fn($o) => [
+            'id'          => (int)$o['id'],
+            'label'       => $o['label'],
+            'location'    => $o['location']    ?? null,
+            'room'        => $roomMap[(int)($o['room_id'] ?? 0)] ?? null,
+            'status'      => $o['status']      ?? null,
+            'task_id'     => isset($o['task_id']) ? (int)$o['task_id'] ?: null : null,
+            'created_at'  => $o['created_at']  ?? null,
+            'resolved_at' => $o['resolved_at'] ?? null,
+        ];
+        json_response(['ok' => true, 'objects' => array_map($objMap, $data['objects'] ?? [])]);
+    }
+
+    if ($view === 'food_packs') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $foodId = (int)($_GET['food_id'] ?? 0);
+        if (!$foodId) json_response(['error' => 'food_id parameter required'], 400);
+        try {
+            $stmt = $database->prepare(
+                "SELECT pack_id, food_id, store, pack_label, pack_size_g, cost_per_pack,
+                        last_seen_date, provenance, notes, created_at, updated_at
+                 FROM food_packs WHERE food_id = ? ORDER BY store, pack_size_g"
+            );
+            $stmt->execute([$foodId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $packs = array_map(fn($r) => [
+                'pack_id'        => (int)$r['pack_id'],
+                'food_id'        => (int)$r['food_id'],
+                'store'          => $r['store'],
+                'pack_label'     => $r['pack_label'],
+                'pack_size_g'    => (float)$r['pack_size_g'],
+                'cost_per_pack'  => (float)$r['cost_per_pack'],
+                'cost_per_100g'  => $r['pack_size_g'] > 0 ? round((float)$r['cost_per_pack'] / (float)$r['pack_size_g'] * 100, 4) : null,
+                'last_seen_date' => $r['last_seen_date'],
+                'provenance'     => $r['provenance'],
+                'notes'          => $r['notes'],
+                'created_at'     => $r['created_at'],
+                'updated_at'     => $r['updated_at'],
+            ], $rows);
+            json_response(['ok' => true, 'food_id' => $foodId, 'packs' => $packs]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($view === 'food_pack_gaps') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $limit = max(1, min(50, (int)($_GET['limit'] ?? 5)));
+        try {
+            $stmt = $database->prepare(
+                "SELECT f.food_id, f.name, f.category
+                 FROM foods f
+                 WHERE NOT EXISTS (SELECT 1 FROM food_packs fp WHERE fp.food_id = f.food_id)
+                 ORDER BY f.name
+                 LIMIT ?"
+            );
+            $stmt->execute([$limit]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $totalStmt = $database->query(
+                "SELECT COUNT(*) FROM foods f WHERE NOT EXISTS (SELECT 1 FROM food_packs fp WHERE fp.food_id = f.food_id)"
+            );
+            json_response([
+                'ok'          => true,
+                'foods'       => array_map(fn($r) => ['food_id' => (int)$r['food_id'], 'name' => $r['name'], 'category' => $r['category']], $rows),
+                'total_gaps'  => (int)$totalStmt->fetchColumn(),
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($view === 'food_pack_stale') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $days  = max(1, (int)($_GET['days'] ?? 90));
+        $limit = max(1, min(50, (int)($_GET['limit'] ?? 10)));
+        $cutoff = date('Y-m-d', strtotime("-$days days"));
+        try {
+            $stmt = $database->prepare(
+                "SELECT fp.pack_id, fp.food_id, f.name AS food_name, fp.store, fp.pack_label,
+                        fp.pack_size_g, fp.cost_per_pack, fp.last_seen_date
+                 FROM food_packs fp
+                 JOIN foods f ON f.food_id = fp.food_id
+                 WHERE fp.last_seen_date < ?
+                 ORDER BY fp.last_seen_date ASC
+                 LIMIT ?"
+            );
+            $stmt->execute([$cutoff, $limit]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            json_response([
+                'ok'     => true,
+                'cutoff' => $cutoff,
+                'packs'  => array_map(fn($r) => [
+                    'pack_id'        => (int)$r['pack_id'],
+                    'food_id'        => (int)$r['food_id'],
+                    'food_name'      => $r['food_name'],
+                    'store'          => $r['store'],
+                    'pack_label'     => $r['pack_label'],
+                    'pack_size_g'    => (float)$r['pack_size_g'],
+                    'cost_per_pack'  => (float)$r['cost_per_pack'],
+                    'last_seen_date' => $r['last_seen_date'],
+                ], $rows),
+            ]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($view === 'meal_plan') {
         $date = $_GET['date'] ?? date('Y-m-d');
         try { $entry = getDiaryEntry($date); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
@@ -548,7 +684,7 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, meal_plan, contexts"], 400);
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, goals, physical_objects, food_packs, food_pack_gaps, food_pack_stale, meal_plan, contexts"], 400);
 }
 
 // ---- POST ----
@@ -644,6 +780,138 @@ if ($method === 'POST') {
             if ($tasksUpdated > 0) saveTasks($data);
 
             json_response(['ok' => true, 'renamed' => $renamed, 'tasks_updated' => $tasksUpdated]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'add_food_pack') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $foodId = (int)($body['food_id'] ?? 0);
+        $store  = trim($body['store'] ?? '');
+        $sizeG  = isset($body['pack_size_g']) ? (float)$body['pack_size_g'] : 0.0;
+        $cost   = isset($body['cost_per_pack']) ? (float)$body['cost_per_pack'] : null;
+        if (!$foodId || !$store || $sizeG <= 0 || $cost === null) {
+            json_response(['error' => 'food_id, store, pack_size_g, and cost_per_pack are required'], 400);
+        }
+        try {
+            $existsStmt = $database->prepare("SELECT COUNT(*) FROM foods WHERE food_id = ?");
+            $existsStmt->execute([$foodId]);
+            if (!(int)$existsStmt->fetchColumn()) json_response(['error' => 'food_id not found'], 404);
+
+            $now  = date('c');
+            $seen = $body['last_seen_date'] ?? date('Y-m-d');
+            $prov = trim($body['provenance'] ?? '') ?: 'user_reported';
+            $label = isset($body['pack_label']) ? trim($body['pack_label']) : null;
+            $notes = isset($body['notes']) ? trim($body['notes']) : null;
+
+            $stmt = $database->prepare(
+                "INSERT INTO food_packs
+                    (food_id, store, pack_label, pack_size_g, cost_per_pack, last_seen_date, provenance, notes, created_at, updated_at)
+                 VALUES (:food_id, :store, :pack_label, :pack_size_g, :cost_per_pack, :last_seen_date, :provenance, :notes, :created_at, :updated_at)
+                 ON CONFLICT(food_id, store, pack_size_g) DO UPDATE SET
+                    cost_per_pack  = excluded.cost_per_pack,
+                    last_seen_date = excluded.last_seen_date,
+                    pack_label     = COALESCE(excluded.pack_label, food_packs.pack_label),
+                    provenance     = excluded.provenance,
+                    notes          = COALESCE(excluded.notes, food_packs.notes),
+                    updated_at     = excluded.updated_at"
+            );
+            $stmt->execute([
+                ':food_id' => $foodId, ':store' => $store, ':pack_label' => $label,
+                ':pack_size_g' => $sizeG, ':cost_per_pack' => $cost, ':last_seen_date' => $seen,
+                ':provenance' => $prov, ':notes' => $notes, ':created_at' => $now, ':updated_at' => $now,
+            ]);
+            $idStmt = $database->prepare("SELECT pack_id FROM food_packs WHERE food_id = ? AND store = ? AND pack_size_g = ?");
+            $idStmt->execute([$foodId, $store, $sizeG]);
+            $packId = (int)$idStmt->fetchColumn();
+            json_response(['ok' => true, 'pack_id' => $packId]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'add_food_packs_batch') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $entries = $body['entries'] ?? [];
+        if (!is_array($entries) || !$entries) json_response(['error' => 'entries (array) required'], 400);
+        $defaultProv = trim($body['provenance'] ?? '') ?: 'receipt_extract';
+        $now = date('c');
+        $today = date('Y-m-d');
+        try {
+            $stmt = $database->prepare(
+                "INSERT INTO food_packs
+                    (food_id, store, pack_label, pack_size_g, cost_per_pack, last_seen_date, provenance, notes, created_at, updated_at)
+                 VALUES (:food_id, :store, :pack_label, :pack_size_g, :cost_per_pack, :last_seen_date, :provenance, :notes, :created_at, :updated_at)
+                 ON CONFLICT(food_id, store, pack_size_g) DO UPDATE SET
+                    cost_per_pack  = excluded.cost_per_pack,
+                    last_seen_date = excluded.last_seen_date,
+                    pack_label     = COALESCE(excluded.pack_label, food_packs.pack_label),
+                    provenance     = excluded.provenance,
+                    notes          = COALESCE(excluded.notes, food_packs.notes),
+                    updated_at     = excluded.updated_at"
+            );
+            $results = [];
+            foreach ($entries as $i => $e) {
+                $foodId = (int)($e['food_id'] ?? 0);
+                $store  = trim($e['store'] ?? '');
+                $sizeG  = isset($e['pack_size_g']) ? (float)$e['pack_size_g'] : 0.0;
+                $cost   = isset($e['cost_per_pack']) ? (float)$e['cost_per_pack'] : null;
+                if (!$foodId || !$store || $sizeG <= 0 || $cost === null) {
+                    $results[] = ['index' => $i, 'ok' => false, 'error' => 'missing food_id/store/pack_size_g/cost_per_pack'];
+                    continue;
+                }
+                $stmt->execute([
+                    ':food_id' => $foodId, ':store' => $store,
+                    ':pack_label' => isset($e['pack_label']) ? trim($e['pack_label']) : null,
+                    ':pack_size_g' => $sizeG, ':cost_per_pack' => $cost,
+                    ':last_seen_date' => $e['last_seen_date'] ?? $today,
+                    ':provenance' => $defaultProv,
+                    ':notes' => isset($e['notes']) ? trim($e['notes']) : null,
+                    ':created_at' => $now, ':updated_at' => $now,
+                ]);
+                $results[] = ['index' => $i, 'ok' => true, 'food_id' => $foodId, 'store' => $store];
+            }
+            json_response(['ok' => true, 'results' => $results]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'update_food_pack') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $packId = (int)($body['pack_id'] ?? 0);
+        $fields = $body['fields'] ?? [];
+        if (!$packId || !$fields) json_response(['error' => 'Missing pack_id or fields'], 400);
+        $allowed = ['store', 'pack_label', 'pack_size_g', 'cost_per_pack', 'last_seen_date', 'provenance', 'notes'];
+        $set = [];
+        $params = [':pack_id' => $packId];
+        foreach ($fields as $k => $v) {
+            if (!in_array($k, $allowed, true)) continue;
+            $set[] = "$k = :$k";
+            $params[":$k"] = $v;
+        }
+        if (!$set) json_response(['error' => 'No valid fields to update'], 400);
+        $set[] = "updated_at = :updated_at";
+        $params[':updated_at'] = date('c');
+        try {
+            $stmt = $database->prepare("UPDATE food_packs SET " . implode(', ', $set) . " WHERE pack_id = :pack_id");
+            $stmt->execute($params);
+            if ($stmt->rowCount() === 0) json_response(['error' => 'Pack not found'], 404);
+            json_response(['ok' => true, 'pack_id' => $packId, 'updated' => array_intersect_key($fields, array_flip($allowed))]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_food_pack') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $packId = (int)($body['pack_id'] ?? 0);
+        if (!$packId) json_response(['error' => 'pack_id required'], 400);
+        try {
+            $stmt = $database->prepare("DELETE FROM food_packs WHERE pack_id = ?");
+            $stmt->execute([$packId]);
+            json_response(['ok' => true, 'deleted' => $stmt->rowCount() > 0]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }
@@ -1253,6 +1521,33 @@ if ($method === 'POST') {
             $data['items'] = array_values(array_filter($data['items'], fn($g) => (int)$g['id'] !== $goalId));
             saveGoals($data);
             json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'reconcile_physical_objects') {
+        // One-off data fix: find_home/link_task used to mark an object 'resolved' the
+        // moment it was handed to a task, instead of when the task was actually done.
+        // Revert any object whose linked task is still active — it's still physically out.
+        try {
+            $objData = getPhysicalObjects();
+            $tasks   = getTasks()['tasks'];
+            $taskMap = [];
+            foreach ($tasks as $t) { $taskMap[(int)$t['id']] = $t['status'] ?? null; }
+            $reverted = [];
+            foreach ($objData['objects'] as &$o) {
+                if (($o['status'] ?? '') !== 'resolved' || empty($o['task_id'])) continue;
+                $taskStatus = $taskMap[(int)$o['task_id']] ?? null;
+                if ($taskStatus === 'active') {
+                    $o['status']      = 'out';
+                    $o['resolved_at'] = null;
+                    $reverted[] = ['id' => (int)$o['id'], 'label' => $o['label'], 'task_id' => (int)$o['task_id']];
+                }
+            }
+            unset($o);
+            if ($reverted) savePhysicalObjects($objData);
+            json_response(['ok' => true, 'reverted' => $reverted]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

@@ -343,6 +343,21 @@ function _ensureFoodSchema(PDO $db): void {
             weight_g    REAL NOT NULL,
             is_default  INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS food_packs (
+            pack_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            food_id         INTEGER NOT NULL REFERENCES foods(food_id),
+            store           TEXT NOT NULL,
+            pack_label      TEXT,
+            pack_size_g     REAL NOT NULL,
+            cost_per_pack   REAL NOT NULL,
+            last_seen_date  TEXT NOT NULL,
+            provenance      TEXT,
+            notes           TEXT,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT,
+            UNIQUE (food_id, store, pack_size_g)
+        );
+        CREATE INDEX IF NOT EXISTS idx_food_packs_food_id ON food_packs(food_id);
     ");
     $db->exec("
         INSERT OR IGNORE INTO nutrient_rdis

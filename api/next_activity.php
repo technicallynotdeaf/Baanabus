@@ -1432,6 +1432,9 @@ function pick_easy_task(): array {
     // Not actionable away from home — Out (3) and Transit (6)
     if (!in_array($physicalLocation, [3, 6], true)) {
         $tasks[] = ["Put away three things that are out of place"];
+        $tasks[] = ["Chop a carrot"];
+        $tasks[] = ["Put some nuts in a bowl to eat"];
+        $tasks[] = ["Make yourself 4 Vita-Weats and cheese"];
     }
     $t = $tasks[array_rand($tasks)];
     return ['type' => 'easy_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];

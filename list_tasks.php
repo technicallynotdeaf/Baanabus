@@ -83,6 +83,7 @@ $filter = $_GET['filter'] ?? '';
 $bucketFilters = [
     'inbox'     => ['title' => 'Inbox',     'note' => 'Unprocessed — work through these in the Let\'s Go bubble.', 'type' => 'inbox'],
     'ready'     => ['title' => 'Ready',     'note' => 'Active next actions you can do now.',                       'type' => 'next_action'],
+    'not_here'  => ['title' => 'Not here',  'note' => 'Next actions that are all set — just not doable from where you are (or when it is) right now.', 'type' => 'next_action'],
     'someday'   => ['title' => 'Someday',   'note' => 'Parked ideas. No pressure — review when you feel like it.', 'type' => 'someday'],
     'waiting'   => ['title' => 'Waiting',   'note' => 'Delegated or blocked on someone else — resurfaces on its own for a check-in once the date arrives.', 'type' => 'waiting'],
     'reference' => ['title' => 'Reference', 'note' => 'Kept for later — not something to do, just something to keep.', 'type' => 'reference'],
@@ -109,16 +110,38 @@ if (isset($bucketFilters[$filter])) {
         } catch (Throwable $e) {}
     }
 
+    // Same physical-location/time-window constraint getDoableTasks() applies
+    // (config_helper.php) — needed here to split 'ready' from 'not_here'.
+    $physicalLocation = null;
+    $timeStr = date('H:i');
+    if ($filter === 'ready' || $filter === 'not_here') {
+        try {
+            $diaryRow = getDiaryEntry(date('Y-m-d'));
+            $physicalLocation = isset($diaryRow['location']) ? (int)$diaryRow['location']
+                : (isset($diaryRow['day_type']) ? (int)$diaryRow['day_type'] : null);
+        } catch (Throwable $e) {}
+    }
+    $constraintOk = function($t) use ($physicalLocation, $timeStr): bool {
+        if (!locationTagsAllow($t['location'] ?? null, $physicalLocation)) return false;
+        if (!empty($t['relevant_after'])   && $timeStr < $t['relevant_after'])   return false;
+        if (!empty($t['irrelevant_after']) && $timeStr >= $t['irrelevant_after']) return false;
+        return true;
+    };
+
     $def      = $bucketFilters[$filter];
     $filtered = [];
     foreach ($all as $t) {
         if (($t['status'] ?? '') !== 'active') continue;
         if (!empty($t['parent_id'])) continue;
         if (($t['task_type'] ?? '') !== $def['type']) continue;
-        if ($filter === 'ready'   && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
-        if ($filter === 'ready'   && !$prereqsMet($t)) continue;
-        if ($filter === 'blocked' && $prereqsMet($t)) continue;
-        if ($filter === 'blocked' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        if ($filter === 'ready'    && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        if ($filter === 'ready'    && !$prereqsMet($t)) continue;
+        if ($filter === 'ready'    && !$constraintOk($t)) continue;
+        if ($filter === 'not_here' && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
+        if ($filter === 'not_here' && !$prereqsMet($t)) continue;
+        if ($filter === 'not_here' && $constraintOk($t)) continue;
+        if ($filter === 'blocked'  && $prereqsMet($t)) continue;
+        if ($filter === 'blocked'  && !empty($t['snoozed_until']) && strtotime($t['snoozed_until']) > $now) continue;
         $filtered[] = $t;
     }
     if ($filter === 'ready') {
@@ -138,7 +161,9 @@ if (isset($bucketFilters[$filter])) {
         // Waiting tasks are *always* snoozed by design (that's how the
         // check-back date works) — dimming every row in this bucket the same
         // way a genuinely-idle snoozed task dims elsewhere would be noise.
-        $notDoable = ($filter !== 'waiting' && $isSnoozed) || $isStuck;
+        // 'not_here' rows are always dimmed too — every row in that filter
+        // is location/time-blocked by definition.
+        $notDoable = ($filter !== 'waiting' && $isSnoozed) || $isStuck || $filter === 'not_here';
         $ctx       = trim($t['context'] ?? '');
         $type      = $t['task_type'] ?? '';
     ?>
@@ -164,6 +189,17 @@ if (isset($bucketFilters[$filter])) {
           <div style="font-size:0.78em;color:#8b7355;margin-top:3px;line-height:1.4;">
             <?php if ($who): ?>waiting on <?= htmlspecialchars($who) ?><?php else: ?>not tied to anyone specific<?php endif; ?>
             <?php if ($checkBack): ?> &middot; checking back <?= htmlspecialchars($checkBack) ?><?php endif; ?>
+          </div>
+        <?php elseif ($filter === 'not_here'):
+            $needsLocs = array_map('ucfirst', (array)($t['location'] ?? []));
+            $needsTime = !empty($t['relevant_after']) && !empty($t['irrelevant_after'])
+                ? "{$t['relevant_after']}–{$t['irrelevant_after']}"
+                : (!empty($t['relevant_after']) ? "after {$t['relevant_after']}" : (!empty($t['irrelevant_after']) ? "before {$t['irrelevant_after']}" : null));
+        ?>
+          <div style="font-size:0.78em;color:#7a7a7a;margin-top:3px;line-height:1.4;">
+            <?php if ($needsLocs): ?>needs: <?= htmlspecialchars(implode(', ', $needsLocs)) ?><?php endif; ?>
+            <?php if ($needsLocs && $needsTime): ?> &middot; <?php endif; ?>
+            <?php if ($needsTime): ?><?= htmlspecialchars($needsTime) ?><?php endif; ?>
           </div>
         <?php else:
           $subs = $subtaskMap[(int)$t['id']] ?? [];

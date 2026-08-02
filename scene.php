@@ -123,7 +123,7 @@ $pageCount    = 0;
 $pageTarget   = 15;
 $totalPages   = 0;
 $snoozedCount = 0;
-$buckets      = ['routine' => 0, 'inbox' => 0, 'ready' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0, 'reference' => 0];
+$buckets      = ['routine' => 0, 'inbox' => 0, 'ready' => 0, 'not_here' => 0, 'blocked' => 0, 'snoozed' => 0, 'someday' => 0, 'waiting' => 0, 'project' => 0, 'reference' => 0];
 if (isUnlocked()) {
     try {
         $t = getTasks();
@@ -132,12 +132,31 @@ if (isUnlocked()) {
         $pageTarget = todayPagesTarget();
         $nowTs = time();
         $today = date('Y-m-d');
+        $timeStr = date('H:i');
+        // Same physical-location/time-window checks getDoableTasks() applies
+        // (config_helper.php) — this loop is a separate bucket-count pass so
+        // it has to apply them itself rather than delegating to that
+        // function, or a task blocked by location/time silently counts
+        // toward "next action" here even though the actual suggestion
+        // picker would never offer it.
+        $physicalLocation = null;
+        try {
+            $diaryRow = getDiaryEntry($today);
+            $physicalLocation = isset($diaryRow['location']) ? (int)$diaryRow['location']
+                : (isset($diaryRow['day_type']) ? (int)$diaryRow['day_type'] : null);
+        } catch (Throwable $e) {}
         $completedIds = [];
         foreach ($t['tasks'] ?? [] as $task) {
             if (($task['status'] ?? '') === 'complete') $completedIds[(int)$task['id']] = true;
         }
         $prereqsMet = fn($task) => empty($task['prereq_tasks']) ||
             !array_diff(array_map('intval', (array)$task['prereq_tasks']), array_keys($completedIds));
+        $constraintOk = function($task) use ($physicalLocation, $timeStr): bool {
+            if (!locationTagsAllow($task['location'] ?? null, $physicalLocation)) return false;
+            if (!empty($task['relevant_after'])   && $timeStr < $task['relevant_after'])   return false;
+            if (!empty($task['irrelevant_after']) && $timeStr >= $task['irrelevant_after']) return false;
+            return true;
+        };
         foreach ($t['tasks'] ?? [] as $task) {
             if (($task['status'] ?? '') !== 'active') continue;
             if (!empty($task['parent_id'])) continue;
@@ -154,8 +173,14 @@ if (isUnlocked()) {
             // land in their own segment instead of being swallowed by it.
             elseif  ($type === 'waiting')                                    { $buckets['waiting']++; }
             elseif  ($isSnoozed || $isFutureSched)                          { $buckets['snoozed']++; }
-            elseif  ($type === 'next_action' && $prereqsMet($task))          { $buckets['ready']++; }
             elseif  ($type === 'next_action' && !$prereqsMet($task))         { $buckets['blocked']++; }
+            // Genuinely ready except the user isn't currently somewhere (or
+            // some-when) this task allows — distinct from 'blocked' (a real
+            // prerequisite task) and 'snoozed' (an explicit defer date):
+            // this resolves itself the moment location/time changes, with
+            // nothing to do about it right now.
+            elseif  ($type === 'next_action' && !$constraintOk($task))       { $buckets['not_here']++; }
+            elseif  ($type === 'next_action')                                { $buckets['ready']++; }
             elseif  ($type === 'someday')                                    { $buckets['someday']++; }
             elseif  ($type === 'project')                                    { $buckets['project']++; }
             // unknown types also intentionally excluded rather than shown as noise
@@ -169,6 +194,7 @@ $bucketDefs = [
     'routine' => ['label' => 'routine',      'color' => '#3aaa6c', 'filter' => '', 'link' => "loadOverlay('list_dailies.php')"],
     'inbox'   => ['label' => 'inbox',        'color' => '#9a6200', 'filter' => 'inbox'],
     'ready'   => ['label' => 'next action',  'color' => '#1a6b3a', 'filter' => 'ready'],
+    'not_here' => ['label' => 'not here',    'color' => '#7a7a7a', 'filter' => 'not_here'],
     'blocked' => ['label' => 'blocked',      'color' => '#a82020', 'filter' => 'blocked'],
     'snoozed' => ['label' => 'snoozed',      'color' => '#1e4d82', 'filter' => 'snoozed'],
     'someday' => ['label' => 'someday',      'color' => '#4a5568', 'filter' => 'someday'],

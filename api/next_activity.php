@@ -1426,7 +1426,7 @@ function pick_easy_task(): array {
     // 'context' is the values-layer life-area tag (see CLAUDE.md values layer notes) —
     // informational only, not used for filtering here.
     $tasks = [
-        ['text' => "Drink a full glass of water", 'location' => ['home', 'work'], 'context' => 'Health'],
+        ['text' => "Drink a full glass of water", 'context' => 'Health'],
         ['text' => "Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds.", 'context' => 'Health'],
         ['text' => "Tidy one small thing — just one", 'location' => ['home', 'work'], 'context' => 'Home'],
         ['text' => "Sit quietly for two minutes", 'seconds' => 120, 'context' => 'Health'],

@@ -943,6 +943,15 @@ if ($method === 'POST') {
         try {
             $data   = getTasks();
             $taskId = (int)($data['next_id'] ?? 1);
+            // location: multi-select array (a task can be doable at more than
+            // one place) — accepts an array or a single legacy string,
+            // normalized the same way updateTaskFieldsShared() does.
+            $rawLoc = $body['location'] ?? null;
+            $locs   = is_array($rawLoc) ? $rawLoc : (is_string($rawLoc) && $rawLoc !== '' ? [$rawLoc] : []);
+            $locs   = array_values(array_unique(array_filter(array_map(
+                fn($l) => strtolower(trim((string)$l)),
+                $locs
+            ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true))));
             vaultAppendTask($data, [
                 'id'            => $taskId,
                 'title'         => $title,
@@ -953,6 +962,7 @@ if ($method === 'POST') {
                 'time'          => isset($body['time']) ? (int)$body['time'] : null,
                 'status'        => 'active',
                 'context'       => $body['context']       ?? null,
+                'location'      => $locs ?: null,
                 'deadline'      => $body['deadline']      ?? null,
                 'snoozed_until' => $body['snoozed_until'] ?? null,
                 'parent_id'     => $body['parent_id']     ?? null,

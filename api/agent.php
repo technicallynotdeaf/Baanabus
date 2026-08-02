@@ -16,6 +16,7 @@
  * GET ?view=recipes             → all saved recipes
  * GET ?view=meal_plan&date=YYYY-MM-DD → meal plan for a date (defaults to today)
  * GET ?view=goals                → all goals (id, title, created_at)
+ * GET ?view=quotes                → all personal reminder quotes (id, text)
  * GET ?view=physical_objects     → items left out (status/task_id/room/created_at/resolved_at)
  * GET ?view=food_packs&food_id=N → pack-size/cost entries for a food (all stores)
  * GET ?view=food_pack_gaps&limit=N → foods with zero recorded pack-size entries (prompt queue)
@@ -545,6 +546,11 @@ if ($method === 'GET') {
         json_response(['ok' => true, 'goals' => $data['items']]);
     }
 
+    if ($view === 'quotes') {
+        try { $data = getQuotes(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'quotes' => $data['items']]);
+    }
+
     if ($view === 'physical_objects') {
         try { $data = getPhysicalObjects(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
         $roomMap = [];
@@ -688,7 +694,7 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, goals, physical_objects, food_packs, food_pack_gaps, food_pack_stale, meal_plan, contexts"], 400);
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, goals, quotes, physical_objects, food_packs, food_pack_gaps, food_pack_stale, meal_plan, contexts"], 400);
 }
 
 // ---- POST ----

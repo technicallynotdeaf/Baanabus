@@ -1418,26 +1418,40 @@ function pick_physical_object(): ?array {
 
 function pick_easy_task(): array {
     global $physicalLocation;
+    // 'location' uses the same tag vocabulary + matching rules as task.location
+    // (see locationTagsAllow() in config_helper.php) — home/work/shops/phone/online,
+    // matched against today's physical location (Home/Work/Out/Rest/WFH/Transit).
+    // Empty/omitted = doable anywhere. This is what keeps "step outside" from
+    // firing while already Out, or "chop a carrot" from firing away from a kitchen.
+    // 'context' is the values-layer life-area tag (see CLAUDE.md values layer notes) —
+    // informational only, not used for filtering here.
     $tasks = [
-        ["Drink a full glass of water"],
-        ["Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds."],
-        ["Tidy one small thing — just one"],
-        ["Sit quietly for two minutes", 120],
-        ["Stretch your arms above your head and hold for ten seconds", 10],
-        ["Step outside for five minutes", 300],
-        ["Take your vitamins or any medication you need today"],
-        ["Wash your face"],
-        ["Make your bed or straighten where you're sitting"],
+        ['text' => "Drink a full glass of water", 'location' => ['home', 'work'], 'context' => 'Health'],
+        ['text' => "Box breathing — breathe in for 4, hold for 4, out for 4, hold for 4. Three rounds.", 'context' => 'Health'],
+        ['text' => "Tidy one small thing — just one", 'location' => ['home', 'work'], 'context' => 'Home'],
+        ['text' => "Sit quietly for two minutes", 'seconds' => 120, 'context' => 'Health'],
+        ['text' => "Stretch your arms above your head and hold for ten seconds", 'seconds' => 10, 'context' => 'Health'],
+        ['text' => "Step outside for five minutes", 'seconds' => 300, 'location' => ['home', 'work'], 'context' => 'Health'],
+        ['text' => "Take your vitamins or any medication you need today", 'location' => ['home'], 'context' => 'Health'],
+        ['text' => "Wash your face", 'location' => ['home'], 'context' => 'Health'],
+        ['text' => "Make your bed or straighten where you're sitting", 'location' => ['home'], 'context' => 'Home'],
+        ['text' => "Put away three things that are out of place", 'location' => ['home', 'work'], 'context' => 'Home'],
+        ['text' => "Chop a carrot", 'location' => ['home'], 'context' => 'Nutrition'],
+        ['text' => "Put some nuts in a bowl to eat", 'location' => ['home'], 'context' => 'Nutrition'],
+        ['text' => "Make yourself 4 Vita-Weats and cheese", 'location' => ['home'], 'context' => 'Nutrition'],
     ];
-    // Not actionable away from home — Out (3) and Transit (6)
-    if (!in_array($physicalLocation, [3, 6], true)) {
-        $tasks[] = ["Put away three things that are out of place"];
-        $tasks[] = ["Chop a carrot"];
-        $tasks[] = ["Put some nuts in a bowl to eat"];
-        $tasks[] = ["Make yourself 4 Vita-Weats and cheese"];
-    }
-    $t = $tasks[array_rand($tasks)];
-    return ['type' => 'easy_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];
+    $eligible = array_values(array_filter(
+        $tasks,
+        fn($t) => locationTagsAllow($t['location'] ?? null, $physicalLocation)
+    ));
+    if (empty($eligible)) $eligible = $tasks; // safety net: never return an empty pool
+    $t = $eligible[array_rand($eligible)];
+    return [
+        'type'    => 'easy_task',
+        'text'    => $t['text'],
+        'seconds' => $t['seconds'] ?? null,
+        'context' => $t['context'] ?? null,
+    ];
 }
 
 function pick_study(): ?array {

@@ -313,6 +313,30 @@ function saveTasks(array $data): void {
     @chmod($path, 0600);
 }
 
+// Shared location-constraint check: does a 'location' tag set (home/work/shops/
+// phone/online — a task can carry more than one) allow doing the thing at the
+// given physical location id (1 Home, 2 Work, 3 Out, 4 Rest, 5 WFH, 6 Transit)?
+// No tags, or no known physical location, means "anywhere". Used by
+// getDoableTasks() below and by the easy-wins pool in next_activity.php so both
+// respect the same out/in-transit-aware rules instead of duplicating the logic.
+function locationTagsAllow($rawLocation, ?int $physicalLocation): bool {
+    $locs = is_array($rawLocation) ? $rawLocation
+        : (is_string($rawLocation) && $rawLocation !== '' ? [$rawLocation] : []);
+    if (empty($locs) || !$physicalLocation) return true;
+    $canDo = function(string $loc) use ($physicalLocation): bool {
+        if ($physicalLocation === 1) return $loc !== 'work';
+        if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
+        if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        if ($physicalLocation === 5) return $loc !== 'shops';
+        if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
+        return true; // Rest (4): no suppression
+    };
+    foreach ($locs as $loc) {
+        if ($canDo(strtolower(trim($loc)))) return true;
+    }
+    return false;
+}
+
 function getDoableTasks(): array {
     $data    = getTasks();
     $now     = time();
@@ -341,23 +365,7 @@ function getDoableTasks(): array {
     // physical location is doable; no locations tagged means "anywhere".
     // Same multi-location semantics as getActiveDailies()'s $locationOk below.
     // 'context' is a planning tag (area of life) and is NOT used for filtering.
-    $locationOk = function(array $t) use ($physicalLocation): bool {
-        $raw  = $t['location'] ?? null;
-        $locs = is_array($raw) ? $raw : (is_string($raw) && $raw !== '' ? [$raw] : []);
-        if (empty($locs) || !$physicalLocation) return true;
-        $canDo = function(string $loc) use ($physicalLocation): bool {
-            if ($physicalLocation === 1) return $loc !== 'work';
-            if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
-            if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
-            if ($physicalLocation === 5) return $loc !== 'shops';
-            if ($physicalLocation === 6) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
-            return true; // Rest (4): no suppression
-        };
-        foreach ($locs as $loc) {
-            if ($canDo(strtolower(trim($loc)))) return true;
-        }
-        return false;
-    };
+    $locationOk = fn(array $t): bool => locationTagsAllow($t['location'] ?? null, $physicalLocation);
 
     // Time-of-day window: same mechanism as dailies' relevant_after/irrelevant_after
     // (getActiveDailies() below) — a task can be tagged "not relevant before X" /

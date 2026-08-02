@@ -1478,6 +1478,18 @@ function setActiveStoryId(string $storyId): void {
 }
 function consumePendingStoryPages(string $storyId): void { migrateStoryPagesToGlobal(); }
 
+// ---------- Active study set (q_type='study' rotation scoping) ----------
+// Multiple unrelated study sets (exam prep, language batches, etc.) can coexist
+// in study_questions. Without this, pick_study() would merge all of them into
+// one pool. This lets the user focus on one set at a time, same pattern as
+// active_story_id above.
+function getActiveStudySet(): ?string { $cfg = getConfig() ?? []; return isset($cfg['study_active_set']) ? (string)$cfg['study_active_set'] : null; }
+function setActiveStudySet(string $setName): void {
+    $cfg = getConfig() ?? [];
+    $cfg['study_active_set'] = $setName;
+    saveConfig($cfg);
+}
+
 // ---------- Cassowary vault (API keys / integration secrets) ----------
 
 function cassowaryPath(): string {

@@ -601,16 +601,26 @@ if ($database) {
   <div id="tab-trivia" class="settings-panel" hidden>
 
     <?php if ($studyStats): ?>
+    <?php $activeStudySet = $cfg['study_active_set'] ?? null; ?>
     <div class="card" style="margin-bottom:1rem;">
-      <h3 style="margin-bottom:0.75rem;">Study progress</h3>
+      <h3 style="margin-bottom:0.25rem;">Study progress</h3>
+      <p class="muted" style="margin-bottom:0.75rem;font-size:0.85em;">Only the active set appears in your daily rotation — switch any time.</p>
       <?php foreach ($studyStats as $setName => $stat):
         $pct = $stat['total'] > 0 ? round($stat['mastered'] / $stat['total'] * 100) : 0;
+        $isActive = ($activeStudySet === $setName);
       ?>
       <div style="margin-bottom:0.75rem;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;">
-          <span style="font-weight:500;"><?= htmlspecialchars($setName) ?></span>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;flex-wrap:wrap;gap:4px;">
+          <span style="font-weight:500;">
+            <?= htmlspecialchars($setName) ?>
+            <?php if ($isActive): ?><span style="font-size:0.75em;color:#7a9e7e;font-weight:600;">&middot; ACTIVE</span><?php endif; ?>
+          </span>
           <span style="display:flex;align-items:center;gap:8px;">
             <span class="muted" style="font-size:0.88em;"><?= $stat['mastered'] ?>/<?= $stat['total'] ?> mastered</span>
+            <?php if (!$isActive): ?>
+            <button type="button" data-study-set="<?= htmlspecialchars($setName) ?>"
+              style="background:none;border:none;color:#3a6b3e;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;">Study this</button>
+            <?php endif; ?>
             <button type="button" data-reset-set="<?= htmlspecialchars($setName) ?>" data-reset-type="study"
               style="background:none;border:none;color:#a33;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;">Reset</button>
           </span>
@@ -620,6 +630,7 @@ if ($database) {
         </div>
       </div>
       <?php endforeach; ?>
+      <p id="study-set-status" class="muted" style="margin-top:0.25rem;min-height:1.2em;font-size:0.85em;"></p>
       <p id="study-reset-status" class="muted" style="margin-top:0.25rem;min-height:1.2em;font-size:0.85em;"></p>
     </div>
     <?php endif; ?>

@@ -406,17 +406,23 @@ if ($hasInbox) {
 }
 $doableSlots = $hasTasks ? ($hasInbox ? max(1, intdiv($taskSlots, 2)) : $taskSlots) : 0;
 
-// Check for available study questions (unseen or not yet correctly answered twice)
+// Check for available study questions (unseen or not yet correctly answered twice),
+// scoped to the active study set if one is chosen (see getActiveStudySet()).
 $hasStudy = false;
 if ($database) {
     try {
-        $hasStudy = (bool)$database->query("
+        $activeStudySet = getActiveStudySet();
+        $stmt = $database->prepare("
             SELECT 1 FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+              " . ($activeStudySet ? "AND sq.set_name = :set_name" : "") . "
             LIMIT 1
-        ")->fetchColumn();
+        ");
+        if ($activeStudySet) $stmt->bindValue(':set_name', $activeStudySet);
+        $stmt->execute();
+        $hasStudy = (bool)$stmt->fetchColumn();
     } catch (Throwable $e) {}
 }
 
@@ -956,6 +962,22 @@ function pick_person_review(): ?array {
             $recentNotes = array_slice($pNotes, 0, 5);
         } catch (Throwable $e) {}
 
+        // Include existing linked tasks — same filter the People overlay uses — so the
+        // review card doesn't just offer to add a task without showing what's already there.
+        $linkedTasks = [];
+        try {
+            $pid = (int)$p['person_id'];
+            $tTasks = array_values(array_filter(getTasks()['tasks'], fn($t) =>
+                !empty($t['person_id']) && (int)$t['person_id'] === $pid &&
+                ($t['status'] ?? '') === 'active'
+            ));
+            $linkedTasks = array_map(fn($t) => [
+                'id'      => (int)$t['id'],
+                'title'   => $t['title'],
+                'urgency' => $t['urgency'] ?? null,
+            ], $tTasks);
+        } catch (Throwable $e) {}
+
         return [
             'type'            => 'person_review',
             'person_id'       => (int)$p['person_id'],
@@ -965,6 +987,7 @@ function pick_person_review(): ?array {
             'char3'           => $p['char3'] ?? '',
             'review_interval' => (int)($p['review_interval'] ?? 30),
             'recent_notes'    => $recentNotes,
+            'tasks'           => $linkedTasks,
         ];
     } catch (Throwable $e) {
         return null;
@@ -1458,34 +1481,54 @@ function pick_study(): ?array {
     global $database;
     if (!$database) return null;
     try {
+        // Scope to whichever study set the user has active (see getActiveStudySet()) —
+        // otherwise unrelated sets (exam prep, language batches, ...) merge into one pool.
+        // No active set chosen yet = fall back to the old unscoped behaviour.
+        $activeSet = getActiveStudySet();
+        $setSql    = $activeSet ? "AND sq.set_name = :set_name" : "";
+
         // Prefer unseen questions first, then least-correctly-answered, then random
         $stmt = $database->prepare("
             SELECT sq.* FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+              $setSql
             ORDER BY
               CASE WHEN qs.question_id IS NULL THEN 0 ELSE 1 END ASC,
               COALESCE(qs.correct_count, 0) ASC,
               RANDOM()
             LIMIT 1
         ");
+        if ($activeSet) $stmt->bindValue(':set_name', $activeSet);
         $stmt->execute();
         $q = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$q) return null;
         $out = question_row_to_response($q, 'study');
-        // Attach progress counts
-        $total       = (int)$database->query("SELECT COUNT(*) FROM study_questions WHERE q_type='study'")->fetchColumn();
-        $mastered    = (int)$database->query("
+        // Attach progress counts, scoped the same way
+        $totalStmt = $database->prepare("SELECT COUNT(*) FROM study_questions sq WHERE sq.q_type='study' $setSql");
+        if ($activeSet) $totalStmt->bindValue(':set_name', $activeSet);
+        $totalStmt->execute();
+        $total = (int)$totalStmt->fetchColumn();
+
+        $masteredStmt = $database->prepare("
             SELECT COUNT(*) FROM question_seen qs
             JOIN study_questions sq ON sq.id = qs.question_id
-            WHERE sq.q_type = 'study' AND qs.correct_count >= 2
-        ")->fetchColumn();
-        $once_correct = (int)$database->query("
+            WHERE sq.q_type = 'study' AND qs.correct_count >= 2 $setSql
+        ");
+        if ($activeSet) $masteredStmt->bindValue(':set_name', $activeSet);
+        $masteredStmt->execute();
+        $mastered = (int)$masteredStmt->fetchColumn();
+
+        $onceCorrectStmt = $database->prepare("
             SELECT COUNT(*) FROM question_seen qs
             JOIN study_questions sq ON sq.id = qs.question_id
-            WHERE sq.q_type = 'study' AND qs.correct_count >= 1
-        ")->fetchColumn();
+            WHERE sq.q_type = 'study' AND qs.correct_count >= 1 $setSql
+        ");
+        if ($activeSet) $onceCorrectStmt->bindValue(':set_name', $activeSet);
+        $onceCorrectStmt->execute();
+        $once_correct = (int)$onceCorrectStmt->fetchColumn();
+
         $out['total']        = $total;
         $out['mastered']     = $mastered;
         $out['once_correct'] = $once_correct;

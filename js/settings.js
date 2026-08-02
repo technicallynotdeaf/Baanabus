@@ -510,6 +510,34 @@ window.initSettings = function() {
     });
   });
 
+  // ── Study: switch active set ───────────────────────────────────────
+  document.querySelectorAll('[data-study-set]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const setName = this.dataset.studySet;
+      const statusEl = document.getElementById('study-set-status');
+      this.disabled = true;
+      if (statusEl) statusEl.textContent = 'Switching to ' + setName + '...';
+      try {
+        const r = await fetch('api/set_active_study_set.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({set_name: setName}),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          if (statusEl) statusEl.textContent = 'Now studying ' + setName + '.';
+          setTimeout(() => location.reload(), 600);
+        } else {
+          if (statusEl) statusEl.textContent = data.error || 'Something went wrong.';
+          this.disabled = false;
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = 'Network error.';
+        this.disabled = false;
+      }
+    });
+  });
+
   document.querySelectorAll('[data-reset-set]').forEach(btn => {
     btn.addEventListener('click', async function() {
       const setName = this.dataset.resetSet;

@@ -1724,13 +1724,23 @@ window.initLetsGo = function() {
       return s.slice(0, 10);
     }
 
+    function noteItemHtml(n) {
+      return `
+          <div class="pr-note-item" data-note-id="${n.note_id}" style="padding:3px 0;border-bottom:1px solid #f5f5f5;">
+            <p class="pr-note-text" style="margin:0 0 1px;font-size:0.84em;line-height:1.4;">${esc(n.contents)}</p>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:0.75em;color:#bbb;">${relDate(n.date_added)}</span>
+              <button type="button" style="background:none;border:none;padding:0;font-size:0.72em;color:#aaa;cursor:pointer;"
+                onclick="window._prEditNote(${n.note_id})">edit</button>
+              <button type="button" style="background:none;border:none;padding:0;font-size:0.72em;color:#c0392b;cursor:pointer;"
+                onclick="window._prDeleteNote(${n.note_id})">delete</button>
+            </div>
+          </div>`;
+    }
+
     const existingNotes = d.recent_notes || [];
     const notesListHtml = existingNotes.length
-      ? existingNotes.map(n => `
-          <div style="padding:3px 0;border-bottom:1px solid #f5f5f5;">
-            <p style="margin:0 0 1px;font-size:0.84em;line-height:1.4;">${esc(n.contents)}</p>
-            <span style="font-size:0.75em;color:#bbb;">${relDate(n.date_added)}</span>
-          </div>`).join('')
+      ? existingNotes.map(noteItemHtml).join('')
       : '<p style="color:#ccc;font-size:0.83em;margin:0 0 0.4rem;">No notes yet.</p>';
 
     const notesSection = `
@@ -1745,6 +1755,18 @@ window.initLetsGo = function() {
           onclick="window._prSaveNote()">Save</button>
       </div>
       <p id="pr-note-status" class="muted" style="font-size:0.82em;min-height:1em;margin-bottom:0.3rem;"></p>`;
+
+    const existingTasks = d.tasks || [];
+    const tasksSection = existingTasks.length ? `
+      <div style="font-size:0.71em;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;
+                  margin-bottom:0.3rem;padding-bottom:3px;border-bottom:1px solid #f0f0f0;">Tasks (${existingTasks.length})</div>
+      <div style="margin-bottom:0.4rem;">
+        ${existingTasks.map(t => `
+          <div style="padding:3px 0;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;gap:6px;">
+            <span style="flex:1;font-size:0.85em;">${esc(t.title)}</span>
+            ${t.urgency === 'high' ? '<span style="font-size:0.72em;color:#c0392b;">high</span>' : ''}
+          </div>`).join('')}
+      </div>` : '';
 
     const intervalChoices = [
       [2,  'Every 2 days — household'],
@@ -1786,6 +1808,7 @@ window.initLetsGo = function() {
           <input id="pr-char3" type="text" placeholder="Quality 3" value="${esc(d.char3)}" style="margin-bottom:0.4rem;">
         </div>
         ${notesSection}
+        ${tasksSection}
         ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
@@ -1803,6 +1826,7 @@ window.initLetsGo = function() {
         <input id="pr-char2" type="text" placeholder="Quality 2" style="margin-bottom:0.3rem;">
         <input id="pr-char3" type="text" placeholder="Quality 3" style="margin-bottom:0.5rem;">
         ${notesSection}
+        ${tasksSection}
         ${taskRow}
         ${freqRow}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.4rem;">
@@ -1839,10 +1863,9 @@ window.initLetsGo = function() {
           const list    = document.getElementById('pr-notes-list');
           const noNotes = list.querySelector('p');
           if (noNotes) list.innerHTML = '';
-          const newEl = document.createElement('div');
-          newEl.style.cssText = 'padding:3px 0;border-bottom:1px solid #f5f5f5;';
-          newEl.innerHTML = `<p style="margin:0 0 1px;font-size:0.84em;line-height:1.4;">${esc(contents)}</p><span style="font-size:0.75em;color:#bbb;">Today</span>`;
-          list.insertBefore(newEl, list.firstChild);
+          const wrap = document.createElement('div');
+          wrap.innerHTML = noteItemHtml({ note_id: res.note_id, contents, date_added: new Date().toISOString() }).trim();
+          list.insertBefore(wrap.firstElementChild, list.firstChild);
           textarea.value = '';
           status.textContent = '';
         } else {
@@ -1852,6 +1875,66 @@ window.initLetsGo = function() {
       }).catch(() => {
         status.textContent = 'Network error.';
         textarea.disabled = false;
+      });
+    };
+
+    window._prEditNote = function(noteId) {
+      const item = document.querySelector(`.pr-note-item[data-note-id="${noteId}"]`);
+      if (!item) return;
+      const current  = item.querySelector('.pr-note-text').textContent;
+      item.dataset.original = item.innerHTML;
+      item.innerHTML = `
+        <textarea class="pr-note-edit" rows="2" style="width:100%;box-sizing:border-box;font-size:0.84em;margin-bottom:4px;">${esc(current)}</textarea>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="action-button" style="padding:3px 8px;font-size:0.78em;"
+            onclick="window._prSaveNoteEdit(${noteId})">Save</button>
+          <button type="button" style="background:none;border:none;padding:0;font-size:0.78em;color:#aaa;cursor:pointer;"
+            onclick="window._prCancelNoteEdit(${noteId})">Cancel</button>
+        </div>`;
+      item.querySelector('textarea').focus();
+    };
+
+    window._prCancelNoteEdit = function(noteId) {
+      const item = document.querySelector(`.pr-note-item[data-note-id="${noteId}"]`);
+      if (!item || !item.dataset.original) return;
+      item.innerHTML = item.dataset.original;
+    };
+
+    window._prSaveNoteEdit = function(noteId) {
+      const item = document.querySelector(`.pr-note-item[data-note-id="${noteId}"]`);
+      if (!item) return;
+      const textarea = item.querySelector('.pr-note-edit');
+      const contents = textarea.value.trim();
+      if (!contents) return;
+      textarea.disabled = true;
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ person_id: d.person_id, action: 'edit_note', note_id: noteId, note_content: contents }),
+      }).then(r => r.json()).then(res => {
+        if (res.ok) {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = noteItemHtml({ note_id: noteId, contents, date_added: new Date().toISOString() }).trim();
+          item.replaceWith(wrap.firstElementChild);
+        } else {
+          textarea.disabled = false;
+        }
+      }).catch(() => { textarea.disabled = false; });
+    };
+
+    window._prDeleteNote = function(noteId) {
+      if (!confirm('Delete this note?')) return;
+      const item = document.querySelector(`.pr-note-item[data-note-id="${noteId}"]`);
+      fetch('api/person_action.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ person_id: d.person_id, action: 'delete_note', note_id: noteId }),
+      }).then(r => r.json()).then(res => {
+        if (res.ok && item) {
+          item.remove();
+          const list = document.getElementById('pr-notes-list');
+          if (list && !list.children.length) {
+            list.innerHTML = '<p style="color:#ccc;font-size:0.83em;margin:0 0 0.4rem;">No notes yet.</p>';
+          }
+        }
       });
     };
 

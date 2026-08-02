@@ -34,6 +34,9 @@ usort($resolved, fn($a, $b) => strcmp($b['resolved_at'] ?? '', $a['resolved_at']
       <?php $room = $roomMap[(int)($o['room_id'] ?? 0)] ?? ''; if ($room): ?>
       <span style="font-size:0.72em;background:#f4ede0;color:#a07848;padding:1px 6px;border-radius:10px;white-space:nowrap;"><?= htmlspecialchars($room) ?></span>
       <?php endif; ?>
+      <?php if (!empty($o['task_id'])): ?>
+      <span style="font-size:0.72em;color:#a08060;white-space:nowrap;" title="A task already tracks this">&rarr; task</span>
+      <?php endif; ?>
     </div>
     <?php endforeach; ?>
   </div>

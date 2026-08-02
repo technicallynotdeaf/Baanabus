@@ -664,6 +664,22 @@ function vaultMarkComplete(int $taskId, int $target = 15): array {
     }
     unset($child);
 
+    // A physical object handed off to a task (find_home/link_task) stays 'out' until
+    // the task is actually done — this is where it really gets marked put away.
+    try {
+        $objData    = getPhysicalObjects();
+        $objChanged = false;
+        foreach ($objData['objects'] as &$o) {
+            if ((int)($o['task_id'] ?? 0) === $taskId && ($o['status'] ?? '') !== 'resolved') {
+                $o['status']      = 'resolved';
+                $o['resolved_at'] = date('c');
+                $objChanged       = true;
+            }
+        }
+        unset($o);
+        if ($objChanged) savePhysicalObjects($objData);
+    } catch (Throwable $e) {}
+
     $data['pages']       = ($data['pages']       ?? 0) + 1;
     $data['total_pages'] = ($data['total_pages'] ?? 0) + 1;
     $newStoryPage = false;
@@ -1257,6 +1273,22 @@ function vaultDeletePeopleNote(int $noteId): bool {
     $before = count($data['notes']);
     $data['notes'] = array_values(array_filter($data['notes'], fn($n) => (int)$n['note_id'] !== $noteId));
     if (count($data['notes']) === $before) return false;
+    savePeopleNotes($data);
+    return true;
+}
+
+function vaultUpdatePeopleNote(int $noteId, string $contents): bool {
+    $data  = getPeopleNotes();
+    $found = false;
+    foreach ($data['notes'] as &$n) {
+        if ((int)$n['note_id'] === $noteId) {
+            $n['contents'] = $contents;
+            $found = true;
+            break;
+        }
+    }
+    unset($n);
+    if (!$found) return false;
     savePeopleNotes($data);
     return true;
 }

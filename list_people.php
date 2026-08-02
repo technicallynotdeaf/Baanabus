@@ -306,9 +306,15 @@ function renderPersonPanel(int $personId): void {
         </div>
         <div id="notes-list">
           <?php foreach ($notes as $n): ?>
-            <div style="padding:0.4rem 0;border-bottom:1px solid #f5f5f5;">
-              <p style="font-size:0.75em;color:#aaa;margin:0 0 2px;"><?= date('d M Y', strtotime($n['date_added'] ?? 'now')) ?></p>
-              <p style="font-size:0.88em;margin:0;white-space:pre-wrap;word-break:break-word;"><?= htmlspecialchars($n['contents'] ?? '') ?></p>
+            <div class="person-note-item" data-note-id="<?= (int)$n['note_id'] ?>" style="padding:0.4rem 0;border-bottom:1px solid #f5f5f5;">
+              <p class="person-note-text" style="font-size:0.88em;margin:0 0 3px;white-space:pre-wrap;word-break:break-word;"><?= htmlspecialchars($n['contents'] ?? '') ?></p>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75em;color:#aaa;"><?= date('d M Y', strtotime($n['date_added'] ?? 'now')) ?></span>
+                <button type="button" style="background:none;border:none;padding:0;font-size:0.75em;color:#aaa;cursor:pointer;"
+                        onclick="window._editNote(<?= (int)$n['note_id'] ?>)">edit</button>
+                <button type="button" style="background:none;border:none;padding:0;font-size:0.75em;color:#c0392b;cursor:pointer;"
+                        onclick="window._deleteNote(<?= (int)$n['note_id'] ?>)">delete</button>
+              </div>
             </div>
           <?php endforeach; ?>
           <?php if (!$notes): ?>

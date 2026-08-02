@@ -34,6 +34,10 @@ try {
         json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);
     }
 
+    // find_home / link_task hand the object off to a task, but the object is still
+    // physically out until that task is actually completed — status stays 'out' so it
+    // keeps showing as outstanding (just no longer re-prompted, since task_id is set).
+    // vaultMarkComplete() resolves it for real when the linked task is finished.
     if ($action === 'find_home') {
         $taskData = getTasks();
         $taskId   = (int)($taskData['next_id'] ?? 1);
@@ -57,9 +61,7 @@ try {
         ];
         $taskData['next_id'] = $taskId + 1;
         saveTasks($taskData);
-        $data['objects'][$objIdx]['task_id']     = $taskId;
-        $data['objects'][$objIdx]['status']      = 'resolved';
-        $data['objects'][$objIdx]['resolved_at'] = date('c');
+        $data['objects'][$objIdx]['task_id'] = $taskId;
         savePhysicalObjects($data);
         try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
         json_response(['ok' => true, 'task_id' => $taskId, 'top3_completed' => top3DrainCompleted()]);
@@ -70,9 +72,7 @@ try {
         $taskTitle      = trim($body['task_title'] ?? '');
 
         if ($existingTaskId) {
-            $data['objects'][$objIdx]['task_id']     = $existingTaskId;
-            $data['objects'][$objIdx]['status']      = 'resolved';
-            $data['objects'][$objIdx]['resolved_at'] = date('c');
+            $data['objects'][$objIdx]['task_id'] = $existingTaskId;
             savePhysicalObjects($data);
             try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
             json_response(['ok' => true, 'task_id' => $existingTaskId, 'top3_completed' => top3DrainCompleted()]);
@@ -99,9 +99,7 @@ try {
             ];
             $taskData['next_id'] = $taskId + 1;
             saveTasks($taskData);
-            $data['objects'][$objIdx]['task_id']     = $taskId;
-            $data['objects'][$objIdx]['status']      = 'resolved';
-            $data['objects'][$objIdx]['resolved_at'] = date('c');
+            $data['objects'][$objIdx]['task_id'] = $taskId;
             savePhysicalObjects($data);
             try { creditTop3Progress('object_resolve', 1); } catch (Throwable $e) {}
             json_response(['ok' => true, 'task_id' => $taskId, 'top3_completed' => top3DrainCompleted()]);

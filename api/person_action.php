@@ -1,7 +1,8 @@
 <?php
 /**
  * api/person_action.php
- * POST { person_id, action: 'mark_reviewed'|'snooze'|'archive'|'unarchive'|'add_note', days?: int, note_content?: string }
+ * POST { person_id, action: 'mark_reviewed'|'snooze'|'archive'|'unarchive'|'add_note'|'edit_note'|'delete_note',
+ *        days?: int, note_content?: string, note_id?: int }
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -16,7 +17,7 @@ $action   = $body['action'] ?? '';
 
 if (!$personId) json_response(['error' => 'Missing person_id'], 400);
 
-$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'update_qualities', 'update_interval'];
+$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'edit_note', 'delete_note', 'update_qualities', 'update_interval'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -106,6 +107,23 @@ try {
         $noteId = vaultAddPeopleNote($personId, $contents);
         try { creditTop3Progress('person_note', 1); } catch (Throwable $e) {}
         json_response(['ok' => true, 'note_id' => $noteId, 'top3_completed' => top3DrainCompleted()]);
+
+    } elseif ($action === 'edit_note') {
+        $noteId   = (int)($body['note_id'] ?? 0);
+        $contents = trim($body['note_content'] ?? '');
+        if (!$noteId)                   json_response(['error' => 'Missing note_id'], 400);
+        if ($contents === '')          json_response(['error' => 'Note content required'], 400);
+        if (mb_strlen($contents) > 2000) json_response(['error' => 'Note too long (max 2000 chars)'], 400);
+        $updated = vaultUpdatePeopleNote($noteId, $contents);
+        if (!$updated) json_response(['error' => 'Note not found'], 404);
+        json_response(['ok' => true, 'note_id' => $noteId]);
+
+    } elseif ($action === 'delete_note') {
+        $noteId = (int)($body['note_id'] ?? 0);
+        if (!$noteId) json_response(['error' => 'Missing note_id'], 400);
+        $deleted = vaultDeletePeopleNote($noteId);
+        if (!$deleted) json_response(['error' => 'Note not found'], 404);
+        json_response(['ok' => true, 'note_id' => $noteId]);
     }
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);

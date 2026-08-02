@@ -145,24 +145,86 @@ window.initPersonPanel = function() {
     });
   };
 
+  function noteItemHtml(noteId, text, dateLabel) {
+    return `
+      <div class="person-note-item" data-note-id="${noteId}" style="padding:0.4rem 0;border-bottom:1px solid #f5f5f5;">
+        <p class="person-note-text" style="font-size:0.88em;margin:0 0 3px;white-space:pre-wrap;word-break:break-word;">${esc(text)}</p>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.75em;color:#aaa;">${dateLabel}</span>
+          <button type="button" style="background:none;border:none;padding:0;font-size:0.75em;color:#aaa;cursor:pointer;"
+                  onclick="window._editNote(${noteId})">edit</button>
+          <button type="button" style="background:none;border:none;padding:0;font-size:0.75em;color:#c0392b;cursor:pointer;"
+                  onclick="window._deleteNote(${noteId})">delete</button>
+        </div>
+      </div>`;
+  }
+
   window._addNote = function() {
     const inp    = document.getElementById('new-note');
     const status = document.getElementById('note-status');
     const text   = inp.value.trim();
     if (!text) { status.textContent = 'Type something first.'; return; }
     status.textContent = 'Saving…';
-    personAction({ person_id: pid, action: 'add_note', note_content: text }, () => {
+    personAction({ person_id: pid, action: 'add_note', note_content: text }, d => {
       const noMsg = document.getElementById('no-notes-msg');
       if (noMsg) noMsg.remove();
       const today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
-      const div   = document.createElement('div');
-      div.style.cssText = 'padding:0.4rem 0;border-bottom:1px solid #f5f5f5;';
-      div.innerHTML = `<p style="font-size:0.75em;color:#aaa;margin:0 0 2px;">${today}</p>
-        <p style="font-size:0.88em;margin:0;white-space:pre-wrap;word-break:break-word;">${esc(text)}</p>`;
-      document.getElementById('notes-list').prepend(div);
+      const wrap  = document.createElement('div');
+      wrap.innerHTML = noteItemHtml(d.note_id, text, today).trim();
+      document.getElementById('notes-list').prepend(wrap.firstElementChild);
       inp.value = '';
       status.textContent = 'Saved.';
       setTimeout(() => status.textContent = '', 2000);
+    });
+  };
+
+  window._editNote = function(noteId) {
+    const item = document.querySelector(`.person-note-item[data-note-id="${noteId}"]`);
+    if (!item) return;
+    const current = item.querySelector('.person-note-text').textContent;
+    item.dataset.original = item.innerHTML;
+    item.innerHTML = `
+      <textarea class="person-note-edit" rows="2" style="width:100%;box-sizing:border-box;font-size:0.88em;margin-bottom:5px;">${esc(current)}</textarea>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn" style="padding:4px 10px;font-size:0.82em;min-height:0;"
+                onclick="window._saveNoteEdit(${noteId})">Save</button>
+        <button type="button" style="background:none;border:none;padding:0;font-size:0.82em;color:#aaa;cursor:pointer;"
+                onclick="window._cancelNoteEdit(${noteId})">Cancel</button>
+      </div>`;
+    item.querySelector('textarea').focus();
+  };
+
+  window._cancelNoteEdit = function(noteId) {
+    const item = document.querySelector(`.person-note-item[data-note-id="${noteId}"]`);
+    if (!item || !item.dataset.original) return;
+    item.innerHTML = item.dataset.original;
+  };
+
+  window._saveNoteEdit = function(noteId) {
+    const item = document.querySelector(`.person-note-item[data-note-id="${noteId}"]`);
+    if (!item) return;
+    const textarea = item.querySelector('.person-note-edit');
+    const text     = textarea.value.trim();
+    if (!text) return;
+    textarea.disabled = true;
+    personAction({ person_id: pid, action: 'edit_note', note_id: noteId, note_content: text }, () => {
+      const dateLabel = item.dataset.original.match(/color:#aaa;">([^<]+)<\/span>/)?.[1]
+        || new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+      const wrap = document.createElement('div');
+      wrap.innerHTML = noteItemHtml(noteId, text, dateLabel).trim();
+      item.replaceWith(wrap.firstElementChild);
+    });
+  };
+
+  window._deleteNote = function(noteId) {
+    if (!confirm('Delete this note?')) return;
+    const item = document.querySelector(`.person-note-item[data-note-id="${noteId}"]`);
+    personAction({ person_id: pid, action: 'delete_note', note_id: noteId }, () => {
+      if (item) item.remove();
+      const list = document.getElementById('notes-list');
+      if (list && !list.children.length) {
+        list.innerHTML = '<p class="muted" id="no-notes-msg" style="font-size:0.85em;">No notes yet.</p>';
+      }
     });
   };
 

@@ -392,6 +392,26 @@ if ($method === 'GET') {
         }
     }
 
+    if ($view === 'habitica_dailies') {
+        try {
+            $cfg = getConfig() ?? [];
+            if (empty($cfg['preferences']['uses_habitica'])) json_response(['error' => 'Habitica not configured'], 400);
+            require_once __DIR__ . '/habitica_helper.php';
+            $cass    = getCassowary();
+            $habUser = $cass['habitica']['user_id'] ?? '';
+            $habKey  = $cass['habitica']['api_key']  ?? '';
+            if (!$habUser || !$habKey) json_response(['error' => 'No Habitica credentials'], 400);
+            $dailies = habiticaRequest('GET', '/tasks/user?type=dailys', $habUser, $habKey);
+            json_response(['ok' => true, 'dailies' => array_map(fn($t) => [
+                'id'     => $t['id']    ?? null,
+                'title'  => $t['text']  ?? null,
+                'notes'  => $t['notes'] ?? null,
+            ], $dailies)]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($view === 'contexts') {
         if (!$database) json_response(['error' => 'Database unavailable'], 503);
         $rows = $database->query("SELECT context, description, is_active FROM contexts ORDER BY is_active DESC, context")->fetchAll(PDO::FETCH_ASSOC);
@@ -694,7 +714,7 @@ if ($method === 'GET') {
         }
     }
 
-    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, recipes, goals, quotes, physical_objects, food_packs, food_pack_gaps, food_pack_stale, meal_plan, contexts"], 400);
+    json_response(['error' => "Unknown view '$view'. Valid: tasks, inbox, all_tasks, config, snapshot, food_log, food_search, nutrition_gaps, api_keys, people, person, habitica_task, habitica_dailies, recipes, goals, quotes, physical_objects, food_packs, food_pack_gaps, food_pack_stale, meal_plan, contexts"], 400);
 }
 
 // ---- POST ----
@@ -932,6 +952,30 @@ if ($method === 'POST') {
             $stmt = $database->prepare("DELETE FROM food_packs WHERE pack_id = ?");
             $stmt->execute([$packId]);
             json_response(['ok' => true, 'deleted' => $stmt->rowCount() > 0]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // Deletes an arbitrary Habitica task by its raw Habitica task ID — unlike
+    // habiticaDeleteTaskBestEffort() (habitica_helper.php), which only ever
+    // acts on a vault task's stored habitica_id, this reaches tasks that
+    // exist purely on Habitica's side with no corresponding vault task
+    // (e.g. old dailies never imported by habitica_sync.php, which only
+    // imports todos/checklist items, not dailies).
+    if ($action === 'delete_habitica_task') {
+        $habId = trim($body['habitica_id'] ?? '');
+        if (!$habId) json_response(['error' => 'habitica_id required'], 400);
+        try {
+            $cfg = getConfig() ?? [];
+            if (empty($cfg['preferences']['uses_habitica'])) json_response(['error' => 'Habitica not configured'], 400);
+            require_once __DIR__ . '/habitica_helper.php';
+            $cass    = getCassowary();
+            $habUser = $cass['habitica']['user_id'] ?? '';
+            $habKey  = $cass['habitica']['api_key']  ?? '';
+            if (!$habUser || !$habKey) json_response(['error' => 'No Habitica credentials'], 400);
+            habiticaRequest('DELETE', '/tasks/' . urlencode($habId), $habUser, $habKey);
+            json_response(['ok' => true, 'deleted' => true]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

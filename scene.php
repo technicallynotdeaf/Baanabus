@@ -231,14 +231,11 @@ $isTired = $energyLevel <= 2;
 <div id="scene-clock"></div>
 <?php if ($birthdaysToday || $birthdaysSoon):
     $bdayNames = implode(', ', array_map(fn($b) => $b['name'], $birthdaysToday ?: $birthdaysSoon));
-    $bdayTitle = $birthdaysToday
-        ? "Today: $bdayNames"
-        : "Coming up: $bdayNames";
 ?>
 <div id="scene-birthday" class="<?= $birthdaysToday ? 'today' : 'soon' ?>"
-     title="<?= htmlspecialchars($bdayTitle) ?>"
      onclick="loadOverlay('list_people.php')">
-  <?= $birthdaysToday ? '🎂' : '🎈' ?>
+  <span class="scene-birthday-icon"><?= $birthdaysToday ? '🎂' : '🎈' ?></span>
+  <span class="scene-birthday-names"><?= htmlspecialchars($bdayNames) ?></span>
 </div>
 <?php endif; ?>
 <?php

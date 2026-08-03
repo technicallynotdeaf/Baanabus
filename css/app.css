@@ -545,24 +545,45 @@ body.scene-view .scene-progress { display: block; }
 }
 body.scene-view #scene-total-pips { display: block; }
 
-/* Birthday cue — cake for today, balloon for the next few days. Top-left,
-   clear of the nav pill/cycle dial (top-right) and the clock (right wall). */
+/* Birthday cue — cake for today, balloon for the next few days, with the
+   person's name right there instead of hidden in a hover title (no hover
+   on mobile anyway). Top-left, clear of the nav pill/cycle dial (top-right)
+   and the clock (right wall). */
 #scene-birthday {
     position: fixed;
     top: 4.5rem;
     left: 1rem;
-    font-size: 1.6rem;
+    max-width: min(70vw, 20rem);
     display: none;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
     z-index: 50;
     cursor: pointer;
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
     animation: scene-birthday-bob 2.4s ease-in-out infinite;
 }
-#scene-birthday.soon {
-    font-size: 1.15rem;
-    opacity: 0.75;
+#scene-birthday .scene-birthday-icon {
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
-body.scene-view #scene-birthday { display: block; }
+#scene-birthday .scene-birthday-names {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#scene-birthday.soon {
+    opacity: 0.8;
+}
+#scene-birthday.soon .scene-birthday-icon { font-size: 1.1rem; }
+#scene-birthday.soon .scene-birthday-names { font-size: 0.75rem; font-weight: 500; }
+body.scene-view #scene-birthday { display: flex; }
 @keyframes scene-birthday-bob {
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-4px); }

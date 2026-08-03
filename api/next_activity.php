@@ -508,11 +508,8 @@ try {
         $nr = $p['next_review'] ?? null;
         if (!$nr || $nr <= $today_str) { $hasPersonReview = true; break; }
     }
-    if (!$hasPersonReview && !empty($peopleData['people'])) {
-        // If everyone is upcoming, still surface occasionally (1-in-5 chance)
-        $activePeople = array_values(array_filter($peopleData['people'], fn($p) => ($p['is_active'] ?? 1) != 0));
-        $hasPersonReview = !empty($activePeople) && (rand(1, 5) === 1);
-    }
+    // No random fallback when nothing's due — offering "review someone" as an
+    // activity when no one actually needs reviewing isn't a real option.
 } catch (Throwable $e) {}
 
 // Event pre-brief/debrief: a task links to a person and carries a scheduled day, so it

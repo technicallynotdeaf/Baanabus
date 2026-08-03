@@ -25,6 +25,8 @@ $cycleDay        = 0;
 $cycleLen        = 0;
 $cyclePhases     = [];
 $top3Entries     = [];
+$birthdaysToday  = [];
+$birthdaysSoon   = [];
 if (isUnlocked()) {
     try {
         $cp = getCyclePhase();
@@ -80,6 +82,11 @@ if (isUnlocked()) {
     } catch (Throwable $e) {}
     try {
         $top3Entries = getOrGenerateTop3();
+    } catch (Throwable $e) {}
+    try {
+        $upcoming = getUpcomingBirthdays();
+        $birthdaysToday = array_values(array_filter($upcoming, fn($b) => $b['days_until'] === 0));
+        $birthdaysSoon  = array_values(array_filter($upcoming, fn($b) => $b['days_until'] > 0));
     } catch (Throwable $e) {}
 }
 ?>
@@ -222,6 +229,18 @@ $isTired = $energyLevel <= 2;
 </div>
 <div id="scene-total-pips">★ <?= $totalPages ?></div>
 <div id="scene-clock"></div>
+<?php if ($birthdaysToday || $birthdaysSoon):
+    $bdayNames = implode(', ', array_map(fn($b) => $b['name'], $birthdaysToday ?: $birthdaysSoon));
+    $bdayTitle = $birthdaysToday
+        ? "Today: $bdayNames"
+        : "Coming up: $bdayNames";
+?>
+<div id="scene-birthday" class="<?= $birthdaysToday ? 'today' : 'soon' ?>"
+     title="<?= htmlspecialchars($bdayTitle) ?>"
+     onclick="loadOverlay('list_people.php')">
+  <?= $birthdaysToday ? '🎂' : '🎈' ?>
+</div>
+<?php endif; ?>
 <?php
 $energyLabels = [1 => 'Exhausted', 2 => 'Low energy', 3 => 'Okay', 4 => 'Good', 5 => 'On fire'];
 $energyLabel  = $energyLabels[$energyLevel] ?? '';

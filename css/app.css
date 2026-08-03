@@ -545,6 +545,29 @@ body.scene-view .scene-progress { display: block; }
 }
 body.scene-view #scene-total-pips { display: block; }
 
+/* Birthday cue — cake for today, balloon for the next few days. Top-left,
+   clear of the nav pill/cycle dial (top-right) and the clock (right wall). */
+#scene-birthday {
+    position: fixed;
+    top: 4.5rem;
+    left: 1rem;
+    font-size: 1.6rem;
+    display: none;
+    z-index: 50;
+    cursor: pointer;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+    animation: scene-birthday-bob 2.4s ease-in-out infinite;
+}
+#scene-birthday.soon {
+    font-size: 1.15rem;
+    opacity: 0.75;
+}
+body.scene-view #scene-birthday { display: block; }
+@keyframes scene-birthday-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+}
+
 /* Clock on right wall (desktop scene only) */
 #scene-clock {
     position: fixed;

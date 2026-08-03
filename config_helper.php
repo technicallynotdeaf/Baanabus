@@ -944,6 +944,35 @@ function savePeople(array $data): void {
     @chmod($path, 0600);
 }
 
+// Active people whose birthday (DOB/MOB — day/month only, year ignored) falls
+// today or within the next $withinDays days. Returns [{person_id, name,
+// days_until}], sorted soonest first. DOB/MOB are legacy imported fields —
+// most existing people have them, but there's no UI yet to set them for
+// someone added later, so plenty of people will simply have neither set
+// and are skipped here rather than miscounted as "no birthday."
+function getUpcomingBirthdays(int $withinDays = 6): array {
+    $today = new DateTimeImmutable('today');
+    $out = [];
+    foreach (getPeople()['people'] as $p) {
+        if (($p['is_active'] ?? 1) == 0) continue;
+        $day = (int)($p['DOB'] ?? 0);
+        $mon = (int)($p['MOB'] ?? 0);
+        if ($day < 1 || $day > 31 || $mon < 1 || $mon > 12) continue;
+        $thisYear = (int)$today->format('Y');
+        $next = DateTimeImmutable::createFromFormat('Y-n-j', "$thisYear-$mon-$day");
+        if ($next === false) continue; // e.g. 30 Feb from bad import data
+        if ($next < $today) {
+            $next = DateTimeImmutable::createFromFormat('Y-n-j', ($thisYear + 1) . "-$mon-$day");
+            if ($next === false) continue;
+        }
+        $daysUntil = (int)$today->diff($next)->days;
+        if ($daysUntil > $withinDays) continue;
+        $out[] = ['person_id' => (int)$p['person_id'], 'name' => $p['name'] ?? '', 'days_until' => $daysUntil];
+    }
+    usort($out, fn($a, $b) => $a['days_until'] <=> $b['days_until']);
+    return $out;
+}
+
 // ---------- People notes vault ----------
 
 function peopleNotesPath(): string {

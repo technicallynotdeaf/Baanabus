@@ -578,9 +578,25 @@ function top3CreditFieldTransitions(?array $before, array $fields): array {
 function updateTaskFieldsShared(int $taskId, array $rawFields): array {
     $allowed = ['urgency', 'importance', 'snoozed_until', 'deadline', 'context', 'location', 'task_type',
                 'energy', 'time', 'prereq_tasks', 'status', 'title', 'description', 'tags', 'parent_id', 'goal_id',
-                'person_id', 'relevant_after', 'irrelevant_after'];
+                'person_id', 'relevant_after', 'irrelevant_after', 'scheduled_date'];
     $fields  = array_intersect_key($rawFields, array_flip($allowed));
     if (!$fields) throw new Exception('No valid fields to update');
+    // Calendar day — same YYYY-MM-DD validation and 3-task-per-day cap
+    // api/schedule_task.php enforces, so the calendar overlay and the agent
+    // API can't schedule a day differently. null unschedules.
+    if (array_key_exists('scheduled_date', $fields)) {
+        $d = $fields['scheduled_date'];
+        if ($d !== null) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) throw new Exception('Invalid scheduled_date format');
+            $dayCount = count(array_filter(getTasks()['tasks'], fn($t) =>
+                ($t['scheduled_date'] ?? '') === $d &&
+                (int)$t['id'] !== $taskId &&
+                $t['status'] !== 'deleted'
+            ));
+            if ($dayCount >= 3) throw new Exception('Day is full (3 tasks max)');
+            $fields['woke_date'] = null;
+        }
+    }
     // Time-of-day window fields — same HH:MM validation used for dailies
     // (api/daily_action.php); reject rather than silently store a garbage
     // value that would corrupt the string comparison in getDoableTasks().

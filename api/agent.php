@@ -337,8 +337,15 @@ if ($method === 'GET') {
             'person_id'        => (int)$p['person_id'],
             'name'             => $p['name']              ?? null,
             'circles'          => is_array($p['circles'] ?? null) ? $p['circles'] : [],
+            // 'birthday' is a legacy/unused field name — the actual data list_people.php
+            // reads and displays is DOB (day)/MOB (month)/YOB (optional year), added here
+            // for inspection while investigating the birthday-reminder feature request.
             'birthday'         => $p['birthday']          ?? null,
+            'DOB'              => $p['DOB']                ?? null,
+            'MOB'              => $p['MOB']                ?? null,
+            'YOB'              => $p['YOB']                ?? null,
             'next_review_date' => $p['next_review_date']  ?? null,
+            'next_review'      => $p['next_review']        ?? null,
             'review_interval'  => $p['review_interval']   ?? null,
             'archived'         => $p['archived']          ?? false,
             'qualities'        => $p['qualities']         ?? [],

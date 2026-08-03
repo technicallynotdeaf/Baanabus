@@ -10,6 +10,7 @@ if (!$database)         json_response(['error' => 'No database'], 500);
 
 $input   = json_decode(file_get_contents('php://input'), true);
 $setName = trim($input['set_name'] ?? '');
+$active  = array_key_exists('active', $input) ? (bool)$input['active'] : true;
 if (!$setName) json_response(['error' => 'Missing set_name'], 400);
 
 try {
@@ -17,8 +18,8 @@ try {
     $stmt->execute([$setName]);
     if ((int)$stmt->fetchColumn() === 0) json_response(['error' => 'Unknown study set'], 400);
 
-    setActiveStudySet($setName);
-    json_response(['ok' => true, 'set_name' => $setName]);
+    toggleActiveStudySet($setName, $active);
+    json_response(['ok' => true, 'set_name' => $setName, 'active' => $active, 'study_active_sets' => getActiveStudySets()]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

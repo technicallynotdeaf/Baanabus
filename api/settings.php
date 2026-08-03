@@ -601,13 +601,13 @@ if ($database) {
   <div id="tab-trivia" class="settings-panel" hidden>
 
     <?php if ($studyStats): ?>
-    <?php $activeStudySet = $cfg['study_active_set'] ?? null; ?>
+    <?php $activeStudySets = $cfg['study_active_sets'] ?? []; if (!is_array($activeStudySets)) $activeStudySets = []; ?>
     <div class="card" style="margin-bottom:1rem;">
       <h3 style="margin-bottom:0.25rem;">Study progress</h3>
-      <p class="muted" style="margin-bottom:0.75rem;font-size:0.85em;">Only the active set appears in your daily rotation — switch any time.</p>
+      <p class="muted" style="margin-bottom:0.75rem;font-size:0.85em;">Active sets share your daily rotation fairly — turn on as many as you're working on.</p>
       <?php foreach ($studyStats as $setName => $stat):
         $pct = $stat['total'] > 0 ? round($stat['mastered'] / $stat['total'] * 100) : 0;
-        $isActive = ($activeStudySet === $setName);
+        $isActive = in_array($setName, $activeStudySets, true);
       ?>
       <div style="margin-bottom:0.75rem;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;flex-wrap:wrap;gap:4px;">
@@ -617,10 +617,8 @@ if ($database) {
           </span>
           <span style="display:flex;align-items:center;gap:8px;">
             <span class="muted" style="font-size:0.88em;"><?= $stat['mastered'] ?>/<?= $stat['total'] ?> mastered</span>
-            <?php if (!$isActive): ?>
-            <button type="button" data-study-set="<?= htmlspecialchars($setName) ?>"
-              style="background:none;border:none;color:#3a6b3e;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;">Study this</button>
-            <?php endif; ?>
+            <button type="button" data-study-set="<?= htmlspecialchars($setName) ?>" data-study-set-active="<?= $isActive ? '1' : '0' ?>"
+              style="background:none;border:none;color:<?= $isActive ? '#a33' : '#3a6b3e' ?>;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;"><?= $isActive ? 'Turn off' : 'Turn on' ?></button>
             <button type="button" data-reset-set="<?= htmlspecialchars($setName) ?>" data-reset-type="study"
               style="background:none;border:none;color:#a33;text-decoration:underline;cursor:pointer;font-size:0.8em;padding:0;">Reset</button>
           </span>

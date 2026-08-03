@@ -407,20 +407,22 @@ if ($hasInbox) {
 $doableSlots = $hasTasks ? ($hasInbox ? max(1, intdiv($taskSlots, 2)) : $taskSlots) : 0;
 
 // Check for available study questions (unseen or not yet correctly answered twice),
-// scoped to the active study set if one is chosen (see getActiveStudySet()).
+// scoped to whichever study set(s) the user has active (see getActiveStudySets()).
 $hasStudy = false;
 if ($database) {
     try {
-        $activeStudySet = getActiveStudySet();
+        $activeStudySets = getActiveStudySets();
+        $setPlaceholders = [];
+        foreach ($activeStudySets as $i => $sn) $setPlaceholders[] = ":set_$i";
         $stmt = $database->prepare("
             SELECT 1 FROM study_questions sq
             LEFT JOIN question_seen qs ON sq.id = qs.question_id
             WHERE sq.q_type = 'study'
               AND (qs.correct_count IS NULL OR qs.correct_count < 2)
-              " . ($activeStudySet ? "AND sq.set_name = :set_name" : "") . "
+              " . ($setPlaceholders ? "AND sq.set_name IN (" . implode(',', $setPlaceholders) . ")" : "") . "
             LIMIT 1
         ");
-        if ($activeStudySet) $stmt->bindValue(':set_name', $activeStudySet);
+        foreach ($activeStudySets as $i => $sn) $stmt->bindValue(":set_$i", $sn);
         $stmt->execute();
         $hasStudy = (bool)$stmt->fetchColumn();
     } catch (Throwable $e) {}
@@ -1481,11 +1483,34 @@ function pick_study(): ?array {
     global $database;
     if (!$database) return null;
     try {
-        // Scope to whichever study set the user has active (see getActiveStudySet()) —
-        // otherwise unrelated sets (exam prep, language batches, ...) merge into one pool.
-        // No active set chosen yet = fall back to the old unscoped behaviour.
-        $activeSet = getActiveStudySet();
-        $setSql    = $activeSet ? "AND sq.set_name = :set_name" : "";
+        // Scope to whichever study set(s) the user has active (see getActiveStudySets())
+        // — otherwise unrelated sets (exam prep, language batches, ...) merge into one pool.
+        // No active sets chosen = fall back to the old fully-unscoped behaviour.
+        $activeSets = getActiveStudySets();
+        $chosenSet  = null;
+
+        if ($activeSets) {
+            // Pick fairly among active sets that still have an available (unmastered)
+            // question right now, rather than pooling everything and letting "prefer
+            // unseen" logic run globally — a set with weeks of answer history (e.g. an
+            // exam set) would otherwise get starved out by a brand-new, 100%-unseen set.
+            $available = [];
+            foreach ($activeSets as $sn) {
+                $s = $database->prepare("
+                    SELECT COUNT(*) FROM study_questions sq
+                    LEFT JOIN question_seen qs ON sq.id = qs.question_id
+                    WHERE sq.q_type = 'study' AND sq.set_name = :set_name
+                      AND (qs.correct_count IS NULL OR qs.correct_count < 2)
+                ");
+                $s->bindValue(':set_name', $sn);
+                $s->execute();
+                if ((int)$s->fetchColumn() > 0) $available[] = $sn;
+            }
+            if (!$available) return null;
+            $chosenSet = $available[array_rand($available)];
+        }
+
+        $setSql = $chosenSet ? "AND sq.set_name = :set_name" : "";
 
         // Prefer unseen questions first, then least-correctly-answered, then random
         $stmt = $database->prepare("
@@ -1500,14 +1525,14 @@ function pick_study(): ?array {
               RANDOM()
             LIMIT 1
         ");
-        if ($activeSet) $stmt->bindValue(':set_name', $activeSet);
+        if ($chosenSet) $stmt->bindValue(':set_name', $chosenSet);
         $stmt->execute();
         $q = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$q) return null;
         $out = question_row_to_response($q, 'study');
-        // Attach progress counts, scoped the same way
+        // Attach progress counts, scoped to the same set the picked question came from
         $totalStmt = $database->prepare("SELECT COUNT(*) FROM study_questions sq WHERE sq.q_type='study' $setSql");
-        if ($activeSet) $totalStmt->bindValue(':set_name', $activeSet);
+        if ($chosenSet) $totalStmt->bindValue(':set_name', $chosenSet);
         $totalStmt->execute();
         $total = (int)$totalStmt->fetchColumn();
 
@@ -1516,7 +1541,7 @@ function pick_study(): ?array {
             JOIN study_questions sq ON sq.id = qs.question_id
             WHERE sq.q_type = 'study' AND qs.correct_count >= 2 $setSql
         ");
-        if ($activeSet) $masteredStmt->bindValue(':set_name', $activeSet);
+        if ($chosenSet) $masteredStmt->bindValue(':set_name', $chosenSet);
         $masteredStmt->execute();
         $mastered = (int)$masteredStmt->fetchColumn();
 
@@ -1525,7 +1550,7 @@ function pick_study(): ?array {
             JOIN study_questions sq ON sq.id = qs.question_id
             WHERE sq.q_type = 'study' AND qs.correct_count >= 1 $setSql
         ");
-        if ($activeSet) $onceCorrectStmt->bindValue(':set_name', $activeSet);
+        if ($chosenSet) $onceCorrectStmt->bindValue(':set_name', $chosenSet);
         $onceCorrectStmt->execute();
         $once_correct = (int)$onceCorrectStmt->fetchColumn();
 

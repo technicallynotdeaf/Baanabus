@@ -1919,13 +1919,14 @@ if ($method === 'POST') {
 
     if ($action === 'set_active_study_set') {
         $setName = trim($body['set_name'] ?? '');
+        $active  = array_key_exists('active', $body) ? (bool)$body['active'] : true;
         if (!$setName) json_response(['error' => 'Missing set_name'], 400);
         try {
             $stmt = $database->prepare("SELECT COUNT(*) FROM study_questions WHERE set_name = ? AND q_type = 'study'");
             $stmt->execute([$setName]);
             if ((int)$stmt->fetchColumn() === 0) json_response(['error' => 'Unknown study set'], 400);
-            setActiveStudySet($setName);
-            json_response(['ok' => true, 'study_active_set' => $setName]);
+            toggleActiveStudySet($setName, $active);
+            json_response(['ok' => true, 'set_name' => $setName, 'active' => $active, 'study_active_sets' => getActiveStudySets()]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

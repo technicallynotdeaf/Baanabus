@@ -510,22 +510,23 @@ window.initSettings = function() {
     });
   });
 
-  // ── Study: switch active set ───────────────────────────────────────
+  // ── Study: toggle active sets (multiple can be active at once) ─────
   document.querySelectorAll('[data-study-set]').forEach(btn => {
     btn.addEventListener('click', async function() {
-      const setName = this.dataset.studySet;
-      const statusEl = document.getElementById('study-set-status');
+      const setName   = this.dataset.studySet;
+      const turningOn = this.dataset.studySetActive === '0';
+      const statusEl  = document.getElementById('study-set-status');
       this.disabled = true;
-      if (statusEl) statusEl.textContent = 'Switching to ' + setName + '...';
+      if (statusEl) statusEl.textContent = (turningOn ? 'Turning on ' : 'Turning off ') + setName + '...';
       try {
         const r = await fetch('api/set_active_study_set.php', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({set_name: setName}),
+          body: JSON.stringify({set_name: setName, active: turningOn}),
         });
         const data = await r.json();
         if (data.ok) {
-          if (statusEl) statusEl.textContent = 'Now studying ' + setName + '.';
+          if (statusEl) statusEl.textContent = setName + (turningOn ? ' is now active.' : ' turned off.');
           setTimeout(() => location.reload(), 600);
         } else {
           if (statusEl) statusEl.textContent = data.error || 'Something went wrong.';

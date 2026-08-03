@@ -1510,16 +1510,31 @@ function setActiveStoryId(string $storyId): void {
 }
 function consumePendingStoryPages(string $storyId): void { migrateStoryPagesToGlobal(); }
 
-// ---------- Active study set (q_type='study' rotation scoping) ----------
+// ---------- Active study sets (q_type='study' rotation scoping) ----------
 // Multiple unrelated study sets (exam prep, language batches, etc.) can coexist
 // in study_questions. Without this, pick_study() would merge all of them into
-// one pool. This lets the user focus on one set at a time, same pattern as
-// active_story_id above.
-function getActiveStudySet(): ?string { $cfg = getConfig() ?? []; return isset($cfg['study_active_set']) ? (string)$cfg['study_active_set'] : null; }
-function setActiveStudySet(string $setName): void {
+// one pool. This lets the user choose which set(s) are in rotation - zero or more
+// at once - rather than everything merging automatically. Stored as a plain array
+// of set_name strings; empty/missing = no restriction (old unscoped behaviour).
+function getActiveStudySets(): array {
     $cfg = getConfig() ?? [];
-    $cfg['study_active_set'] = $setName;
+    $sets = $cfg['study_active_sets'] ?? [];
+    return is_array($sets) ? array_values(array_unique(array_filter(array_map('strval', $sets)))) : [];
+}
+function setActiveStudySets(array $setNames): void {
+    $cfg = getConfig() ?? [];
+    $cfg['study_active_sets'] = array_values(array_unique(array_filter(array_map('strval', $setNames))));
     saveConfig($cfg);
+}
+// Turns a single set on/off within the active list without disturbing the others.
+function toggleActiveStudySet(string $setName, bool $active): void {
+    $sets = getActiveStudySets();
+    if ($active) {
+        if (!in_array($setName, $sets, true)) $sets[] = $setName;
+    } else {
+        $sets = array_values(array_filter($sets, fn($s) => $s !== $setName));
+    }
+    setActiveStudySets($sets);
 }
 
 // ---------- Cassowary vault (API keys / integration secrets) ----------

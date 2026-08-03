@@ -205,7 +205,13 @@ window.initSettings = function() {
     });
   }
 
-  document.addEventListener('click', async function(e) {
+  // Guarded: initSettings() re-runs on every settings overlay open, and
+  // document-level delegated listeners aren't cleared when the overlay's
+  // innerHTML is replaced — without this they'd stack up the same way the
+  // list_tasks.js task-action listeners did (see comment there).
+  if (!window._settingsRevokeHandlerBound) {
+    window._settingsRevokeHandlerBound = true;
+    document.addEventListener('click', async function(e) {
     if (!e.target.classList.contains('btn-revoke')) return;
     const keyId = e.target.dataset.kid;
     if (!keyId) return;
@@ -224,7 +230,8 @@ window.initSettings = function() {
       alert(e.message);
       e.target.disabled = false;
     }
-  });
+    });
+  }
 
   // ── Account: Habitica ──────────────────────────────────────────────
   const habForm = document.getElementById('habitica-form');

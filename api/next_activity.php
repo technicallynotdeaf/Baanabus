@@ -1243,12 +1243,12 @@ function pick_dance(): array {
 }
 
 function pick_fun_task(): array {
+    global $physicalLocation;
     $tasks = [
         ["Do 5 star jumps"],
         ["Close your eyes for 20 seconds and imagine you're somewhere beautiful", 20],
         ["Put on one song you love and just listen to it"],
         ["Draw something badly on purpose"],
-        ["Walk to the end of the street and back"],
         ["Look up at the sky for 30 seconds", 30],
         ["Find a window and look at the furthest thing you can see for 20 seconds — give your eyes a proper rest", 20],
         ["Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.", 30],
@@ -1276,6 +1276,10 @@ function pick_fun_task(): array {
         ["Look out the window and find one thing that's moving. Watch it for a bit."],
         ["Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.", 30],
     ];
+    // Doesn't make sense mid-journey — same location-6 (Transit) exclusion pick_dance() uses.
+    if (($physicalLocation ?? null) !== 6) {
+        $tasks[] = ["Walk to the end of the street and back"];
+    }
     $t = $tasks[array_rand($tasks)];
     return ['type' => 'fun_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];
 }

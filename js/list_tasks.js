@@ -40,7 +40,10 @@ window.initListTasks = function() {
     }
 
     function addRowToGroup(t) {
-      const group = document.querySelector(`.task-group[data-urgency="${t.urgency}"]`);
+      // Quick-add doesn't collect importance, so new rows land in the
+      // medium-importance group — matches the server-side default in
+      // list_tasks.php's grouping ($t['importance'] ?? 'medium').
+      const group = document.querySelector(`.task-group[data-importance="medium"]`);
       if (!group) return;
       const row = document.createElement('div');
       row.className = 'task-row';
@@ -92,73 +95,84 @@ window.initListTasks = function() {
     });
   });
 
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.task-done-btn');
-    if (!btn) return;
-    const taskId = parseInt(btn.dataset.id);
-    const row    = btn.closest('.task-row');
-    btn.disabled = true;
-    fetch(`api/mark_complete.api.php?task_id=${taskId}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          updateProgressBar(d.pages, d.pages_target);
-          row.style.transition = 'opacity 0.2s';
-          row.style.opacity = '0';
-          setTimeout(() => row.remove(), 220);
-        } else {
-          btn.disabled = false;
-        }
-      })
-      .catch(() => { btn.disabled = false; });
-  });
+  // Delegated on document since task rows are re-rendered on every overlay
+  // load; guarded so re-opening this overlay (tab switches, search, etc.)
+  // doesn't stack a fresh copy of each listener onto document forever —
+  // that stacking was firing every click N times (N = times this overlay
+  // had been opened this session), amplifying into request bursts large
+  // enough to occasionally race the PHP session lock and produce a stray
+  // 403 mid-burst (diagnosed 2026-08-03 from a false ModSecurity-timeout report).
+  if (!window._taskListHandlersBound) {
+    window._taskListHandlersBound = true;
 
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.task-detail-btn');
-    if (!btn) return;
-    if (typeof window.loadOverlay === 'function') {
-      window.loadOverlay(`api/task_detail.php?id=${btn.dataset.id}`);
-    }
-  });
-
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.task-snooze-btn');
-    if (!btn) return;
-    const taskId = parseInt(btn.dataset.id);
-    const row    = btn.closest('.task-row');
-
-    document.querySelectorAll('.snooze-picker').forEach(p => p.remove());
-
-    const taskLocation = row && row.dataset.location ? row.dataset.location.split(',').filter(Boolean) : [];
-    const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(taskLocation);
-    const allOpts = suggested.length
-      ? [['-- suits this task --', null], ...suggested, ['-- other days --', null], ...rest]
-      : rest;
-
-    const picker = document.createElement('div');
-    picker.className = 'snooze-picker';
-    picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;padding:4px 0;';
-    allOpts.forEach(([label, when]) => {
-      if (when === null) {
-        const sep = document.createElement('div');
-        sep.style.cssText = 'width:100%;font-size:0.72em;color:#aaa;padding:2px 0 1px;';
-        sep.textContent = label;
-        picker.appendChild(sep);
-        return;
-      }
-      const b = document.createElement('button');
-      b.className = 'action-button';
-      b.style.cssText = when === 'someday'
-        ? 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;'
-        : 'padding:3px 8px;font-size:0.75em;min-height:28px;';
-      b.textContent = label;
-      b.addEventListener('click', () => when === 'someday'
-        ? moveToSomeday(taskId, row, picker)
-        : snooze(taskId, when, row, picker));
-      picker.appendChild(b);
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.task-done-btn');
+      if (!btn) return;
+      const taskId = parseInt(btn.dataset.id);
+      const row    = btn.closest('.task-row');
+      btn.disabled = true;
+      fetch(`api/mark_complete.api.php?task_id=${taskId}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            updateProgressBar(d.pages, d.pages_target);
+            row.style.transition = 'opacity 0.2s';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 220);
+          } else {
+            btn.disabled = false;
+          }
+        })
+        .catch(() => { btn.disabled = false; });
     });
-    row.after(picker);
-  });
+
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.task-detail-btn');
+      if (!btn) return;
+      if (typeof window.loadOverlay === 'function') {
+        window.loadOverlay(`api/task_detail.php?id=${btn.dataset.id}`);
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.task-snooze-btn');
+      if (!btn) return;
+      const taskId = parseInt(btn.dataset.id);
+      const row    = btn.closest('.task-row');
+
+      document.querySelectorAll('.snooze-picker').forEach(p => p.remove());
+
+      const taskLocation = row && row.dataset.location ? row.dataset.location.split(',').filter(Boolean) : [];
+      const {suggested, rest} = (window.buildSnoozeOpts || (() => ({suggested:[], rest:[]})))(taskLocation);
+      const allOpts = suggested.length
+        ? [['-- suits this task --', null], ...suggested, ['-- other days --', null], ...rest]
+        : rest;
+
+      const picker = document.createElement('div');
+      picker.className = 'snooze-picker';
+      picker.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;padding:4px 0;';
+      allOpts.forEach(([label, when]) => {
+        if (when === null) {
+          const sep = document.createElement('div');
+          sep.style.cssText = 'width:100%;font-size:0.72em;color:#aaa;padding:2px 0 1px;';
+          sep.textContent = label;
+          picker.appendChild(sep);
+          return;
+        }
+        const b = document.createElement('button');
+        b.className = 'action-button';
+        b.style.cssText = when === 'someday'
+          ? 'padding:3px 8px;font-size:0.75em;min-height:28px;background:transparent;color:#888;border:1px solid #ccc;'
+          : 'padding:3px 8px;font-size:0.75em;min-height:28px;';
+        b.textContent = label;
+        b.addEventListener('click', () => when === 'someday'
+          ? moveToSomeday(taskId, row, picker)
+          : snooze(taskId, when, row, picker));
+        picker.appendChild(b);
+      });
+      row.after(picker);
+    });
+  }
 
   function snooze(taskId, when, row, picker) {
     picker.querySelectorAll('button').forEach(b => b.disabled = true);
@@ -204,6 +218,11 @@ window.initListTasks = function() {
 };
 
 window.initSnoozedTasks = function() {
+  // Guarded for the same reason as initListTasks' delegated listeners above —
+  // this overlay can be reopened repeatedly in one session.
+  if (window._snoozedTaskHandlersBound) return;
+  window._snoozedTaskHandlersBound = true;
+
   document.addEventListener('click', function(e) {
     const btn = e.target.closest('.task-wake-btn');
     if (!btn) return;

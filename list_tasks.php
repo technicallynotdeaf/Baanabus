@@ -248,8 +248,14 @@ foreach ($all as $t) {
     $active[] = $t;
 }
 
-$urgencyOrder = ['high' => 0, 'medium' => 1, 'low' => 2];
-usort($active, function($a, $b) use ($urgencyOrder) {
+// Importance is the primary sort (most to least important); urgency breaks
+// ties within an importance bucket (most to least urgent).
+$importanceOrder = ['high' => 0, 'medium' => 1, 'low' => 2];
+$urgencyOrder    = ['high' => 0, 'medium' => 1, 'low' => 2];
+usort($active, function($a, $b) use ($importanceOrder, $urgencyOrder) {
+    $ia = $importanceOrder[$a['importance'] ?? 'medium'] ?? 1;
+    $ib = $importanceOrder[$b['importance'] ?? 'medium'] ?? 1;
+    if ($ia !== $ib) return $ia <=> $ib;
     $ua = $urgencyOrder[$a['urgency'] ?? 'low'] ?? 2;
     $ub = $urgencyOrder[$b['urgency'] ?? 'low'] ?? 2;
     return $ua <=> $ub;
@@ -257,13 +263,13 @@ usort($active, function($a, $b) use ($urgencyOrder) {
 
 $groups = ['high' => [], 'medium' => [], 'low' => []];
 foreach ($active as $t) {
-    $u = $t['urgency'] ?? 'low';
-    if (!isset($groups[$u])) $u = 'low';
-    $groups[$u][] = $t;
+    $i = $t['importance'] ?? 'medium';
+    if (!isset($groups[$i])) $i = 'medium';
+    $groups[$i][] = $t;
 }
 
-$urgencyLabel = ['high' => 'Today / next few days', 'medium' => 'Next few weeks', 'low' => 'Later'];
-$urgencyColor = ['high' => '#c0392b', 'medium' => '#e67e22', 'low' => '#888'];
+$importanceLabel = ['high' => 'High importance', 'medium' => 'Medium importance', 'low' => 'Low importance'];
+$importanceColor = ['high' => '#c0392b', 'medium' => '#e67e22', 'low' => '#888'];
 
 $usedContexts = array_values(array_filter(
     array_unique(array_map(fn($t) => trim($t['context'] ?? ''), $active)),
@@ -343,12 +349,12 @@ $typeLabels = [
   <?php endif; ?>
 
   <!-- Task groups -->
-  <?php foreach ($groups as $urgency => $tasks): ?>
+  <?php foreach ($groups as $importance => $tasks): ?>
     <?php if (empty($tasks)) continue; ?>
-    <div class="task-group" data-urgency="<?= $urgency ?>">
+    <div class="task-group" data-importance="<?= $importance ?>">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.4rem;margin-top:0.75rem;">
-        <span style="font-size:0.72em;font-weight:600;color:<?= $urgencyColor[$urgency] ?>;text-transform:uppercase;letter-spacing:0.06em;">
-          <?= $urgencyLabel[$urgency] ?>
+        <span style="font-size:0.72em;font-weight:600;color:<?= $importanceColor[$importance] ?>;text-transform:uppercase;letter-spacing:0.06em;">
+          <?= $importanceLabel[$importance] ?>
         </span>
         <span class="task-group-count muted" style="font-size:0.75em;"><?= count($tasks) ?></span>
       </div>

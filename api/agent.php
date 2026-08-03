@@ -1740,6 +1740,7 @@ if ($method === 'POST') {
             'portion_nutrition' => $portion_nutrition,
             'batch_cost'        => $batch_cost,
             'portion_cost'      => $portion_cost,
+            'per_ingredient'    => $result['per_ingredient'],
         ]);
     }
 

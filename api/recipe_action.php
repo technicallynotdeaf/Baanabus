@@ -5,7 +5,11 @@
  * POST {action:'update', recipe_id, name?, ingredients_text?, notes?, default_portions?, tags?}
  * POST {action:'delete', recipe_id}
  * POST {action:'precalculate', recipe_id, ingredients:[{food_id,weight_g},...]?, portions?}
- *      → uses the recipe's stored ingredient_matches if `ingredients` isn't given
+ *      → uses the recipe's stored ingredient_matches if `ingredients` isn't given.
+ *        Response includes per_ingredient: [{food_id,weight_g,cost_per_100g,cost,source}],
+ *        cost per food resolved by resolveFoodCost() (food_packs, falling back to
+ *        foods.cost_per_100g) — same source the recipe detail view's per-ingredient
+ *        cost display uses.
  *
  * Mirrors the equivalent actions in api/agent.php (which are bearer-token only,
  * for Claude) so the browser UI has a session-cookie-authenticated path to the
@@ -143,6 +147,7 @@ try {
             'portion_nutrition' => $portionNutrition,
             'batch_cost'        => $batchCost,
             'portion_cost'      => $portionCost,
+            'per_ingredient'    => $result['per_ingredient'],
         ]);
     }
 

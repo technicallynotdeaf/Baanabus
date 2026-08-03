@@ -19,6 +19,7 @@ $ingredientMatches = $recipe['ingredient_matches'] ?? [];
 
 // Resolve ingredient food names for display (ingredient_matches only stores food_id/weight_g)
 $foodNames = [];
+$foodCosts = []; // food_id => ['cost_per_100g' => float|null, 'source' => 'pack'|'foods_table'|null]
 if ($database && $ingredientMatches) {
     $ids = array_values(array_unique(array_map(fn($i) => (int)($i['food_id'] ?? 0), $ingredientMatches)));
     $ids = array_filter($ids);
@@ -27,6 +28,10 @@ if ($database && $ingredientMatches) {
         $stmt = $database->prepare("SELECT food_id, name FROM foods WHERE food_id IN ($placeholders)");
         $stmt->execute($ids);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) $foodNames[(int)$row['food_id']] = $row['name'];
+        // Live cost preview, shown immediately without waiting for "Calculate" —
+        // same resolveFoodCost() the aggregate cost calc uses, so the two can
+        // never disagree about which store/pack a food's cost came from.
+        foreach ($ids as $fid) $foodCosts[$fid] = resolveFoodCost($database, $fid);
     }
 }
 
@@ -40,11 +45,17 @@ $nutrientLabels = [
 ];
 ?>
 <div data-init="initRecipeDetail" id="recipe-detail-root" data-recipe-id="<?= $id ?>"
-     data-ingredients='<?= htmlspecialchars(json_encode(array_map(fn($i, $fid = null) => [
-        'food_id'  => (int)($i['food_id'] ?? 0),
-        'weight_g' => (float)($i['weight_g'] ?? 0),
-        'name'     => $foodNames[(int)($i['food_id'] ?? 0)] ?? 'Unknown food',
-     ], $ingredientMatches)), ENT_QUOTES) ?>'
+     data-ingredients='<?= htmlspecialchars(json_encode(array_map(function($i) use ($foodNames, $foodCosts) {
+        $fid = (int)($i['food_id'] ?? 0);
+        $fc  = $foodCosts[$fid] ?? ['cost_per_100g' => null, 'source' => null];
+        return [
+            'food_id'       => $fid,
+            'weight_g'      => (float)($i['weight_g'] ?? 0),
+            'name'          => $foodNames[$fid] ?? 'Unknown food',
+            'cost_per_100g' => $fc['cost_per_100g'],
+            'cost_source'   => $fc['source'],
+        ];
+     }, $ingredientMatches)), ENT_QUOTES) ?>'
      style="position:relative;padding-bottom:1rem;">
 
   <p style="font-size:0.78em;color:#aaa;margin-bottom:0.5rem;">

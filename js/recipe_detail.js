@@ -8,6 +8,11 @@ window.initRecipeDetail = function () {
 
   const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+  function fmtCost(ing) {
+    if (ing.cost_per_100g == null) return '<span class="muted" style="font-size:0.85em;">no cost data</span>';
+    return '$' + (ing.cost_per_100g * ing.weight_g / 100).toFixed(2);
+  }
+
   function renderIngredients() {
     const el = document.getElementById('rd-ingredient-list');
     if (!ingredients.length) {
@@ -15,15 +20,72 @@ window.initRecipeDetail = function () {
       return;
     }
     el.innerHTML = ingredients.map((ing, i) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:0.88em;">
-        <span>${esc(ing.name)} — ${ing.weight_g}g</span>
-        <button data-i="${i}" class="rd-remove-ing" style="font-size:0.75em;padding:2px 8px;min-height:24px;
-                background:transparent;color:#c0392b;border:1px solid #c0392b;border-radius:6px;cursor:pointer;">Remove</button>
+      <div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:0.88em;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>${esc(ing.name)} — ${ing.weight_g}g</span>
+          <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span>${fmtCost(ing)}</span>
+            <a href="#" data-i="${i}" class="rd-toggle-cost" style="font-size:0.78em;">${ing.cost_per_100g == null ? 'add cost' : 'update'}</a>
+            <button data-i="${i}" class="rd-remove-ing" style="font-size:0.75em;padding:2px 8px;min-height:24px;
+                    background:transparent;color:#c0392b;border:1px solid #c0392b;border-radius:6px;cursor:pointer;">Remove</button>
+          </span>
+        </div>
+        <div class="rd-cost-form" data-i="${i}" style="display:none;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:90px;">
+            <label style="display:block;font-size:0.75em;color:#777;">Store</label>
+            <input type="text" class="rd-pack-store" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div style="width:80px;">
+            <label style="display:block;font-size:0.75em;color:#777;">Size (g)</label>
+            <input type="number" class="rd-pack-size" min="0.1" step="0.1" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div style="width:80px;">
+            <label style="display:block;font-size:0.75em;color:#777;">Cost ($)</label>
+            <input type="number" class="rd-pack-cost" min="0" step="0.01" style="width:100%;box-sizing:border-box;">
+          </div>
+          <button class="rd-save-cost" data-i="${i}" style="font-size:0.8em;padding:4px 10px;min-height:28px;">Save</button>
+          <span class="rd-cost-status muted" data-i="${i}" style="font-size:0.78em;"></span>
+        </div>
       </div>`).join('');
     el.querySelectorAll('.rd-remove-ing').forEach(btn => {
       btn.addEventListener('click', () => {
         ingredients.splice(parseInt(btn.dataset.i, 10), 1);
         renderIngredients();
+      });
+    });
+    el.querySelectorAll('.rd-toggle-cost').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const form = el.querySelector(`.rd-cost-form[data-i="${a.dataset.i}"]`);
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+      });
+    });
+    el.querySelectorAll('.rd-save-cost').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const i      = parseInt(btn.dataset.i, 10);
+        const form   = el.querySelector(`.rd-cost-form[data-i="${i}"]`);
+        const store  = form.querySelector('.rd-pack-store').value.trim();
+        const size   = parseFloat(form.querySelector('.rd-pack-size').value);
+        const cost   = parseFloat(form.querySelector('.rd-pack-cost').value);
+        const status = form.querySelector('.rd-cost-status');
+        if (!store || !size || size <= 0 || isNaN(cost)) { status.textContent = 'Fill in all fields.'; return; }
+        status.textContent = 'Saving…';
+        try {
+          const res = await fetch('api/food_pack_action.php', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'save_pack', food_id: ingredients[i].food_id, store, pack_size_g: size, cost_per_pack: cost }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            ingredients[i].cost_per_100g = data.cost_per_100g;
+            ingredients[i].cost_source   = 'pack';
+            renderIngredients();
+          } else {
+            status.textContent = data.error || 'Error.';
+          }
+        } catch (e) {
+          status.textContent = 'Network error.';
+        }
       });
     });
   }
@@ -82,7 +144,7 @@ window.initRecipeDetail = function () {
     const servingW = opt ? parseFloat(opt.dataset.weight) : 0;
     const qty      = parseFloat(qtyEl.value) || 1;
     if (!servingW) { ingStatus.textContent = 'Pick a serving first.'; return; }
-    ingredients.push({ food_id: selectedFood.food_id, weight_g: Math.round(servingW * qty * 10) / 10, name: selectedFood.name });
+    ingredients.push({ food_id: selectedFood.food_id, weight_g: Math.round(servingW * qty * 10) / 10, name: selectedFood.name, cost_per_100g: null, cost_source: null });
     renderIngredients();
     searchEl.value = '';
     selectedFood = null;
@@ -138,6 +200,15 @@ window.initRecipeDetail = function () {
           el.textContent = v !== undefined ? Math.round(v * 10) / 10 : '—';
         });
         document.getElementById('rd-calc-results').style.display = 'block';
+        if (Array.isArray(data.per_ingredient)) {
+          const byFood = new Map();
+          data.per_ingredient.forEach(pi => { if (!byFood.has(pi.food_id)) byFood.set(pi.food_id, pi); });
+          ingredients.forEach(ing => {
+            const pi = byFood.get(ing.food_id);
+            if (pi) { ing.cost_per_100g = pi.cost_per_100g; ing.cost_source = pi.source; }
+          });
+          renderIngredients();
+        }
       }
     } catch (e) {
       // swallow — button re-enables below regardless

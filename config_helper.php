@@ -1204,6 +1204,39 @@ function saveRecipes(array $data): void {
     @chmod($path, 0600);
 }
 
+// Resolves the best current cost-per-100g estimate for a food: the most
+// recently-seen food_packs row (store/pack-size/cost tracking — pack_id
+// primary key, indexed on food_id, see init.php) if one exists, tiebreaking
+// same-date rows on cheapest, else falling back to the older flat
+// foods.cost_per_100g column. Single choke point for "what does this food
+// cost" so computeRecipeTotals() and the recipe detail view's per-ingredient
+// display can never resolve it two different ways.
+function resolveFoodCost(PDO $db, int $foodId): array {
+    $stmt = $db->prepare(
+        "SELECT pack_size_g, cost_per_pack FROM food_packs
+         WHERE food_id = ? AND pack_size_g > 0
+         ORDER BY last_seen_date DESC, (cost_per_pack / pack_size_g) ASC
+         LIMIT 1"
+    );
+    $stmt->execute([$foodId]);
+    $pack = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($pack) {
+        return [
+            'cost_per_100g' => round((float)$pack['cost_per_pack'] / (float)$pack['pack_size_g'] * 100, 4),
+            'source'        => 'pack',
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT cost_per_100g FROM foods WHERE food_id = ?");
+    $stmt->execute([$foodId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && $row['cost_per_100g'] !== null) {
+        return ['cost_per_100g' => (float)$row['cost_per_100g'], 'source' => 'foods_table'];
+    }
+
+    return ['cost_per_100g' => null, 'source' => null];
+}
+
 // Shared nutrition + cost computation for a recipe's ingredient list, used by
 // both api/agent.php's precalculate_recipe action and the session-authenticated
 // api/recipe_action.php, so the two never compute a recipe's numbers
@@ -1225,15 +1258,16 @@ function computeRecipeTotals(PDO $db, array $ingredients, array $manualNutrients
         'potassium_mg','selenium_mcg','sodium_mg','zinc_mg',
     ];
 
-    $totals = array_fill_keys($nutrientCols, 0.0);
-    $cost   = 0.0;
+    $totals       = array_fill_keys($nutrientCols, 0.0);
+    $cost         = 0.0;
+    $perIngredient = [];
 
     foreach ($manualNutrients as $k => $v) {
         if (isset($totals[$k])) $totals[$k] += (float)$v;
     }
 
     $cols = implode(', ', $nutrientCols);
-    $stmt = $db->prepare("SELECT $cols, cost_per_100g FROM foods WHERE food_id = ?");
+    $stmt = $db->prepare("SELECT $cols FROM foods WHERE food_id = ?");
     foreach ($ingredients as $ing) {
         $foodId  = (int)($ing['food_id']  ?? 0);
         $weightG = (float)($ing['weight_g'] ?? 0);
@@ -1245,12 +1279,22 @@ function computeRecipeTotals(PDO $db, array $ingredients, array $manualNutrients
         foreach ($nutrientCols as $col) {
             $totals[$col] += (float)($row[$col] ?? 0) * $factor;
         }
-        if ($row['cost_per_100g'] !== null) $cost += (float)$row['cost_per_100g'] * $factor;
+        $foodCost   = resolveFoodCost($db, $foodId);
+        $ingCost    = $foodCost['cost_per_100g'] !== null ? round($foodCost['cost_per_100g'] * $factor, 4) : null;
+        if ($ingCost !== null) $cost += $ingCost;
+        $perIngredient[] = [
+            'food_id'       => $foodId,
+            'weight_g'      => $weightG,
+            'cost_per_100g' => $foodCost['cost_per_100g'],
+            'cost'          => $ingCost,
+            'source'        => $foodCost['source'],
+        ];
     }
 
     return [
-        'nutrition' => array_map(fn($v) => round($v, 3), $totals),
-        'cost'      => round($cost, 2),
+        'nutrition'      => array_map(fn($v) => round($v, 3), $totals),
+        'cost'           => round($cost, 2),
+        'per_ingredient' => $perIngredient,
     ];
 }
 

@@ -8,11 +8,13 @@
                      'July','August','September','October','November','December'];
 
   let curYear, curMonth;
-  let taskCache  = {};
+  let taskCache     = {};
+  let birthdayCache = {};
   let cellBounds = [];
 
   window.calendarInvalidate = function(month) {
     delete taskCache[month];
+    delete birthdayCache[month];
     const key = `${curYear}-${String(curMonth).padStart(2,'0')}`;
     if (!month || month === key) loadAndDraw();
   };
@@ -25,7 +27,8 @@
     updateNav();
     loadAndDraw();
     window.addEventListener('resize', () => {
-      drawCalendar(curYear, curMonth, taskCache[`${curYear}-${String(curMonth).padStart(2,'0')}`] || []);
+      const key = `${curYear}-${String(curMonth).padStart(2,'0')}`;
+      drawCalendar(curYear, curMonth, taskCache[key] || [], birthdayCache[key] || []);
     });
     document.getElementById('cal-prev').addEventListener('click', prevMonth);
     document.getElementById('cal-next').addEventListener('click', nextMonth);
@@ -50,15 +53,17 @@
       try {
         const r = await fetch(`api/calendar.php?month=${key}`);
         const d = await r.json();
-        taskCache[key] = d.tasks || [];
+        taskCache[key]     = d.tasks || [];
+        birthdayCache[key] = d.birthdays || [];
       } catch(e) {
-        taskCache[key] = [];
+        taskCache[key]     = [];
+        birthdayCache[key] = [];
       }
     }
-    drawCalendar(curYear, curMonth, taskCache[key]);
+    drawCalendar(curYear, curMonth, taskCache[key], birthdayCache[key] || []);
   }
 
-  function drawCalendar(year, month, tasks) {
+  function drawCalendar(year, month, tasks, birthdays) {
     const canvas = document.getElementById('calCanvas');
     const ctx    = canvas.getContext('2d');
     canvas.width  = window.innerWidth;
@@ -72,6 +77,12 @@
     tasks.forEach(t => {
       if (!byDate[t.scheduled_date]) byDate[t.scheduled_date] = [];
       if (byDate[t.scheduled_date].length < 3) byDate[t.scheduled_date].push(t);
+    });
+
+    const birthdaysByDate = {};
+    (birthdays || []).forEach(b => {
+      if (!birthdaysByDate[b.date]) birthdaysByDate[b.date] = [];
+      birthdaysByDate[b.date].push(b);
     });
 
     const firstDay    = new Date(year, month - 1, 1);
@@ -131,6 +142,16 @@
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText(String(day), cx + (isToday ? 8 : 5), cy + 5);
+
+      const dayBirthdays = birthdaysByDate[dateStr] || [];
+      if (dayBirthdays.length > 0) {
+        ctx.globalAlpha  = isPast ? 0.4 : 1;
+        ctx.font         = `${Math.max(12, Math.min(18, Math.floor(cellH / 3.2)))}px system-ui,sans-serif`;
+        ctx.textAlign    = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText('🎂', cx + cellW - 4, cy + 3);
+        ctx.globalAlpha  = 1;
+      }
 
       if (dayTasks.length > 0) {
         const dotR   = Math.max(3, Math.min(5, Math.floor(cellH / 7)));

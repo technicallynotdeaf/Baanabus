@@ -40,7 +40,11 @@ try {
     ], $snoozed);
 
     $tasks = array_merge($scheduled, $snoozed);
-    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks]);
+
+    $birthdays = [];
+    try { $birthdays = getBirthdaysInMonth($month); } catch (Throwable $e) {}
+
+    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks, 'birthdays' => $birthdays]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

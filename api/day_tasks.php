@@ -42,6 +42,12 @@ try {
 
 $canAdd = !$isPast && count(array_filter($scheduled, fn($t) => empty($t['_woke']))) < 3;
 
+$dayBirthdays = [];
+try {
+    $monthBirthdays = getBirthdaysInMonth(substr($date, 0, 7));
+    $dayBirthdays   = array_values(array_filter($monthBirthdays, fn($b) => $b['date'] === $date));
+} catch (Throwable $e) {}
+
 $mealPlan      = [];
 $diaryDayType  = null;
 try {
@@ -75,6 +81,14 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
       </span>
     <?php endif; ?>
   </div>
+  <?php if ($dayBirthdays):
+    $bNames = array_map(fn($b) => $b['name'], $dayBirthdays);
+    $bText  = count($bNames) === 1 ? "{$bNames[0]}'s birthday" : 'Birthdays: ' . implode(', ', $bNames);
+  ?>
+    <div style="background:#fdf2e6;border-left:3px solid #e0a458;border-radius:6px;padding:0.5rem 0.85rem;margin-bottom:1rem;font-size:0.9em;">
+      🎂 <?= htmlspecialchars($bText) ?>
+    </div>
+  <?php endif; ?>
   <div id="day-type-picker" data-date="<?= $date ?>" style="display:none;margin-bottom:0.75rem;">
     <div style="font-size:0.8em;color:#888;margin-bottom:5px;">
       <?= $scheduledDayType ? 'Usual: ' . htmlspecialchars($dtLabels[$scheduledDayType]) . ' — change for this day:' : 'What kind of day is this?' ?>

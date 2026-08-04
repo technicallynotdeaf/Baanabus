@@ -989,6 +989,28 @@ function getUpcomingBirthdays(int $withinDays = 6): array {
     return $out;
 }
 
+// Active people whose birthday (DOB/MOB) falls within the given calendar
+// month, for the calendar overlay — unlike getUpcomingBirthdays() this isn't
+// relative to today, so browsing to any month (past or future) shows that
+// month's birthdays. $month is 'YYYY-MM'. Returns [{person_id, name, date}]
+// ('date' is 'YYYY-MM-DD' in that month), sorted by day.
+function getBirthdaysInMonth(string $month): array {
+    if (!preg_match('/^(\d{4})-(\d{2})$/', $month, $m)) return [];
+    [$year, $mon] = [(int)$m[1], (int)$m[2]];
+    $out = [];
+    foreach (getPeople()['people'] as $p) {
+        if (($p['is_active'] ?? 1) == 0) continue;
+        $day = (int)($p['DOB'] ?? 0);
+        $pMon = (int)($p['MOB'] ?? 0);
+        if ($day < 1 || $day > 31 || $pMon !== $mon) continue;
+        $date = DateTimeImmutable::createFromFormat('Y-n-j', "$year-$mon-$day");
+        if ($date === false || (int)$date->format('n') !== $mon) continue; // e.g. 30 Feb rolled into March
+        $out[] = ['person_id' => (int)$p['person_id'], 'name' => $p['name'] ?? '', 'date' => $date->format('Y-m-d')];
+    }
+    usort($out, fn($a, $b) => $a['date'] <=> $b['date']);
+    return $out;
+}
+
 // ---------- People notes vault ----------
 
 function peopleNotesPath(): string {

@@ -1381,6 +1381,20 @@ window.initLetsGo = function() {
   }
 
   function renderRoomScan(d) {
+    const existing = d.existing || [];
+    const existingHtml = existing.length ? `
+      <div style="font-size:0.71em;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;
+                  margin-bottom:0.3rem;padding-bottom:3px;border-bottom:1px solid #f0f0f0;">
+        Already logged (${existing.length}) &mdash; no need to re-add these
+      </div>
+      <div style="margin-bottom:0.75rem;max-height:130px;overflow-y:auto;">
+        ${existing.map(o => `
+          <div style="padding:2px 0;font-size:0.82em;color:#888;display:flex;gap:6px;">
+            <span style="flex:1;">${esc(o.label)}</span>
+            ${o.location ? `<span style="color:#bbb;white-space:nowrap;">${esc(o.location)}</span>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+
     const rowStyle = 'display:flex;gap:6px;margin-bottom:0.45rem;';
     const labelStyle = 'flex:2;box-sizing:border-box;font-size:0.9rem;padding:0.45rem 0.65rem;border:1px solid #ccc;border-radius:6px;font-family:inherit;';
     const locStyle   = 'flex:1;box-sizing:border-box;font-size:0.9rem;padding:0.45rem 0.65rem;border:1px solid #ccc;border-radius:6px;font-family:inherit;color:#666;';
@@ -1393,6 +1407,7 @@ window.initLetsGo = function() {
     c.innerHTML = `
       <p style="font-size:0.75em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;">Room scan</p>
       <p style="margin-bottom:0.85rem;">Look around your <strong>${esc(d.room_label)}</strong>. What's out and waiting for you?</p>
+      ${existingHtml}
       ${rows}
       <p style="font-size:0.75em;color:#bbb;margin:0.1rem 0 0.75rem;">Up to 5 items. Location is optional but helps.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">

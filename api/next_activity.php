@@ -1407,13 +1407,22 @@ function pick_room_scan(): ?array {
         $rooms     = $data['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
         $scanDates = $data['room_scan_dates'] ?? [];
         $today     = date('Y-m-d');
+
+        // Objects already tracked as still out — including ones already handed to a task,
+        // which don't block this prompt (they've been triaged) but are still real and
+        // shouldn't get logged again as a "new" find during the scan.
+        $existing = array_values(array_map(fn($o) => [
+            'label'    => $o['label'],
+            'location' => $o['location'] ?? null,
+        ], array_filter($data['objects'], fn($o) => ($o['status'] ?? '') === 'out')));
+
         foreach ($rooms as $room) {
             if (($scanDates[$room['id']] ?? '') !== $today) {
                 return [
                     'type'       => 'room_scan',
                     'room_id'    => $room['id'],
                     'room_label' => $room['label'],
-                    'existing'   => [],
+                    'existing'   => $existing,
                 ];
             }
         }

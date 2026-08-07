@@ -50,12 +50,7 @@ try {
     $inboxTasks = getInboxTasks();
     $hasInbox   = !empty($inboxTasks);
     $inboxCount = count($inboxTasks);
-    $fillTasks  = array_values(array_filter($tasks, fn($t) =>
-        (!isset($t['energy'])     || $t['energy']     === null) ||
-        (!isset($t['context'])    || $t['context']    === null) ||
-        (!isset($t['urgency'])    || $t['urgency']    === null) ||
-        (!isset($t['importance']) || $t['importance'] === null)
-    ));
+    $fillTasks  = getFillTasks();
     $hasFillTasks = !empty($fillTasks);
 } catch (Throwable $e) {
     $tasks        = [];
@@ -778,57 +773,8 @@ if ($pagesLeft !== null && $pagesLeft > 0 && $pagesLeft <= 3) {
 json_response($taskResp);
 
 // ---------- triage helpers ----------
-
-function serve_triage_question(array $inboxTasks, array $fillTasks): ?array {
-    global $database;
-    shuffle($inboxTasks);
-    foreach ($inboxTasks as $t) {
-        $q = triage_next_question($t);
-        if ($q === 'auto_classify') {
-            try { vaultUpdateTask((int)$t['id'], ['task_type' => 'next_action']); } catch (Throwable $e) {}
-            continue;
-        }
-        $allForTriage = getTasks()['tasks'];
-        $triageItems  = array_values(array_filter($allForTriage, fn($s) =>
-            !empty($s['parent_id']) &&
-            (int)$s['parent_id'] === (int)$t['id'] &&
-            $s['status'] === 'active'
-        ));
-        usort($triageItems, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
-        $triageItems = array_map(fn($s) => $s['title'], $triageItems);
-        $resp = ['type' => 'triage', 'source' => 'inbox', 'id' => (int)$t['id'],
-            'title' => $t['title'], 'question' => $q, 'items' => $triageItems];
-        if ($q === 'actionable') {
-            // Powers the "Waiting on someone" sub-form's person picker —
-            // sent up front so choosing it doesn't need a second round trip.
-            try {
-                $people = array_values(array_filter(getPeople()['people'] ?? [], fn($p) => ($p['is_active'] ?? 1) != 0));
-                $resp['people'] = array_map(fn($p) => ['person_id' => (int)$p['person_id'], 'name' => $p['name'] ?? ''], $people);
-            } catch (Throwable $e) {
-                $resp['people'] = [];
-            }
-        }
-        return $resp;
-    }
-    shuffle($fillTasks);
-    foreach ($fillTasks as $t) {
-        $q = fill_next_question($t);
-        if ($q === 'done') continue;
-        $resp = ['type' => 'triage', 'source' => 'fill', 'id' => (int)$t['id'],
-            'title' => $t['title'], 'question' => $q, 'items' => []];
-        if ($q === 'context' && $database) {
-            try {
-                $resp['contexts'] = $database->query(
-                    "SELECT context FROM contexts ORDER BY context"
-                )->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            } catch (Throwable $e) {
-                $resp['contexts'] = [];
-            }
-        }
-        return $resp;
-    }
-    return null;
-}
+// serve_triage_question / triage_next_question / fill_next_question now live
+// in config_helper.php (shared with api/study_mode.php's cram interruptions).
 
 function personNameForId(?int $personId): ?string {
     static $byId = null;
@@ -842,40 +788,8 @@ function personNameForId(?int $personId): ?string {
     return $byId[$personId] ?? null;
 }
 
-function triage_next_question(array $t): string {
-    if (empty($t['triage_actionable'])) return 'actionable';
-    $time = isset($t['time']) ? (int)$t['time'] : null;
-    if ($time === null) return 'duration';
-    if ($time > 120) return 'first_step';
-    return 'auto_classify'; // actionable + short = auto next_action
-}
-
-function fill_next_question(array $t): string {
-    if (!isset($t['urgency'])    || $t['urgency']    === null) return 'urgency';
-    if (!isset($t['importance']) || $t['importance'] === null) return 'importance';
-    if (!isset($t['energy'])     || $t['energy']     === null) return 'energy';
-    if (!isset($t['context'])    || $t['context']    === null) return 'context';
-    return 'done';
-}
-
 // ---------- question helpers ----------
-
-function question_row_to_response(array $q, string $type): array {
-    $opts = [$q['option_a'], $q['option_b'], $q['option_c'], $q['option_d']];
-    $ans  = array_search($q['correct'], ['a', 'b', 'c', 'd'], true);
-    $out  = [
-        'type'     => $type,
-        'id'       => (int)$q['id'],
-        'question' => $q['question'],
-        'options'  => $opts,
-        'answer'   => $ans === false ? 0 : (int)$ans,
-    ];
-    if ($type === 'study') {
-        $out['explanation'] = $q['explanation'] ?? null;
-        $out['set_name']    = $q['set_name']    ?? null;
-    }
-    return $out;
-}
+// question_row_to_response / pick_study now live in config_helper.php.
 
 function pick_trivia(): ?array {
     global $database;
@@ -1239,47 +1153,7 @@ function pick_dance(): array {
     return ['type' => 'dance', 'text' => $prompts[array_rand($prompts)], 'today_seconds' => $danceTodaySeconds];
 }
 
-function pick_fun_task(): array {
-    global $physicalLocation;
-    $tasks = [
-        ["Do 5 star jumps"],
-        ["Close your eyes for 20 seconds and imagine you're somewhere beautiful", 20],
-        ["Put on one song you love and just listen to it"],
-        ["Draw something badly on purpose"],
-        ["Look up at the sky for 30 seconds", 30],
-        ["Find a window and look at the furthest thing you can see for 20 seconds — give your eyes a proper rest", 20],
-        ["Step outside and look up — clouds, blue, whatever's there. Just 30 seconds off the screen.", 30],
-        ["Look at something at least 6 metres away for 20 seconds. It's called the 20-20-20 rule and your eyes need it.", 20],
-        ["Look out the window at the horizon, or the roofline, or a tree. Let your eyes go far for a moment."],
-        ["Think of something kind someone said to you recently. Hold it in mind for 30 seconds.", 30],
-        ["Think of one person you're genuinely glad exists. Just hold that thought for a moment."],
-        ["Think about someone who's been quietly good to you lately. You don't need to do anything with it — just notice."],
-        ["Send someone a photo of something that made you think of them — no need to reply, just a little signal."],
-        ["Make yourself a proper cup of tea or coffee — no rushing"],
-        ["Stretch — arms up, side to side, touch your toes if you can"],
-        ["Step outside for two minutes, even just to the doorstep", 120],
-        ["Find something nearby that's a colour you like and look at it for a moment"],
-        ["Find the softest thing within reach and hold it for a bit"],
-        ["Find something in the room you've never really looked at properly and spend 20 seconds on it", 20],
-        ["Find something that has an interesting texture and run your fingers over it slowly"],
-        ["Find the most beautiful thing you can see from where you're sitting and just look at it for 30 seconds", 30],
-        ["Find a plant, a leaf, or anything alive nearby and look at it closely — the detail, the colour, the edges"],
-        ["Find something that's lit up by the light right now — sunlight, lamplight, whatever — and look at how the light falls on it"],
-        ["Find something small and look at it like you've never seen it before. Turn it over. Notice everything."],
-        ["Find a sound in the background you've been ignoring and just listen to it for 20 seconds", 20],
-        ["Look around the room and find something that makes you feel calm. Don't rush — wait until something actually does."],
-        ["Find something that has a smell you like and breathe it in slowly a few times"],
-        ["Find a pattern — in fabric, on a wall, anywhere — and trace it with your eyes"],
-        ["Look out the window and find one thing that's moving. Watch it for a bit."],
-        ["Think of somewhere you've been that was beautiful. Spend 30 seconds actually picturing it — the light, the sounds, the feeling.", 30],
-    ];
-    // Doesn't make sense mid-journey — same location-6 (Transit) exclusion pick_dance() uses.
-    if (($physicalLocation ?? null) !== 6) {
-        $tasks[] = ["Walk to the end of the street and back"];
-    }
-    $t = $tasks[array_rand($tasks)];
-    return ['type' => 'fun_task', 'text' => $t[0], 'seconds' => $t[1] ?? null];
-}
+// pick_fun_task now lives in config_helper.php.
 
 function pick_nutrition(): array {
     $facts = [
@@ -1489,87 +1363,3 @@ function pick_easy_task(): array {
     ];
 }
 
-function pick_study(): ?array {
-    global $database;
-    if (!$database) return null;
-    try {
-        // Scope to whichever study set(s) the user has active (see getActiveStudySets())
-        // — otherwise unrelated sets (exam prep, language batches, ...) merge into one pool.
-        // No active sets chosen = fall back to the old fully-unscoped behaviour.
-        $activeSets = getActiveStudySets();
-        $chosenSet  = null;
-
-        if ($activeSets) {
-            // Pick fairly among active sets that still have an available (unmastered)
-            // question right now, rather than pooling everything and letting "prefer
-            // unseen" logic run globally — a set with weeks of answer history (e.g. an
-            // exam set) would otherwise get starved out by a brand-new, 100%-unseen set.
-            $available = [];
-            foreach ($activeSets as $sn) {
-                $s = $database->prepare("
-                    SELECT COUNT(*) FROM study_questions sq
-                    LEFT JOIN question_seen qs ON sq.id = qs.question_id
-                    WHERE sq.q_type = 'study' AND sq.set_name = :set_name
-                      AND (qs.correct_count IS NULL OR qs.correct_count < 2)
-                ");
-                $s->bindValue(':set_name', $sn);
-                $s->execute();
-                if ((int)$s->fetchColumn() > 0) $available[] = $sn;
-            }
-            if (!$available) return null;
-            $chosenSet = $available[array_rand($available)];
-        }
-
-        $setSql = $chosenSet ? "AND sq.set_name = :set_name" : "";
-
-        // Prefer unseen questions first, then least-correctly-answered, then random
-        $stmt = $database->prepare("
-            SELECT sq.* FROM study_questions sq
-            LEFT JOIN question_seen qs ON sq.id = qs.question_id
-            WHERE sq.q_type = 'study'
-              AND (qs.correct_count IS NULL OR qs.correct_count < 2)
-              $setSql
-            ORDER BY
-              CASE WHEN qs.question_id IS NULL THEN 0 ELSE 1 END ASC,
-              COALESCE(qs.correct_count, 0) ASC,
-              RANDOM()
-            LIMIT 1
-        ");
-        if ($chosenSet) $stmt->bindValue(':set_name', $chosenSet);
-        $stmt->execute();
-        $q = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$q) return null;
-        $out = question_row_to_response($q, 'study');
-        // Attach progress counts, scoped to the same set the picked question came from
-        $totalStmt = $database->prepare("SELECT COUNT(*) FROM study_questions sq WHERE sq.q_type='study' $setSql");
-        if ($chosenSet) $totalStmt->bindValue(':set_name', $chosenSet);
-        $totalStmt->execute();
-        $total = (int)$totalStmt->fetchColumn();
-
-        $masteredStmt = $database->prepare("
-            SELECT COUNT(*) FROM question_seen qs
-            JOIN study_questions sq ON sq.id = qs.question_id
-            WHERE sq.q_type = 'study' AND qs.correct_count >= 2 $setSql
-        ");
-        if ($chosenSet) $masteredStmt->bindValue(':set_name', $chosenSet);
-        $masteredStmt->execute();
-        $mastered = (int)$masteredStmt->fetchColumn();
-
-        $onceCorrectStmt = $database->prepare("
-            SELECT COUNT(*) FROM question_seen qs
-            JOIN study_questions sq ON sq.id = qs.question_id
-            WHERE sq.q_type = 'study' AND qs.correct_count >= 1 $setSql
-        ");
-        if ($chosenSet) $onceCorrectStmt->bindValue(':set_name', $chosenSet);
-        $onceCorrectStmt->execute();
-        $once_correct = (int)$onceCorrectStmt->fetchColumn();
-
-        $out['total']        = $total;
-        $out['mastered']     = $mastered;
-        $out['once_correct'] = $once_correct;
-        return $out;
-    } catch (Throwable $e) {
-        error_log('pick_study: ' . $e->getMessage());
-        return null;
-    }
-}

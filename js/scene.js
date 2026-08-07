@@ -127,6 +127,7 @@
     let kitchenDoorBounds = null;
     let toyboxBounds      = null;
     let chestBounds       = null;
+    let imacBounds        = null;
     let calendarBounds    = null;
     let cycleDial         = null; // { cx, cy, rx, ry, quad }
     let jarBounds         = [];
@@ -1001,6 +1002,77 @@
         ctx.fillRect(bx - bw * 0.3, bodyY - 6, bw * 1.6, bh * 0.55);
     }
 
+    // Old-school bondi-blue iMac G3 — sits on the right-hand shelf section
+    // (the third bookshelf compartment, otherwise bare). Clicking it opens
+    // the study-mode intensive-cram picker (api/study_mode.php).
+    function drawIMac(ctx, bx, by, bw, bh) {
+        imacBounds = { x: bx, y: by, w: bw, h: bh };
+        const r = Math.round(bw * 0.10);
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+        roundRectPath(ctx, bx + 2, by + 2, bw, bh, r);
+        ctx.fill();
+
+        // Translucent bondi-blue case
+        const caseGrad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+        caseGrad.addColorStop(0,   '#8fe6e6');
+        caseGrad.addColorStop(0.5, '#3fb8c4');
+        caseGrad.addColorStop(1,   '#187f8c');
+        ctx.fillStyle = caseGrad;
+        roundRectPath(ctx, bx, by, bw, bh, r);
+        ctx.fill();
+
+        // Translucent-plastic sheen along the top-left
+        ctx.fillStyle = 'rgba(255,255,255,0.24)';
+        roundRectPath(ctx, bx + Math.round(bw * 0.06), by + Math.round(bh * 0.05),
+                      Math.round(bw * 0.22), Math.round(bh * 0.48), Math.round(bw * 0.08));
+        ctx.fill();
+
+        // Screen bezel
+        const bezelInset = Math.round(bw * 0.10);
+        const bezelW     = bw - bezelInset * 2;
+        const bezelTop   = by + Math.round(bh * 0.10);
+        const bezelH     = Math.round(bh * 0.52);
+        ctx.fillStyle = '#e9e4d6';
+        roundRectPath(ctx, bx + bezelInset, bezelTop, bezelW, bezelH, Math.round(bw * 0.06));
+        ctx.fill();
+
+        // Screen glass + soft CRT glow
+        const glassInset = Math.round(bezelW * 0.10);
+        const glassW     = bezelW - glassInset * 2;
+        const glassTop   = bezelTop + Math.round(bezelH * 0.12);
+        const glassH     = Math.round(bezelH * 0.72);
+        const glassX     = bx + bezelInset + glassInset;
+        ctx.fillStyle = '#181f22';
+        roundRectPath(ctx, glassX, glassTop, glassW, glassH, Math.round(bw * 0.03));
+        ctx.fill();
+        const glow = ctx.createRadialGradient(
+            bx + bw / 2, glassTop + glassH * 0.42, 1,
+            bx + bw / 2, glassTop + glassH * 0.42, Math.max(2, glassW * 0.65)
+        );
+        glow.addColorStop(0, 'rgba(130,230,235,0.40)');
+        glow.addColorStop(1, 'rgba(130,230,235,0)');
+        ctx.save();
+        roundRectPath(ctx, glassX, glassTop, glassW, glassH, Math.round(bw * 0.03));
+        ctx.clip();
+        ctx.fillStyle = glow;
+        ctx.fillRect(glassX, glassTop, glassW, glassH);
+        ctx.restore();
+
+        // Chin dot (power light)
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.beginPath();
+        ctx.arc(bx + bw / 2, bezelTop + bezelH + Math.round(bh * 0.055), Math.max(1.2, bw * 0.018), 0, Math.PI * 2);
+        ctx.fill();
+
+        // Base/foot shadow
+        const footW = Math.round(bw * 0.5);
+        const footH = Math.max(2, Math.round(bh * 0.05));
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.fillRect(bx + (bw - footW) / 2, by + bh - footH, footW, footH);
+    }
+
     function drawWallMiniCalendar(ctx, iL, iW, iT, flY, h, w) {
         const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const t1  = 0.22, t2 = 0.58, v1 = 0.09, v2 = 0.26;
@@ -1285,6 +1357,17 @@
         drawToybox(ctx, startX, itemY, itemW, itemH, OBJECTS_OUT);
         drawTreasureChest(ctx, startX + itemW + itemGap, itemY, itemW, itemH, OBJECTS_RESOLVED);
 
+        // Right section (idx 2, 7 shelves — otherwise bare): a bondi-blue
+        // iMac on the middle shelf, opening the study-mode picker.
+        const rShelfH = Math.floor((innerHeight - clearance) / 8); // matches the general 7-shelf grid drawn for this section
+        const rBayIdx = 3;
+        const rBayBot = innerTop + clearance + (rBayIdx + 1) * rShelfH;
+        const imacW   = Math.round(secW * 0.34);
+        const imacH   = Math.round(rShelfH * 0.85);
+        const imacX   = innerLeft + secW * 2 + Math.round((secW - imacW) / 2);
+        const imacY   = rBayBot - imacH;
+        drawIMac(ctx, imacX, imacY, imacW, imacH);
+
         // Desktop-only decorations: window on left wall
         if (width > 640) {
             const info = window.getMelbourneInfo ? window.getMelbourneInfo() : { isNight: false };
@@ -1390,6 +1473,10 @@
             loadOverlay('api/objects_list.php');
             return;
         }
+        if (inRect(cx, cy, imacBounds)) {
+            loadOverlay('api/study_mode.php');
+            return;
+        }
         if (jarBounds.some(b => inRect(cx, cy, b))) {
             loadOverlay('api/top3.php');
             return;
@@ -1447,6 +1534,7 @@
             || (cycleDial      && ptInQuad(cx, cy, cycleDial.quad))
             || inRect(cx, cy, toyboxBounds)
             || inRect(cx, cy, chestBounds)
+            || inRect(cx, cy, imacBounds)
             || jarBounds.some(b => inRect(cx, cy, b))
             || onBook;
         this.style.cursor = pointer ? 'pointer' : '';

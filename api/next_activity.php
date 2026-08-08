@@ -502,7 +502,7 @@ try {
     $peopleData = getPeople();
     $today_str  = date('Y-m-d');
     foreach ($peopleData['people'] as $p) {
-        if (($p['is_active'] ?? 1) == 0) continue;
+        if (personIsArchived($p)) continue;
         $nr = $p['next_review'] ?? null;
         if (!$nr || $nr <= $today_str) { $hasPersonReview = true; break; }
     }
@@ -847,7 +847,7 @@ function pick_person_review(): ?array {
     try {
         $data   = getPeople();
         $today  = date('Y-m-d');
-        $active = array_values(array_filter($data['people'], fn($p) => ($p['is_active'] ?? 1) != 0));
+        $active = array_values(array_filter($data['people'], fn($p) => !personIsArchived($p)));
         if (empty($active)) return null;
 
         // Prefer overdue or never-reviewed

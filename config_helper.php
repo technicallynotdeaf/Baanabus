@@ -461,7 +461,7 @@ function serve_triage_question(array $inboxTasks, array $fillTasks): ?array {
             // Powers the "Waiting on someone" sub-form's person picker —
             // sent up front so choosing it doesn't need a second round trip.
             try {
-                $people = array_values(array_filter(getPeople()['people'] ?? [], fn($p) => ($p['is_active'] ?? 1) != 0));
+                $people = array_values(array_filter(getPeople()['people'] ?? [], fn($p) => !personIsArchived($p)));
                 $resp['people'] = array_map(fn($p) => ['person_id' => (int)$p['person_id'], 'name' => $p['name'] ?? ''], $people);
             } catch (Throwable $e) {
                 $resp['people'] = [];
@@ -1206,15 +1206,14 @@ function savePeople(array $data): void {
     @chmod($path, 0600);
 }
 
-// 'archived' is exposed in the agent API's people view/update_person allowlist
-// but the actual app (list_people.php, person_action.php's archive/unarchive
-// action) only ever reads/writes is_active — 'archived' is otherwise dead. A
-// person set inactive via is_active=0 is the real "archived" state; this
-// checks both so a person_id that ever got 'archived' set directly through
-// the agent API doesn't slip past the is_active-only check and keep
-// triggering birthday cues/tasks.
+// Canonical "is this person archived" check. 'archived' is the field the
+// original UI used; a since-removed is_active field duplicated it and has
+// been retired (2026-08-08 migration backfilled archived from is_active for
+// all existing people). Every call site that needs to know whether a person
+// is archived should go through this helper rather than reading the field
+// directly.
 function personIsArchived(array $p): bool {
-    return ($p['is_active'] ?? 1) == 0 || !empty($p['archived']);
+    return !empty($p['archived']);
 }
 
 // Active people whose birthday (DOB/MOB — day/month only, year ignored) falls

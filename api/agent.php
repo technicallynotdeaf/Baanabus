@@ -347,9 +347,8 @@ if ($method === 'GET') {
             'next_review_date' => $p['next_review_date']  ?? null,
             'next_review'      => $p['next_review']        ?? null,
             'review_interval'  => $p['review_interval']   ?? null,
-            'archived'         => $p['archived']          ?? false,
+            'archived'         => !empty($p['archived']),
             'qualities'        => $p['qualities']         ?? [],
-            'is_active'        => $p['is_active']         ?? 1,
         ];
         json_response(['ok' => true, 'people' => array_map($personMap, $data['people'])]);
     }
@@ -1374,6 +1373,33 @@ if ($method === 'POST') {
         json_response(['ok' => true, 'merged' => $merged, 'dates' => array_keys($daily)]);
     }
 
+    if ($action === 'migrate_person_archived') {
+        // One-shot: 'archived' is the field the original people UI used to
+        // mark a contact archived; a later is_active field duplicated it and
+        // became the one every call site actually read/wrote, leaving
+        // 'archived' dead. This backfills archived from each person's
+        // current is_active value and drops is_active so archived becomes
+        // the single canonical field.
+        try {
+            $data    = getPeople();
+            $migrated = 0;
+            foreach ($data['people'] as &$p) {
+                if (array_key_exists('is_active', $p)) {
+                    $p['archived'] = (($p['is_active'] ?? 1) == 0);
+                    unset($p['is_active']);
+                    $migrated++;
+                } elseif (!array_key_exists('archived', $p)) {
+                    $p['archived'] = false;
+                }
+            }
+            unset($p);
+            if ($migrated > 0) savePeople($data);
+            json_response(['ok' => true, 'migrated' => $migrated]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
     if ($action === 'delete_task') {
         $taskId = (int)($body['task_id'] ?? 0);
         if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
@@ -1568,7 +1594,7 @@ if ($method === 'POST') {
         // corrected — there's still no dedicated UI for it, hence the
         // comment there about most values being legacy-imported.
         $allowed = ['name', 'birthday', 'circles', 'next_review_date', 'review_interval',
-                    'is_active', 'archived', 'qualities', 'phone', 'email', 'DOB', 'MOB', 'YOB'];
+                    'archived', 'qualities', 'phone', 'email', 'DOB', 'MOB', 'YOB'];
         $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
         if (array_key_exists('DOB', $fields) && $fields['DOB'] !== null
@@ -1908,7 +1934,7 @@ if ($method === 'POST') {
                 'circles'         => $circles,
                 'next_review'     => null,
                 'review_interval' => 30,
-                'is_active'       => 1,
+                'archived'        => false,
                 'created_at'      => date('c'),
             ];
             $data['next_id'] = $personId + 1;
@@ -1932,8 +1958,8 @@ if ($method === 'POST') {
             $archivedPeople = 0;
             foreach ($data['people'] as &$p) {
                 $circles = is_array($p['circles'] ?? null) ? $p['circles'] : [];
-                if (in_array($ctx, $circles, true) && ($p['is_active'] ?? 1) != 0) {
-                    $p['is_active'] = 0;
+                if (in_array($ctx, $circles, true) && !personIsArchived($p)) {
+                    $p['archived'] = true;
                     $archivedPeople++;
                 }
             }

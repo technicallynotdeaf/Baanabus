@@ -30,7 +30,7 @@ function scheduleNextReview(int $excludeId, int $interval): string {
     foreach ($people as $p) {
         if ((int)$p['person_id'] === $excludeId) continue;
         if ((int)($p['review_interval'] ?? 30) !== $interval) continue;
-        if (($p['is_active'] ?? 1) == 0) continue;
+        if (personIsArchived($p)) continue;
         $nr = $p['next_review'] ?? null;
         if ($nr) $counts[$nr] = ($counts[$nr] ?? 0) + 1;
     }
@@ -66,11 +66,11 @@ try {
         json_response(['ok' => true, 'next_review' => $next_review]);
 
     } elseif ($action === 'archive') {
-        vaultUpdatePerson($personId, ['is_active' => 0]);
+        vaultUpdatePerson($personId, ['archived' => true]);
         json_response(['ok' => true]);
 
     } elseif ($action === 'unarchive') {
-        vaultUpdatePerson($personId, ['is_active' => 1]);
+        vaultUpdatePerson($personId, ['archived' => false]);
         json_response(['ok' => true]);
 
     } elseif ($action === 'update_qualities') {

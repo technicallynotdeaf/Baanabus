@@ -27,7 +27,7 @@ try {
         'context'         => null,
         'next_review'     => null,
         'review_interval' => 30,
-        'is_active'       => 1,
+        'archived'        => false,
         'created_at'      => date('c'),
     ];
     $data['next_id'] = $personId + 1;

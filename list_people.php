@@ -31,8 +31,8 @@ function renderPeopleList(): void {
     $today    = date('Y-m-d');
     $nextWeek = date('Y-m-d', strtotime('+7 days'));
 
-    $active   = array_values(array_filter($all, fn($p) => ($p['is_active'] ?? 1) != 0));
-    $archived = array_values(array_filter($all, fn($p) => ($p['is_active'] ?? 1) == 0));
+    $active   = array_values(array_filter($all, fn($p) => !personIsArchived($p)));
+    $archived = array_values(array_filter($all, fn($p) => personIsArchived($p)));
 
     usort($active, function($a, $b) {
         $da = $a['next_review'] ?? null;
@@ -161,7 +161,7 @@ function renderPersonPanel(int $personId): void {
     ));
 
     $today    = date('Y-m-d');
-    $isActive = ($person['is_active'] ?? 1) != 0;
+    $isActive = !personIsArchived($person);
 
     $reviewLabel = !empty($person['next_review']) ? reviewLabel($person['next_review'], $today) : null;
     $interval    = max(1, (int)($person['review_interval'] ?? 30));

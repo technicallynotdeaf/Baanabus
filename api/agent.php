@@ -1563,10 +1563,22 @@ if ($method === 'POST') {
     if ($action === 'update_person') {
         $personId = (int)($body['person_id'] ?? 0);
         if (!$personId) json_response(['error' => 'Missing person_id'], 400);
+        // DOB/MOB/YOB (day/month/year of birth, year optional) added so the
+        // birthday cue (getUpcomingBirthdays() in config_helper.php) can be
+        // corrected — there's still no dedicated UI for it, hence the
+        // comment there about most values being legacy-imported.
         $allowed = ['name', 'birthday', 'circles', 'next_review_date', 'review_interval',
-                    'is_active', 'archived', 'qualities', 'phone', 'email'];
+                    'is_active', 'archived', 'qualities', 'phone', 'email', 'DOB', 'MOB', 'YOB'];
         $fields  = array_intersect_key($body['fields'] ?? [], array_flip($allowed));
         if (!$fields) json_response(['error' => 'No valid fields to update'], 400);
+        if (array_key_exists('DOB', $fields) && $fields['DOB'] !== null
+            && ((int)$fields['DOB'] < 1 || (int)$fields['DOB'] > 31)) {
+            json_response(['error' => 'DOB must be 1-31 or null'], 400);
+        }
+        if (array_key_exists('MOB', $fields) && $fields['MOB'] !== null
+            && ((int)$fields['MOB'] < 1 || (int)$fields['MOB'] > 12)) {
+            json_response(['error' => 'MOB must be 1-12 or null'], 400);
+        }
         try {
             vaultUpdatePerson($personId, $fields);
             json_response(['ok' => true, 'updated' => $fields]);

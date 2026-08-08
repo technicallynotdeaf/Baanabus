@@ -85,8 +85,14 @@ if (isUnlocked()) {
     } catch (Throwable $e) {}
     try {
         $upcoming = getUpcomingBirthdays();
-        $birthdaysToday = array_values(array_filter($upcoming, fn($b) => $b['days_until'] === 0));
+        $dismissedToday = getDismissedBirthdaysToday();
+        $birthdaysToday = array_values(array_filter($upcoming, fn($b) =>
+            $b['days_until'] === 0 && !in_array($b['person_id'], $dismissedToday, true)
+        ));
         $birthdaysSoon  = array_values(array_filter($upcoming, fn($b) => $b['days_until'] > 0));
+    } catch (Throwable $e) {}
+    try {
+        ensureBirthdayGiftTasks();
     } catch (Throwable $e) {}
 }
 ?>
@@ -231,9 +237,17 @@ $isTired = $energyLevel <= 2;
 <div id="scene-clock"></div>
 <?php if ($birthdaysToday || $birthdaysSoon):
     $bdayNames = implode(', ', array_map(fn($b) => $b['name'], $birthdaysToday ?: $birthdaysSoon));
+    // Today's-people list is also handed to the client as id+name pairs so
+    // js/birthday_today.js can strike a name off this badge (or hide it
+    // entirely once empty) the moment it's dismissed, without a page reload.
+    $todayPeopleJson = htmlspecialchars(json_encode(array_map(
+        fn($b) => ['id' => $b['person_id'], 'name' => $b['name']], $birthdaysToday
+    )), ENT_QUOTES);
+    $bdayOnclick = $birthdaysToday ? "loadOverlay('api/birthday_today.php')" : "loadOverlay('list_people.php')";
 ?>
 <div id="scene-birthday" class="<?= $birthdaysToday ? 'today' : 'soon' ?>"
-     onclick="loadOverlay('list_people.php')">
+     data-today-people='<?= $todayPeopleJson ?>'
+     onclick="<?= $bdayOnclick ?>">
   <span class="scene-birthday-icon"><?= $birthdaysToday ? '🎂' : '🎈' ?></span>
   <span class="scene-birthday-names"><?= htmlspecialchars($bdayNames) ?></span>
 </div>

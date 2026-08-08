@@ -34,6 +34,7 @@ require_once __DIR__ . '/init.php';
   <script src="js/list_meal_plan.js?v=<?= filemtime(__DIR__ . '/js/list_meal_plan.js') ?>" defer></script>
   <script src="js/list_dailies.js?v=<?= filemtime(__DIR__ . '/js/list_dailies.js') ?>" defer></script>
   <script src="js/study_mode.js?v=<?= filemtime(__DIR__ . '/js/study_mode.js') ?>" defer></script>
+  <script src="js/birthday_today.js?v=<?= filemtime(__DIR__ . '/js/birthday_today.js') ?>" defer></script>
 </head>
 <body<?php
   $bodyClasses = [];

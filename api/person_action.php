@@ -17,7 +17,7 @@ $action   = $body['action'] ?? '';
 
 if (!$personId) json_response(['error' => 'Missing person_id'], 400);
 
-$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'edit_note', 'delete_note', 'update_qualities', 'update_interval'];
+$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'edit_note', 'delete_note', 'update_qualities', 'update_interval', 'dismiss_birthday_today'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -99,6 +99,14 @@ try {
         $next_review = scheduleNextReview($personId, $interval);
         vaultUpdatePerson($personId, ['review_interval' => $interval, 'next_review' => $next_review]);
         json_response(['ok' => true, 'next_review' => $next_review]);
+
+    } elseif ($action === 'dismiss_birthday_today') {
+        // Suppresses this person's scene birthday cue for the rest of today —
+        // see getDismissedBirthdaysToday()/dismissBirthdayToday() in
+        // config_helper.php. Doesn't require the person to actually have a
+        // birthday today; the overlay only ever offers this for people who do.
+        dismissBirthdayToday($personId);
+        json_response(['ok' => true]);
 
     } elseif ($action === 'add_note') {
         $contents = trim($body['note_content'] ?? '');

@@ -1206,6 +1206,17 @@ function savePeople(array $data): void {
     @chmod($path, 0600);
 }
 
+// 'archived' is exposed in the agent API's people view/update_person allowlist
+// but the actual app (list_people.php, person_action.php's archive/unarchive
+// action) only ever reads/writes is_active — 'archived' is otherwise dead. A
+// person set inactive via is_active=0 is the real "archived" state; this
+// checks both so a person_id that ever got 'archived' set directly through
+// the agent API doesn't slip past the is_active-only check and keep
+// triggering birthday cues/tasks.
+function personIsArchived(array $p): bool {
+    return ($p['is_active'] ?? 1) == 0 || !empty($p['archived']);
+}
+
 // Active people whose birthday (DOB/MOB — day/month only, year ignored) falls
 // today or within the next $withinDays days. Returns [{person_id, name,
 // days_until}], sorted soonest first. DOB/MOB are legacy imported fields —
@@ -1216,7 +1227,7 @@ function getUpcomingBirthdays(int $withinDays = 6): array {
     $today = new DateTimeImmutable('today');
     $out = [];
     foreach (getPeople()['people'] as $p) {
-        if (($p['is_active'] ?? 1) == 0) continue;
+        if (personIsArchived($p)) continue;
         $day = (int)($p['DOB'] ?? 0);
         $mon = (int)($p['MOB'] ?? 0);
         if ($day < 1 || $day > 31 || $mon < 1 || $mon > 12) continue;
@@ -1245,7 +1256,7 @@ function getBirthdaysInMonth(string $month): array {
     [$year, $mon] = [(int)$m[1], (int)$m[2]];
     $out = [];
     foreach (getPeople()['people'] as $p) {
-        if (($p['is_active'] ?? 1) == 0) continue;
+        if (personIsArchived($p)) continue;
         $day = (int)($p['DOB'] ?? 0);
         $pMon = (int)($p['MOB'] ?? 0);
         if ($day < 1 || $day > 31 || $pMon !== $mon) continue;
@@ -1255,6 +1266,108 @@ function getBirthdaysInMonth(string $month): array {
     }
     usort($out, fn($a, $b) => $a['date'] <=> $b['date']);
     return $out;
+}
+
+// ---------- Birthday cue: per-day dismiss state ----------
+// The scene's today-birthday badge (cake) recomputes fresh on every page
+// load — without this, it'd re-show every single visit for the rest of the
+// day even after Alison's already called/texted them. Keyed by date so a new
+// day is automatically a clean slate; old date keys are pruned opportunistically,
+// same pattern as config['bedtime_state'] uses (see serve_bedtime() in
+// api/next_activity.php).
+
+function getDismissedBirthdaysToday(): array {
+    $cfg = getConfig() ?? [];
+    $today = date('Y-m-d');
+    return array_map('intval', $cfg['birthday_dismissed'][$today] ?? []);
+}
+
+function dismissBirthdayToday(int $personId): void {
+    $cfg   = getConfig() ?? [];
+    $today = date('Y-m-d');
+    $set   = array_map('intval', $cfg['birthday_dismissed'][$today] ?? []);
+    if (!in_array($personId, $set, true)) $set[] = $personId;
+    $cfg['birthday_dismissed'][$today] = $set;
+    $cutoff = date('Y-m-d', strtotime('-3 days'));
+    foreach (array_keys($cfg['birthday_dismissed']) as $k) {
+        if ($k < $cutoff) unset($cfg['birthday_dismissed'][$k]);
+    }
+    saveConfig($cfg);
+}
+
+// ---------- Birthday cue: gift/card prep task ----------
+// For people Alison actually reviews (next_review gets set the first time a
+// review happens — mark_reviewed/snooze/update_qualities/update_interval in
+// api/person_action.php — so a null next_review means she's never engaged
+// the review flow for them, i.e. not really "on a rotation"), auto-add a
+// next_action task exactly a week ahead of their birthday to sort out a gift
+// or card. Catches up across a range (trigger date through the birthday
+// itself, not just the exact day) so missing the exact trigger day doesn't
+// silently skip the reminder for the whole year. Guarded per person per year
+// via config['birthday_gift_tasks'] so re-running (e.g. every scene load)
+// never creates a duplicate.
+function ensureBirthdayGiftTasks(): void {
+    $today = new DateTimeImmutable('today');
+    $cfg     = getConfig() ?? [];
+    $created = $cfg['birthday_gift_tasks'] ?? [];
+    $changed = false;
+
+    foreach (getPeople()['people'] as $p) {
+        if (personIsArchived($p)) continue;
+        if (empty($p['next_review'])) continue; // never actually reviewed = not on a rotation
+
+        $day = (int)($p['DOB'] ?? 0);
+        $mon = (int)($p['MOB'] ?? 0);
+        if ($day < 1 || $day > 31 || $mon < 1 || $mon > 12) continue;
+
+        $thisYear = (int)$today->format('Y');
+        $bday = DateTimeImmutable::createFromFormat('Y-n-j', "$thisYear-$mon-$day");
+        if ($bday === false) continue;
+        if ($bday < $today) {
+            $bday = DateTimeImmutable::createFromFormat('Y-n-j', ($thisYear + 1) . "-$mon-$day");
+            if ($bday === false) continue;
+        }
+        $trigger = $bday->modify('-7 days');
+        if ($today < $trigger || $today > $bday) continue;
+
+        $personId = (int)$p['person_id'];
+        $yearKey  = $bday->format('Y');
+        if (($created[(string)$personId] ?? null) === $yearKey) continue; // already made for this occurrence
+
+        try {
+            $data   = getTasks();
+            $taskId = (int)($data['next_id'] ?? 1);
+            vaultAppendTask($data, [
+                'id'            => $taskId,
+                'title'         => 'Organize a gift or card for ' . ($p['name'] ?? 'them') . ' — birthday ' . $bday->format('j F'),
+                'task_type'     => 'next_action',
+                'urgency'       => 'medium',
+                'importance'    => null,
+                'energy'        => null,
+                'status'        => 'active',
+                'context'       => is_array($p['circles'] ?? null) ? ($p['circles'][0] ?? null) : null,
+                'location'      => null,
+                'created_at'    => date('c'),
+                'snoozed_until' => null,
+                'parent_id'     => null,
+                'person_id'     => $personId,
+                'deadline'      => $bday->format('Y-m-d'),
+                'tags'          => null,
+                'description'   => null,
+            ]);
+            $data['next_id'] = $taskId + 1;
+            saveTasks($data);
+            $created[(string)$personId] = $yearKey;
+            $changed = true;
+        } catch (Throwable $e) {
+            error_log('ensureBirthdayGiftTasks: ' . $e->getMessage());
+        }
+    }
+
+    if ($changed) {
+        $cfg['birthday_gift_tasks'] = $created;
+        saveConfig($cfg);
+    }
 }
 
 // ---------- People notes vault ----------

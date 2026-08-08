@@ -482,9 +482,12 @@ try {
     $hasPhysicalObjects = !empty(array_filter($objData['objects'], fn($o) =>
         $o['status'] === 'out' && $o['task_id'] === null
     ));
-    // Don't invite new clutter-spotting while there's an existing unresolved batch —
-    // surface physical_object_triage instead until that's cleared.
-    if (!$hasPhysicalObjects && in_array($physicalLocation, [1, 4, 5], true)) {
+    // Don't invite new clutter-spotting while ANY items are still out — untriaged
+    // ones (handled above) or ones already handed to a task but not yet actually
+    // put away. Either way, asking for more before the existing list clears is
+    // exactly the pile-up this feature exists to prevent.
+    $hasOutstandingObjects = !empty(array_filter($objData['objects'], fn($o) => ($o['status'] ?? '') === 'out'));
+    if (!$hasOutstandingObjects && in_array($physicalLocation, [1, 4, 5], true)) {
         $rooms      = $objData['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];
         $scanDates  = $objData['room_scan_dates'] ?? [];
         $todayScan  = date('Y-m-d');
@@ -1271,11 +1274,10 @@ function pick_house_task(): ?array {
 function pick_room_scan(): ?array {
     try {
         $data = getPhysicalObjects();
-        // Work through the existing unresolved batch before inviting new clutter-spotting —
-        // otherwise the same items risk getting logged again as "new" finds.
-        $hasBacklog = !empty(array_filter($data['objects'], fn($o) =>
-            $o['status'] === 'out' && $o['task_id'] === null
-        ));
+        // Work through the existing outstanding items before inviting new clutter-spotting —
+        // untriaged ones or ones already handed to a task but not yet actually put away.
+        // Otherwise the same items risk getting logged again as "new" finds.
+        $hasBacklog = !empty(array_filter($data['objects'], fn($o) => ($o['status'] ?? '') === 'out'));
         if ($hasBacklog) return null;
 
         $rooms     = $data['rooms']           ?? [['id' => 1, 'name' => 'livingroom', 'label' => 'Living Room']];

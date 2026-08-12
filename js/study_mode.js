@@ -99,8 +99,25 @@ window.initStudyMode = function() {
     btn.addEventListener('click', () => startSet(btn.dataset.cramSet));
   });
 
+  // Shortlist session
+  const shortlistSection = document.getElementById('study-shortlist-section');
+  shortlistSection && shortlistSection.querySelectorAll('[data-shortlist-bucket]').forEach(btn => {
+    btn.addEventListener('click', () => startShortlist(btn.dataset.shortlistBucket));
+  });
+
+  function startShortlist(bucket) {
+    if (shortlistSection) shortlistSection.style.display = 'none';
+    if (picker)  { picker.style.display = 'none'; picker.querySelectorAll('button').forEach(b => b.disabled = true); }
+    if (intro)   intro.style.display = 'none';
+    body.innerHTML = '<p class="muted">Loading shortlist…</p>';
+    step({action: 'start_shortlist', bucket});
+  }
+
+  window._shortlistNext = function() { step({action: 'next_shortlist'}); };
+
   function backToPicker() {
     body.innerHTML = '';
+    if (shortlistSection) shortlistSection.style.display = '';
     if (picker) { picker.style.display = ''; picker.querySelectorAll('button').forEach(b => b.disabled = false); }
     if (intro)  intro.style.display = '';
   }
@@ -113,6 +130,7 @@ window.initStudyMode = function() {
       case 'cram_regulation':  renderCramRegulation(d);  break;
       case 'cram_daily':       renderCramDaily(d);       break;
       case 'study_mode_done':  renderDone(d);            break;
+      case 'shortlist_done':   renderShortlistDone(d);   break;
       case 'error':            renderError(d);           break;
       default:
         body.innerHTML = '<p class="muted">Nothing to show right now.</p>';
@@ -155,7 +173,7 @@ window.initStudyMode = function() {
       <p id="cram-study-expl" style="display:none;margin-top:0.4rem;font-size:0.88em;line-height:1.45;
          border-left:3px solid #ddd;padding-left:0.6rem;color:#555;"></p>
       <button id="cram-study-next" class="action-button" style="display:none;margin-top:0.6rem;"
-        onclick="window._studyModeNext()">Next</button>`;
+        onclick="${d.shortlist_bucket ? 'window._shortlistNext()' : 'window._studyModeNext()'}">Next</button>`;
 
     window._answerCramStudy = function(idx) {
       const btns = document.querySelectorAll('#cram-study-opts .action-button');
@@ -389,6 +407,14 @@ window.initStudyMode = function() {
     body.innerHTML = `
       <p style="line-height:1.6;margin-bottom:0.9rem;">${esc(d.message)}</p>
       <button class="action-button" onclick="window._studyModeBackToPicker()">Pick another set</button>`;
+    window._studyModeBackToPicker = backToPicker;
+  }
+
+  function renderShortlistDone(d) {
+    const label = d.bucket === 'cram' ? 'intensive-cram' : 'revise';
+    body.innerHTML = `
+      <p style="line-height:1.6;margin-bottom:0.9rem;">${esc(d.message || `All ${label} questions done.`)}</p>
+      <button class="action-button" onclick="window._studyModeBackToPicker()">Back</button>`;
     window._studyModeBackToPicker = backToPicker;
   }
 

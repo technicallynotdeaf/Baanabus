@@ -39,6 +39,24 @@ if ($action === 'end') {
     json_response(['ok' => true]);
 }
 
+if ($action === 'start_shortlist') {
+    if (!$database) json_response(['error' => 'No database'], 500);
+    $bucket   = in_array($input['bucket'] ?? '', ['cram', 'revise']) ? $input['bucket'] : null;
+    $setName  = trim($input['set_name'] ?? '');
+    if (!$bucket) json_response(['error' => 'Missing bucket (cram|revise)'], 400);
+    $_SESSION['study_shortlist'] = ['bucket' => $bucket, 'set_name' => $setName ?: null];
+    json_response(shortlist_next_question());
+}
+
+if ($action === 'next_shortlist') {
+    json_response(shortlist_next_question());
+}
+
+if ($action === 'end_shortlist') {
+    unset($_SESSION['study_shortlist']);
+    json_response(['ok' => true]);
+}
+
 json_response(['error' => 'Unknown action'], 400);
 
 // ---------- cram loop ----------
@@ -71,6 +89,46 @@ function study_cram_step(): array {
     $resp['cram_position'] = ($step % 5) + 1; // 1-4 = question N of 4, 5 = the break
     return $resp;
 }
+
+// ---------- shortlist helpers ----------
+
+function shortlist_next_question(): array {
+    global $database;
+    $state   = $_SESSION['study_shortlist'] ?? null;
+    if (!$state) return ['type' => 'error', 'message' => 'No active shortlist session.'];
+    $bucket  = $state['bucket'];
+    $setName = $state['set_name'] ?? null;
+
+    if (!$database) return ['type' => 'error', 'message' => 'No database.'];
+    try {
+        $setClause = $setName ? "AND sq.set_name = :set_name" : "";
+        $stmt = $database->prepare("
+            SELECT sq.*, qs.seen_count, qs.correct_count
+            FROM study_questions sq
+            JOIN question_seen qs ON sq.id = qs.question_id
+            WHERE qs.bucket = :bucket
+              AND sq.q_type = 'study'
+              $setClause
+            ORDER BY RANDOM()
+            LIMIT 1
+        ");
+        $stmt->bindValue(':bucket', $bucket);
+        if ($setName) $stmt->bindValue(':set_name', $setName);
+        $stmt->execute();
+        $q = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$q) {
+            unset($_SESSION['study_shortlist']);
+            $label = $bucket === 'cram' ? 'intensive-cram' : 'revise';
+            return ['type' => 'shortlist_done', 'bucket' => $bucket,
+                    'message' => "No more {$label} questions" . ($setName ? " in \"{$setName}\"" : '') . "."];
+        }
+        return question_row_to_response($q, 'study') + ['shortlist_bucket' => $bucket];
+    } catch (Throwable $e) {
+        return ['type' => 'error', 'message' => $e->getMessage()];
+    }
+}
+
+// ---------- cram interruption ----------
 
 function pick_cram_interruption(): array {
     $inboxTasks = [];

@@ -1358,9 +1358,11 @@
         drawTreasureChest(ctx, startX + itemW + itemGap, itemY, itemW, itemH, OBJECTS_RESOLVED);
 
         // Right section (idx 2, 7 shelves — otherwise bare): a bondi-blue
-        // iMac on the middle shelf, opening the study-mode picker.
+        // iMac on the second shelf from the top, opening the study-mode
+        // picker. Drawn unconditionally (not inside the width>640 gate
+        // below) so it's on the mobile layout too, same as the toybox/chest.
         const rShelfH = Math.floor((innerHeight - clearance) / 8); // matches the general 7-shelf grid drawn for this section
-        const rBayIdx = 3;
+        const rBayIdx = 1; // 0 = top bay, 1 = second shelf from the top
         const rBayBot = innerTop + clearance + (rBayIdx + 1) * rShelfH;
         const imacW   = Math.round(secW * 0.34);
         const imacH   = Math.round(rShelfH * 0.85);

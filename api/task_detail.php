@@ -35,10 +35,8 @@ if (!empty($task['person_id'])) {
     } catch (Throwable $e) {}
 }
 
-$activeContexts = [];
-if ($database) {
-    $activeContexts = $database->query("SELECT context FROM contexts WHERE is_active=1 ORDER BY context")->fetchAll(PDO::FETCH_COLUMN);
-}
+$goals = [];
+try { $goals = getGoals()['items'] ?? []; } catch (Throwable $e) {}
 
 $isDone = ($task['status'] ?? '') === 'complete';
 $esc = fn($v) => htmlspecialchars((string)($v ?? ''));
@@ -111,11 +109,11 @@ $focusFields = preg_replace('/[^a-z_,]/', '', strtolower($_GET['focus'] ?? ''));
       <p class="muted" style="font-size:0.72em;margin:2px 0 0;">Leave all unchecked for "anywhere"</p>
     </div>
     <div style="flex:1;min-width:110px;">
-      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Context</label>
-      <select id="td-context" style="width:100%;">
+      <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Goal</label>
+      <select id="td-goal_id" style="width:100%;">
         <option value="">None</option>
-        <?php foreach ($activeContexts as $ctx): ?>
-        <option value="<?= $esc($ctx) ?>" <?= $sel(trim($task['context'] ?? ''), $ctx) ?>><?= $esc($ctx) ?></option>
+        <?php foreach ($goals as $g): ?>
+        <option value="<?= (int)$g['id'] ?>" <?= (int)($task['goal_id'] ?? 0) === (int)$g['id'] ? 'selected' : '' ?>><?= $esc($g['title']) ?></option>
         <?php endforeach; ?>
       </select>
     </div>

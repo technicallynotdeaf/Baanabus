@@ -434,7 +434,6 @@ function fill_next_question(array $t): string {
     if (!isset($t['urgency'])    || $t['urgency']    === null) return 'urgency';
     if (!isset($t['importance']) || $t['importance'] === null) return 'importance';
     if (!isset($t['energy'])     || $t['energy']     === null) return 'energy';
-    if (!isset($t['context'])    || $t['context']    === null) return 'context';
     return 'done';
 }
 
@@ -475,15 +474,6 @@ function serve_triage_question(array $inboxTasks, array $fillTasks): ?array {
         if ($q === 'done') continue;
         $resp = ['type' => 'triage', 'source' => 'fill', 'id' => (int)$t['id'],
             'title' => $t['title'], 'question' => $q, 'items' => []];
-        if ($q === 'context' && $database) {
-            try {
-                $resp['contexts'] = $database->query(
-                    "SELECT context FROM contexts ORDER BY context"
-                )->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            } catch (Throwable $e) {
-                $resp['contexts'] = [];
-            }
-        }
         return $resp;
     }
     return null;

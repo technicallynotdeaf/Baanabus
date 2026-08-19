@@ -1585,7 +1585,6 @@ window.initLetsGo = function() {
       duration:   'Roughly how long does this take?',
       first_step: 'Is there a quick 2-minute step that moves this forward?',
       energy:     'How much energy does this take?',
-      context:    'Which area of your life does this belong to?',
       urgency:    'How urgent is this?',
       importance: 'How much does this actually matter to you?',
     };
@@ -1688,20 +1687,6 @@ window.initLetsGo = function() {
         mkBtn("High — needs my best brain",        () => save({action:'save_energy', energy:'high'})),
         mkBtn("Doesn't matter",                    () => save({action:'save_energy', energy:' '}), skipStyle)
       );
-
-    } else if (question === 'context') {
-      const contexts = d.contexts || [];
-      const sel = document.createElement('select');
-      sel.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:0.5rem;padding:0.35rem 0.4rem;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;';
-      sel.innerHTML = `<option value="">Choose an area…</option>` +
-        contexts.map(ctx => `<option value="${esc(ctx)}">${esc(ctx)}</option>`).join('');
-      const saveBtn = mkBtn("Save", () => {
-        if (!sel.value) { setStatus('Pick an area first.'); return; }
-        save({action:'save_context', context: sel.value});
-      });
-      const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';
-      el.append(sel, saveBtn,
-        mkBtn("Doesn't apply", () => save({action:'save_context', context:' '}), skipStyle));
 
     } else if (question === 'urgency') {
       const skipStyle = 'background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);';

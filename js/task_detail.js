@@ -12,7 +12,7 @@ window.initTaskDetail = function() {
 
   // 'location' is handled separately below — a checkbox group, not a single
   // element with a .value.
-  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'context', 'time', 'deadline',
+  const fieldIds = ['task_type', 'urgency', 'importance', 'energy', 'time', 'deadline',
                      'relevant_after', 'irrelevant_after', 'description'];
 
   // Deep-link from the Blocked flow (?focus=field1,field2 on task_detail.php) —
@@ -50,6 +50,8 @@ window.initTaskDetail = function() {
     });
     const checkedLocs = Array.from(document.querySelectorAll('.td-location-cb:checked')).map(cb => cb.value);
     fields.location = checkedLocs.length ? checkedLocs : null;
+    const goalEl = document.getElementById('td-goal_id');
+    if (goalEl) fields.goal_id = goalEl.value ? parseInt(goalEl.value) : null;
 
     saveBtn.disabled = true;
     statusEl.textContent = 'Saving…';

@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_context', 'save_urgency', 'save_importance', 'quick_win', 'reference', 'waiting_start'];
+$allowed = ['next_action', 'someday', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_urgency', 'save_importance', 'quick_win', 'reference', 'waiting_start'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -52,10 +52,6 @@ try {
         $energy = $body['energy'] ?? ' ';
         if (!in_array($energy, ['low', 'medium', 'high', ' '], true)) $energy = ' ';
         $pipResult = vaultUpdateTask($taskId, ['energy' => $energy])['pip'] ?? null;
-
-    } elseif ($action === 'save_context') {
-        $context = isset($body['context']) ? trim((string)$body['context']) : '';
-        $pipResult = vaultUpdateTask($taskId, ['context' => $context !== '' ? $context : ' '])['pip'] ?? null;
 
     } elseif ($action === 'quick_win') {
         $pipResult = vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action'])['pip'] ?? null;
@@ -207,7 +203,7 @@ try {
                             }
                         }
                         // Push metadata notes for existing tasks when relevant fields change
-                        $notesActions = ['save_urgency', 'save_importance', 'save_context', 'next_action', 'someday',
+                        $notesActions = ['save_urgency', 'save_importance', 'next_action', 'someday',
                                          'project', 'quick_win', 'save_time', 'mark_actionable', 'reference', 'waiting_start'];
                         if ($habId && empty($task['habitica_item_id']) && in_array($action, $notesActions, true)) {
                             habiticaPushNotes($habId, $task, $habUser, $habKey);

@@ -17,7 +17,6 @@ window.initListTasks = function() {
     function addTask() {
       const title    = titleIn.value.trim();
       const urgency  = document.getElementById('new-task-urgency').value;
-      const context  = document.getElementById('new-task-context').value.trim();
       const location = Array.from(document.querySelectorAll('.new-task-location-cb:checked')).map(cb => cb.value);
       const status   = document.getElementById('add-task-status');
       if (!title) { status.textContent = 'Enter a title first.'; return; }
@@ -25,7 +24,7 @@ window.initListTasks = function() {
       fetch('api/add_task.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, urgency, context: context || null, location: location.length ? location : null }),
+        body: JSON.stringify({ title, urgency, location: location.length ? location : null }),
       })
       .then(r => r.json())
       .then(d => {
@@ -34,7 +33,7 @@ window.initListTasks = function() {
         document.querySelectorAll('.new-task-location-cb:checked').forEach(cb => cb.checked = false);
         status.textContent = 'Saved.';
         setTimeout(() => { status.textContent = ''; }, 2000);
-        addRowToGroup({ id: d.task_id, title, urgency, context });
+        addRowToGroup({ id: d.task_id, title, urgency });
       })
       .catch(e => { status.textContent = e.message; status.style.color = 'crimson'; });
     }
@@ -49,7 +48,6 @@ window.initListTasks = function() {
       row.className = 'task-row';
       row.dataset.id      = t.id;
       row.dataset.title   = t.title.toLowerCase();
-      row.dataset.context = t.context || '';
       row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;';
       row.innerHTML = `
         <div style="flex:1;min-width:0;"><span style="line-height:1.4;word-break:break-word;">${esc(t.title)}</span></div>
@@ -63,15 +61,12 @@ window.initListTasks = function() {
     }
   }
 
-  let activeCtx = '';
-
   function applyFilters() {
     const searchEl = document.getElementById('task-search');
     const q = searchEl ? (searchEl.value || '').toLowerCase() : '';
     document.querySelectorAll('.task-row').forEach(row => {
       const matchSearch = !q || row.dataset.title.includes(q);
-      const matchCtx = !activeCtx || row.dataset.context === activeCtx;
-      row.style.display = (matchSearch && matchCtx) ? '' : 'none';
+      row.style.display = matchSearch ? '' : 'none';
     });
     document.querySelectorAll('.task-group').forEach(group => {
       const visible = group.querySelectorAll('.task-row:not([style*="display: none"])').length;
@@ -81,19 +76,6 @@ window.initListTasks = function() {
 
   const taskSearch = document.getElementById('task-search');
   if (taskSearch) taskSearch.addEventListener('input', applyFilters);
-
-  document.querySelectorAll('.context-chip').forEach(chip => {
-    chip.addEventListener('click', function() {
-      activeCtx = this.dataset.ctx;
-      document.querySelectorAll('.context-chip').forEach(c => {
-        const on = c === this;
-        c.style.background = on ? '#8b7355' : 'transparent';
-        c.style.color = on ? '#fff' : '#8b7355';
-        c.classList.toggle('active', on);
-      });
-      applyFilters();
-    });
-  });
 
   // Delegated on document since task rows are re-rendered on every overlay
   // load; guarded so re-opening this overlay (tab switches, search, etc.)

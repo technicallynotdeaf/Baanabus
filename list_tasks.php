@@ -18,11 +18,6 @@ foreach ($all as $t) {
     }
 }
 
-$activeContexts = [];
-if ($database) {
-    $rows = $database->query("SELECT context FROM contexts WHERE is_active=1 ORDER BY context")->fetchAll(PDO::FETCH_COLUMN);
-    $activeContexts = $rows;
-}
 
 if (($_GET['filter'] ?? '') === 'snoozed') {
     $today   = date('Y-m-d');
@@ -271,11 +266,6 @@ foreach ($active as $t) {
 $importanceLabel = ['high' => 'High importance', 'medium' => 'Medium importance', 'low' => 'Low importance'];
 $importanceColor = ['high' => '#c0392b', 'medium' => '#e67e22', 'low' => '#888'];
 
-$usedContexts = array_values(array_filter(
-    array_unique(array_map(fn($t) => trim($t['context'] ?? ''), $active)),
-    fn($c) => $c !== '' && $c !== ' '
-));
-sort($usedContexts);
 
 $typeLabels = [
     'next_action' => '', 'contact' => 'contact', 'someday' => 'someday',
@@ -311,15 +301,6 @@ $typeLabels = [
           <?php endforeach; ?>
         </div>
       </div>
-      <div style="flex:1;min-width:120px;">
-        <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Context</label>
-        <select id="new-task-context">
-          <option value="">None</option>
-          <?php foreach ($activeContexts as $ctx): ?>
-          <option value="<?= htmlspecialchars($ctx) ?>"><?= htmlspecialchars($ctx) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
       <button class="btn" id="btn-add-task" style="flex-shrink:0;padding:8px 14px;font-size:0.88em;min-height:44px;">Save</button>
     </div>
     <p id="add-task-status" class="muted" style="margin-top:0.4rem;min-height:1.2em;font-size:0.85em;"></p>
@@ -335,18 +316,6 @@ $typeLabels = [
 
   <!-- Search -->
   <input type="search" id="task-search" placeholder="Search tasks..." style="margin-bottom:0.75rem;">
-
-  <!-- Context chips -->
-  <?php if (count($usedContexts) > 1): ?>
-  <div id="context-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.75rem;">
-    <button class="context-chip active" data-ctx=""
-            style="padding:4px 12px;font-size:0.8em;border-radius:20px;border:1px solid #8b7355;background:#8b7355;color:#fff;cursor:pointer;">All</button>
-    <?php foreach ($usedContexts as $ctx): ?>
-    <button class="context-chip" data-ctx="<?= htmlspecialchars($ctx) ?>"
-            style="padding:4px 12px;font-size:0.8em;border-radius:20px;border:1px solid #8b7355;background:transparent;color:#8b7355;cursor:pointer;"><?= htmlspecialchars(ucfirst($ctx)) ?></button>
-    <?php endforeach; ?>
-  </div>
-  <?php endif; ?>
 
   <!-- Task groups -->
   <?php foreach ($groups as $importance => $tasks): ?>
@@ -373,7 +342,6 @@ $typeLabels = [
         ?>
         <div class="task-row" data-id="<?= (int)$t['id'] ?>"
              data-title="<?= htmlspecialchars(strtolower($t['title']) . ' ' . $subSearch) ?>"
-             data-context="<?= htmlspecialchars(trim($t['context'] ?? '')) ?>"
              data-location="<?= htmlspecialchars(implode(',', (array)($t['location'] ?? []))) ?>"
              style="display:flex;align-items:flex-start;gap:8px;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;<?= $notDoable ? 'opacity:0.4;' : '' ?>">
           <div style="flex:1;min-width:0;">

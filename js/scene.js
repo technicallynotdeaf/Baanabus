@@ -1429,13 +1429,17 @@
         // same shelf. Both drawn unconditionally (not inside the width>640 gate)
         // so they appear on mobile too.
         const rShelfH  = Math.floor((innerHeight - clearance) / 8);
-        const rBayIdx  = 1; // 0 = top bay, 1 = second shelf from top
+        // On mobile the speech bubble (top:40%, max-height:45vh) covers bay 1;
+        // bay 6 (bottom of the right section) sits at ~68–75% of viewport height
+        // and is fully clear of the bubble.
+        const rBayIdx  = width <= 640 ? 6 : 1;
         const rBayBot  = innerTop + clearance + (rBayIdx + 1) * rShelfH;
         const imacW    = Math.round(secW * 0.33);
         const imacH    = Math.round(rShelfH * 0.85);
         const rSecLeft = innerLeft + secW * 2;
-        if (PIPE_DATA) {
-            // Pair the iMac and PIPE terminal side by side, centred as a unit
+        if (PIPE_DATA && width > 640) {
+            // Desktop only: pair the iMac and PIPE terminal side by side, centred as a unit.
+            // PIPE widget is suppressed on mobile (too small to be useful at 32px wide).
             const pipeW   = Math.round(secW * 0.26);
             const pipeH   = Math.round(rShelfH * 0.78);
             const pipeGap = Math.max(3, Math.round(secW * 0.03));

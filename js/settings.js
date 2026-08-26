@@ -261,6 +261,43 @@ window.initSettings = function() {
     });
   }
 
+  // ── Account: PIPE ─────────────────────────────────────────────────
+  const pipeForm = document.getElementById('pipe-form');
+  if (pipeForm) {
+    pipeForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const statusEl = document.getElementById('pipeStatus');
+      statusEl.textContent = 'Saving…';
+      statusEl.style.color = '';
+      const key = document.getElementById('pipe-key').value.trim();
+      const url = document.getElementById('pipe-url').value.trim();
+      const payload = {};
+      if (key) payload.api_key = key;
+      if (url) payload.api_url = url;
+      if (!Object.keys(payload).length) {
+        statusEl.textContent = 'Nothing to save.';
+        return;
+      }
+      try {
+        const resp = await fetch('api/integrations.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ pipe: payload })
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          statusEl.textContent = 'Saved.';
+          document.getElementById('pipe-key').value = '';
+        } else {
+          throw new Error(result.error || 'Save failed');
+        }
+      } catch(e) {
+        statusEl.textContent = e.message;
+        statusEl.style.color = 'crimson';
+      }
+    });
+  }
+
   // ── Account: CSV probe ─────────────────────────────────────────────
   const csvForm = document.getElementById('csv-probe-form');
   if (csvForm) {

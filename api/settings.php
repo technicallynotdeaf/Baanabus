@@ -18,6 +18,9 @@ if ($vaultOpen) {
 $nickname     = $cfg['nickname'] ?? '';
 $habiticaUser = $cassowary['habitica']['user_id'] ?? '';
 $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
+$pipeKey      = $cassowary['pipe']['api_key']      ?? '';
+$pipeKeyMsk   = $pipeKey ? '••••' . substr($pipeKey, -4) : '';
+$pipeUrl      = $cassowary['pipe']['api_url']      ?? '';
 $checkinOn      = $cfg['checkin_enabled'] ?? true;
 $weeklySchedule = $cfg['weekly_schedule'] ?? [];
 
@@ -262,6 +265,26 @@ if ($database) {
           <input type="password" id="hab-key" name="api_key" value="<?= htmlspecialchars($habiticaKey) ?>" placeholder="xxxxxxxx-xxxx-...">
           <button type="submit" class="btn" style="margin-top:0.75rem;">Save</button>
           <p id="habStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+        </form>
+      <?php else: ?>
+        <p class="muted">Vault locked.</p>
+      <?php endif; ?>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.5rem;">PIPE</h3>
+      <?php if ($vaultOpen): ?>
+        <p class="muted" style="margin-bottom:0.75rem;font-size:0.88em;">Parliament data dashboard. API key from your PIPE account.</p>
+        <form id="pipe-form">
+          <?php if ($pipeKeyMsk): ?>
+            <p style="font-size:0.85em;color:#555;margin-bottom:0.5rem;">Current key: <code><?= htmlspecialchars($pipeKeyMsk) ?></code></p>
+          <?php endif; ?>
+          <label style="display:block;margin-bottom:0.4rem;font-size:0.9em;color:#555;">API Key<?= $pipeKeyMsk ? ' (leave blank to keep current)' : '' ?></label>
+          <input type="password" id="pipe-key" name="api_key" placeholder="<?= $pipeKeyMsk ? 'Keep current' : 'Paste key from PIPE' ?>">
+          <label style="display:block;margin:0.75rem 0 0.4rem;font-size:0.9em;color:#555;">API URL <span class="muted">(optional)</span></label>
+          <input type="text" id="pipe-url" name="api_url" value="<?= htmlspecialchars($pipeUrl) ?>" placeholder="https://pipeproject.info/dashboard/pipe_overview.php">
+          <button type="submit" class="btn" style="margin-top:0.75rem;">Save</button>
+          <p id="pipeStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
         </form>
       <?php else: ?>
         <p class="muted">Vault locked.</p>

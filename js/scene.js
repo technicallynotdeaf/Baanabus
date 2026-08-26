@@ -40,6 +40,7 @@
     const CYCLE_PHASES        = JSON.parse(canvas.dataset.cyclePhases || '[]');
     const HAS_CYCLE           = CYCLE_DAY > 0 && CYCLE_LEN > 0 && CYCLE_PHASES.length > 0;
     const TOP3                = JSON.parse(canvas.dataset.top3 || '[]');
+    const PIPE_DATA           = JSON.parse(canvas.dataset.pipe  || 'null');
 
     const STORY_BOOKS = [
         { id:  1, color: '#C8713A', h: 0.82 }, // Wales (home)
@@ -128,6 +129,7 @@
     let toyboxBounds      = null;
     let chestBounds       = null;
     let imacBounds        = null;
+    let pipeBounds        = null;
     let calendarBounds    = null;
     let cycleDial         = null; // { cx, cy, rx, ry, quad }
     let jarBounds         = [];
@@ -1073,6 +1075,71 @@
         ctx.fillRect(bx + (bw - footW) / 2, by + bh - footH, footW, footH);
     }
 
+    // PIPE dashboard terminal — sits beside the iMac on the same shelf.
+    // Shows compact health bars (green/grey/red) and 9 jurisdiction dots
+    // (grey = not sitting, purple = sitting). Only drawn when PIPE_DATA is set.
+    function drawPipeDashboard(ctx, bx, by, bw, bh, pipeData) {
+        pipeBounds = { x: bx, y: by, w: bw, h: bh };
+        const r   = Math.round(bw * 0.08);
+        const pad = Math.round(bw * 0.10);
+
+        // Drop shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        roundRectPath(ctx, bx + 2, by + 2, bw, bh, r);
+        ctx.fill();
+
+        // Dark anthracite housing
+        const caseGrad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+        caseGrad.addColorStop(0, '#3a2a4a');
+        caseGrad.addColorStop(1, '#1e1428');
+        ctx.fillStyle = caseGrad;
+        roundRectPath(ctx, bx, by, bw, bh, r);
+        ctx.fill();
+
+        // Inner face plate
+        const faceX = bx + pad, faceY = by + pad;
+        const faceW = bw - pad * 2, faceH = bh - pad * 2;
+        ctx.fillStyle = '#120c1e';
+        roundRectPath(ctx, faceX, faceY, faceW, faceH, Math.max(1, Math.round(r * 0.5)));
+        ctx.fill();
+
+        // Health bars — stacked in the upper portion of the face
+        const health    = pipeData.health || [];
+        const barCount  = Math.max(1, health.length || 3);
+        const dotAreaH  = Math.round(faceH * 0.28);
+        const barsAreaH = faceH - dotAreaH - Math.round(faceH * 0.08);
+        const barH      = Math.max(2, Math.floor((barsAreaH - (barCount - 1) * 2) / barCount));
+        const barY0     = faceY + Math.round(faceH * 0.06);
+        const statusColor = { green: '#4caf50', grey: '#2d2d2d', red: '#e53935' };
+        for (let i = 0; i < barCount; i++) {
+            const dim = health[i] || {};
+            ctx.fillStyle = statusColor[dim.status] || '#2d2d2d';
+            roundRectPath(ctx, faceX + 2, barY0 + i * (barH + 2), faceW - 4, barH, 1);
+            ctx.fill();
+        }
+
+        // Jurisdiction dots — 9 along the bottom strip
+        const jOrder = ['NSW', 'VIC', 'SA', 'QLD', 'WA', 'TAS', 'ACT', 'NT', 'Fed'];
+        const jMap   = {};
+        (pipeData.jurisdictions || []).forEach(j => { jMap[j.code] = !!j.sitting; });
+        const dotCount = jOrder.length;
+        const dotR     = Math.max(1.5, Math.round(Math.min(faceW / (dotCount * 2.5), 3.5)));
+        const dotY     = faceY + faceH - Math.round(dotAreaH * 0.42);
+        jOrder.forEach((code, i) => {
+            const dotX = faceX + Math.round(faceW * (i + 0.5) / dotCount);
+            ctx.beginPath();
+            ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+            ctx.fillStyle = jMap[code] ? '#7D3E96' : '#252525';
+            ctx.fill();
+        });
+
+        // Top-left sheen
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        roundRectPath(ctx, bx + Math.round(bw * 0.08), by + Math.round(bh * 0.06),
+                      Math.round(bw * 0.16), Math.round(bh * 0.32), Math.round(bw * 0.06));
+        ctx.fill();
+    }
+
     function drawWallMiniCalendar(ctx, iL, iW, iT, flY, h, w) {
         const rp  = (t, v) => wallPt('right', t, v, iL, iW, iT, flY, h, w);
         const t1  = 0.22, t2 = 0.58, v1 = 0.09, v2 = 0.26;
@@ -1357,18 +1424,33 @@
         drawToybox(ctx, startX, itemY, itemW, itemH, OBJECTS_OUT);
         drawTreasureChest(ctx, startX + itemW + itemGap, itemY, itemW, itemH, OBJECTS_RESOLVED);
 
-        // Right section (idx 2, 7 shelves — otherwise bare): a bondi-blue
-        // iMac on the second shelf from the top, opening the study-mode
-        // picker. Drawn unconditionally (not inside the width>640 gate
-        // below) so it's on the mobile layout too, same as the toybox/chest.
-        const rShelfH = Math.floor((innerHeight - clearance) / 8); // matches the general 7-shelf grid drawn for this section
-        const rBayIdx = 1; // 0 = top bay, 1 = second shelf from the top
-        const rBayBot = innerTop + clearance + (rBayIdx + 1) * rShelfH;
-        const imacW   = Math.round(secW * 0.34);
-        const imacH   = Math.round(rShelfH * 0.85);
-        const imacX   = innerLeft + secW * 2 + Math.round((secW - imacW) / 2);
-        const imacY   = rBayBot - imacH;
-        drawIMac(ctx, imacX, imacY, imacW, imacH);
+        // Right section (idx 2, 7 shelves — otherwise bare): iMac on bay 1,
+        // and if PIPE is configured, a PIPE dashboard terminal beside it on the
+        // same shelf. Both drawn unconditionally (not inside the width>640 gate)
+        // so they appear on mobile too.
+        const rShelfH  = Math.floor((innerHeight - clearance) / 8);
+        const rBayIdx  = 1; // 0 = top bay, 1 = second shelf from top
+        const rBayBot  = innerTop + clearance + (rBayIdx + 1) * rShelfH;
+        const imacW    = Math.round(secW * 0.33);
+        const imacH    = Math.round(rShelfH * 0.85);
+        const rSecLeft = innerLeft + secW * 2;
+        if (PIPE_DATA) {
+            // Pair the iMac and PIPE terminal side by side, centred as a unit
+            const pipeW   = Math.round(secW * 0.26);
+            const pipeH   = Math.round(rShelfH * 0.78);
+            const pipeGap = Math.max(3, Math.round(secW * 0.03));
+            const pairW   = imacW + pipeGap + pipeW;
+            const imacX   = rSecLeft + Math.round((secW - pairW) / 2);
+            const imacY   = rBayBot - imacH;
+            drawIMac(ctx, imacX, imacY, imacW, imacH);
+            const pipeX   = imacX + imacW + pipeGap;
+            const pipeY   = rBayBot - pipeH;
+            drawPipeDashboard(ctx, pipeX, pipeY, pipeW, pipeH, PIPE_DATA);
+        } else {
+            const imacX = rSecLeft + Math.round((secW - imacW) / 2);
+            const imacY = rBayBot - imacH;
+            drawIMac(ctx, imacX, imacY, imacW, imacH);
+        }
 
         // Desktop-only decorations: window on left wall
         if (width > 640) {
@@ -1479,6 +1561,10 @@
             loadOverlay('api/study_mode.php');
             return;
         }
+        if (inRect(cx, cy, pipeBounds)) {
+            loadOverlay('api/pipe_dashboard.php');
+            return;
+        }
         if (jarBounds.some(b => inRect(cx, cy, b))) {
             loadOverlay('api/top3.php');
             return;
@@ -1537,6 +1623,7 @@
             || inRect(cx, cy, toyboxBounds)
             || inRect(cx, cy, chestBounds)
             || inRect(cx, cy, imacBounds)
+            || inRect(cx, cy, pipeBounds)
             || jarBounds.some(b => inRect(cx, cy, b))
             || onBook;
         this.style.cursor = pointer ? 'pointer' : '';

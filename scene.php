@@ -27,6 +27,7 @@ $cyclePhases     = [];
 $top3Entries     = [];
 $birthdaysToday  = [];
 $birthdaysSoon   = [];
+$pipeData        = null;
 if (isUnlocked()) {
     try {
         $cp = getCyclePhase();
@@ -94,6 +95,21 @@ if (isUnlocked()) {
     try {
         ensureBirthdayGiftTasks();
     } catch (Throwable $e) {}
+    try {
+        $cas = getCassowary();
+        if (!empty($cas['pipe']['api_key'])) {
+            $pipeData = ['configured' => true, 'health' => [], 'jurisdictions' => []];
+            $uid = $_SESSION['user_id'];
+            $cacheFile = __DIR__ . "/config/{$uid}/pipe_cache.json";
+            if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 600) {
+                $cached = json_decode(file_get_contents($cacheFile), true);
+                if ($cached) {
+                    $pipeData['health']        = $cached['health']        ?? [];
+                    $pipeData['jurisdictions'] = $cached['jurisdictions'] ?? [];
+                }
+            }
+        }
+    } catch (Throwable $e) {}
 }
 ?>
 <canvas id="sceneCanvas"
@@ -129,7 +145,8 @@ if (isUnlocked()) {
   data-cycle-day="<?= $cycleDay ?>"
   data-cycle-len="<?= $cycleLen ?>"
   data-cycle-phases="<?= htmlspecialchars(json_encode($cyclePhases), ENT_QUOTES) ?>"
-  data-top3="<?= htmlspecialchars(json_encode($top3Entries), ENT_QUOTES) ?>"></canvas>
+  data-top3="<?= htmlspecialchars(json_encode($top3Entries), ENT_QUOTES) ?>"
+  data-pipe="<?= htmlspecialchars(json_encode($pipeData), ENT_QUOTES) ?>"></canvas>
 
 <?php
 $pageCount    = 0;

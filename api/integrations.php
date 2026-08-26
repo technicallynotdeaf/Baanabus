@@ -24,6 +24,11 @@ if ($method === 'GET') {
             $data['habitica']['api_key_set'] = true;
             $data['habitica']['api_key'] = '••••' . substr($raw, -4);
         }
+        if (!empty($data['pipe']['api_key'])) {
+            $raw = $data['pipe']['api_key'];
+            $data['pipe']['api_key_set'] = true;
+            $data['pipe']['api_key'] = '••••' . substr($raw, -4);
+        }
         respond(['ok' => true, 'data' => $data]);
     } catch (Exception $e) {
         respond(['error' => $e->getMessage()], 500);
@@ -35,7 +40,7 @@ if ($method === 'POST') {
     if (!is_array($input)) respond(['error' => 'Invalid JSON'], 400);
 
     // Only allow known top-level keys to prevent arbitrary vault pollution
-    $allowed = ['habitica'];
+    $allowed = ['habitica', 'pipe'];
     $filtered = array_intersect_key($input, array_flip($allowed));
     if (empty($filtered)) respond(['error' => 'No valid keys provided'], 400);
 

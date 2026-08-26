@@ -125,20 +125,13 @@ if ($method === 'GET') {
 
     $context = null;
     if (in_array($view, ['tasks', 'snapshot'], true)) {
-        $energy = null; $dayType = null;
-        if ($database) {
-            try {
-                $row = $database->query(
-                    "SELECT energy_level, day_type FROM diary WHERE date = '" . date('Y-m-d') . "' LIMIT 1"
-                )->fetch(PDO::FETCH_ASSOC);
-                if ($row) { $energy = $row['energy_level']; $dayType = $row['day_type']; }
-            } catch (Throwable $e) {}
-        }
+        $diaryEntry = getDiaryEntry(date('Y-m-d'));
         $tasks = getTasks();
         $context = [
             'today'          => date('Y-m-d'),
-            'energy'         => $energy,
-            'day_type'       => $dayType,
+            'energy'         => $diaryEntry['energy_level'] ?? null,
+            'day_type'       => $diaryEntry['day_type']     ?? null,
+            'location'       => $diaryEntry['location']     ?? null,
             'inbox_count'    => count(getInboxTasks()),
             'pages_target'   => todayPagesTarget(),
             'pages_progress' => (int)($tasks['pages'] ?? 0),

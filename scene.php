@@ -298,4 +298,4 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <button id="pipe-mobile-btn" class="scene-mode-btn" onclick="loadOverlay('api/pipe_dashboard.php')">PIPE</button>
 <?php endif; ?>
 
-<script src="js/scene.js"></script>
+<script src="js/scene.js?v=<?= filemtime(__DIR__ . '/js/scene.js') ?>"></script>

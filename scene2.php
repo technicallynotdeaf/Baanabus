@@ -12,6 +12,6 @@ require_once __DIR__ . '/header.php';
 </div>
 <canvas id="calCanvas"></canvas>
 
-<script src="js/scene2.js"></script>
+<script src="js/scene2.js?v=<?= filemtime(__DIR__ . '/js/scene2.js') ?>"></script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

@@ -293,5 +293,9 @@ $energyLabel  = $energyLabels[$energyLevel] ?? '';
 <?php endif; ?>
 
 <button id="reset-btn" class="scene-mode-btn"<?= $isTired ? ' data-tired="1"' : '' ?>>Reset</button>
+<a href="scene_kitchen.php" id="kitchen-mobile-btn" class="scene-mode-btn">Kitchen</a>
+<?php if ($pipeData): ?>
+<button id="pipe-mobile-btn" class="scene-mode-btn" onclick="loadOverlay('api/pipe_dashboard.php')">PIPE</button>
+<?php endif; ?>
 
 <script src="js/scene.js"></script>

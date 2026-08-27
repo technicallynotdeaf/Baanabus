@@ -716,6 +716,15 @@ body.scene-view .scene-mode-btn { display: inline-flex; align-items: center; }
 .scene-mode-btn:hover { background: rgba(80, 60, 100, 0.75); }
 #reset-btn { left: 50%; transform: translateX(-50%); }
 #reset-btn.active { background: rgba(80,60,20,0.82); border-color: rgba(255,200,100,0.4); }
+/* Mobile-only shortcut buttons (kitchen door + PIPE) — hidden on desktop where
+   the canvas objects are clickable; shown on ≤640px where they're not reachable */
+#kitchen-mobile-btn, #pipe-mobile-btn {
+    display: none;
+}
+@media (max-width: 640px) {
+    body.scene-view #kitchen-mobile-btn { display: inline-flex; left: 1rem; }
+    body.scene-view #pipe-mobile-btn    { display: inline-flex; right: 1rem; }
+}
 
 /* === Scoreboard bar (scene overlay) — top/left/width set by scene.js to match bookcase === */
 #scene-scoreboard {

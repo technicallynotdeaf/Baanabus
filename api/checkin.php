@@ -14,17 +14,26 @@ $date  = $input['date']  ?? date('Y-m-d');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     json_response(['error' => 'Invalid date'], 400);
 }
-if (!in_array($field, ['energy_level', 'day_type', 'location'], true)) {
+
+$numericFields = ['energy_level', 'day_type', 'location'];
+$stringFields  = ['anticipation'];
+
+if (!in_array($field, array_merge($numericFields, $stringFields), true)) {
     json_response(['error' => 'Invalid field'], 400);
 }
-if ($value === null || !is_numeric($value)) {
-    json_response(['error' => 'Invalid value'], 400);
+
+if (in_array($field, $numericFields, true)) {
+    if ($value === null || !is_numeric($value)) json_response(['error' => 'Invalid value'], 400);
+    $saveValue = (int)$value;
+} else {
+    $saveValue = mb_substr(trim((string)($value ?? '')), 0, 500);
+    if ($saveValue === '') json_response(['error' => 'Value required'], 400);
 }
 
 try {
-    saveDiaryEntry($date, [$field => (int)$value]);
+    saveDiaryEntry($date, [$field => $saveValue]);
     try {
-        if ($date === date('Y-m-d')) {
+        if ($date === date('Y-m-d') && in_array($field, $numericFields, true)) {
             $entry = getDiaryEntry($date);
             if (!empty($entry['energy_level']) && !empty($entry['day_type']) && !empty($entry['location'])) {
                 creditTop3Progress('checkin_done', 1);

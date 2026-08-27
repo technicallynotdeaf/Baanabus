@@ -251,6 +251,53 @@ function renderPersonPanel(int $personId): void {
         </div>
       </div>
 
+      <!-- This friendship -->
+      <?php if ($isActive && !$person['is_org']): ?>
+      <div style="background:#f8f9fa;border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;">
+        <p style="font-size:0.72em;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.6rem;">This friendship</p>
+
+        <div style="margin-bottom:0.75rem;">
+          <label style="font-size:0.82em;color:#555;display:block;margin-bottom:4px;">What do I want from this friendship?</label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="friendship-goal-select" style="flex:1;min-width:140px;padding:4px 6px;border:1px solid #ccc;border-radius:5px;font-size:0.9em;">
+              <option value="" <?= empty($person['friendship_goal']) ? 'selected' : '' ?>>Not set</option>
+              <option value="occasional_coffee" <?= ($person['friendship_goal'] ?? '') === 'occasional_coffee' ? 'selected' : '' ?>>Occasional catch-up</option>
+              <option value="encouragement" <?= ($person['friendship_goal'] ?? '') === 'encouragement' ? 'selected' : '' ?>>Mutual encouragement</option>
+              <option value="shared_interest" <?= ($person['friendship_goal'] ?? '') === 'shared_interest' ? 'selected' : '' ?>>Shared interest or activity</option>
+              <option value="infrequent_meaningful" <?= ($person['friendship_goal'] ?? '') === 'infrequent_meaningful' ? 'selected' : '' ?>>Infrequent but meaningful</option>
+              <option value="not_sure" <?= ($person['friendship_goal'] ?? '') === 'not_sure' ? 'selected' : '' ?>>Not sure yet</option>
+            </select>
+            <button onclick="window._saveFriendshipGoal()"
+                    style="padding:4px 10px;font-size:0.82em;background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);border-radius:6px;cursor:pointer;min-height:28px;white-space:nowrap;">Save</button>
+          </div>
+          <span id="friendship-goal-status" class="muted" style="font-size:0.8em;display:block;margin-top:3px;min-height:1.2em;"></span>
+        </div>
+
+        <div>
+          <label style="font-size:0.82em;color:#555;display:block;margin-bottom:4px;">How does it feel lately?</label>
+          <?php
+            $feel = $person['last_interaction_feel'] ?? null;
+            $feelStyles = [
+              'nourishing' => 'background:#e8f5e9;color:#2e7d32;border:1.5px solid #2e7d32;',
+              'neutral'    => 'background:#e3f2fd;color:#1565c0;border:1.5px solid #1565c0;',
+              'depleting'  => 'background:#fce4ec;color:#c62828;border:1.5px solid #c62828;',
+            ];
+            $feels = ['nourishing' => 'Nourishing', 'neutral' => 'Neutral', 'depleting' => 'Depleting'];
+          ?>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <?php foreach ($feels as $val => $lbl): ?>
+              <button onclick="window._saveInteractionFeel('<?= $val ?>', this)"
+                      style="padding:4px 12px;font-size:0.82em;border-radius:6px;cursor:pointer;min-height:28px;
+                             <?= ($feel === $val) ? $feelStyles[$val] : 'background:transparent;color:#888;border:1.5px solid #ddd;' ?>">
+                <?= $lbl ?>
+              </button>
+            <?php endforeach; ?>
+          </div>
+          <span id="feel-status" class="muted" style="font-size:0.8em;display:block;margin-top:3px;min-height:1.2em;"></span>
+        </div>
+      </div>
+      <?php endif; ?>
+
       <!-- Character traits -->
       <?php if ($traits): ?>
         <div style="margin-bottom:1rem;">

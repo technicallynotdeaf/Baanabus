@@ -2289,6 +2289,10 @@ window.initLetsGo = function() {
   }
 
   function renderMissingInfo(d) {
+    if (d.field === 'anticipation') {
+      renderAnticipationCheck(d);
+      return;
+    }
     const opts = d.options.map(o =>
       `<button class="action-button"
          onclick="window._checkin('${d.field}', ${o.value}, this)">${esc(o.label)}</button>`
@@ -2316,6 +2320,47 @@ window.initLetsGo = function() {
         document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
       });
     };
+  }
+
+  function renderAnticipationCheck(d) {
+    c.innerHTML = `
+      <p style="margin-bottom:0.75rem;">${esc(d.prompt)}</p>
+      <input type="text" id="anticipation-input" placeholder="Something coming up…"
+             style="width:100%;box-sizing:border-box;margin-bottom:0.6rem;" maxlength="500">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" id="btn-anticipation-submit">Submit</button>
+        <button class="action-button" id="btn-anticipation-nothing"
+                style="background:transparent;color:hsl(210,100%,30%);border:1.5px solid hsl(210,100%,30%);">
+          Not looking forward to anything
+        </button>
+      </div>
+      <p id="anticipation-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+
+    function saveAnticipation(value) {
+      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+      fetch('api/checkin.php', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ field: 'anticipation', value }),
+      }).then(r => r.json()).then(() => {
+        setTimeout(() => loadSpeechBubble('lets-go.php'), 400);
+      }).catch(() => {
+        document.getElementById('anticipation-status').textContent = 'Could not save — try again.';
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+      });
+    }
+
+    document.getElementById('btn-anticipation-submit').addEventListener('click', () => {
+      const val = document.getElementById('anticipation-input').value.trim();
+      if (!val) { document.getElementById('anticipation-status').textContent = 'Type something, or use the button below.'; return; }
+      saveAnticipation(val);
+    });
+    document.getElementById('btn-anticipation-nothing').addEventListener('click', () => {
+      saveAnticipation('nothing');
+    });
+    document.getElementById('anticipation-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-anticipation-submit').click();
+    });
   }
 
   function renderGemMatch() {

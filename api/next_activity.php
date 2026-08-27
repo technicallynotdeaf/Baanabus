@@ -25,6 +25,22 @@ const AFFIRMATIONS = [
     "It's okay to ask for help.",
     "Progress is not linear and that is normal.",
     "I am the kind of person who keeps going.",
+    "Way to go.",
+    "Great work.",
+    "Keep going.",
+    "You're doing it.",
+    "One more thing done.",
+    "That's progress.",
+    "Nice one.",
+    "Look at you, getting things done.",
+    "That mattered.",
+    "You showed up today.",
+    "Good.",
+    "That counts.",
+    "You're more capable than you feel right now.",
+    "You got this.",
+    "That was the hard part. You did it.",
+    "Yes. That.",
 ];
 
 if (!isAuthenticated()) json_response(['error' => 'Not authenticated'], 401);
@@ -227,6 +243,15 @@ try {
         $energy  = max(1, min(5, (int)$row['energy_level']));
         $dayType = (int)($row['day_type'] ?? 0);
         $physicalLocation = (int)$row['location'];
+
+        // Anticipation check: once per day in the morning if not yet answered
+        if (!isset($row['anticipation']) && (int)date('H') < 13) {
+            $missing = [
+                'type'   => 'missing_info',
+                'field'  => 'anticipation',
+                'prompt' => 'What are you looking forward to?',
+            ];
+        }
     }
 } catch (Throwable $e) { /* non-fatal — use defaults */ }
 $dayType          = $dayType ?? 0;

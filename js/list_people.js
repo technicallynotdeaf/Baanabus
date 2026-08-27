@@ -228,6 +228,39 @@ window.initPersonPanel = function() {
     });
   };
 
+  window._saveFriendshipGoal = function() {
+    const sel    = document.getElementById('friendship-goal-select');
+    const status = document.getElementById('friendship-goal-status');
+    if (!sel) return;
+    status.textContent = 'Saving…';
+    personAction({ person_id: pid, action: 'update_friendship', friendship_goal: sel.value || null }, () => {
+      status.textContent = 'Saved.';
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    });
+  };
+
+  window._saveInteractionFeel = function(feel, btn) {
+    const status = document.getElementById('feel-status');
+    status.textContent = 'Saving…';
+    personAction({ person_id: pid, action: 'update_friendship', interaction_feel: feel }, () => {
+      status.textContent = 'Saved.';
+      setTimeout(() => { status.textContent = ''; }, 2000);
+      // Update button highlights without reload
+      document.querySelectorAll('[onclick^="window._saveInteractionFeel"]').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = '#888';
+        b.style.border = '1.5px solid #ddd';
+      });
+      const styles = {
+        nourishing: ['#e8f5e9', '#2e7d32', '#2e7d32'],
+        neutral:    ['#e3f2fd', '#1565c0', '#1565c0'],
+        depleting:  ['#fce4ec', '#c62828', '#c62828'],
+      };
+      const s = styles[feel];
+      if (btn && s) { btn.style.background = s[0]; btn.style.color = s[1]; btn.style.border = `1.5px solid ${s[2]}`; }
+    });
+  };
+
   window._archivePerson = function() {
     if (!confirm('Archive this contact? They\'ll still appear under archived contacts.')) return;
     personAction({ person_id: pid, action: 'archive' }, () => loadOverlay('list_people.php'));

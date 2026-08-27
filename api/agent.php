@@ -207,7 +207,50 @@ if ($method === 'GET') {
         ));
         try { $cfg = getConfig() ?? []; } catch (Throwable $e) { $cfg = []; }
         $todayMealPlan = null;
+        $todayEntry = [];
         try { $todayEntry = getDiaryEntry(date('Y-m-d')); $todayMealPlan = $todayEntry['meal_plan'] ?? null; } catch (Throwable $e) {}
+
+        // Fuel signals — raw behavioural indicators for wellbeing assessment
+        $today = date('Y-m-d');
+        $dailyComp = $cfg['daily_completions'] ?? [];
+        $completionsToday = (int)($dailyComp[$today] ?? 0);
+        $completions7d = 0;
+        for ($i = 0; $i < 7; $i++) {
+            $d = date('Y-m-d', strtotime("-{$i} days"));
+            $completions7d += (int)($dailyComp[$d] ?? 0);
+        }
+        $foodLogToday = 0;
+        try {
+            $fl = getFoodLog();
+            $foodLogToday = count($fl['entries'][$today] ?? []);
+        } catch (Throwable $e) {}
+        $danceToday = (int)(($cfg['dance_log'] ?? [])[$today] ?? 0);
+        $anticipationToday = $todayEntry['anticipation'] ?? null;
+        $energyLevel = $context['energy'];
+        $energyLabels = [1 => 'Exhausted', 2 => 'Low', 3 => 'Okay', 4 => 'Good', 5 => 'On fire'];
+
+        // Simple color signal — rough initial thresholds, tunable on real data
+        $colorSignal = null; $colorReason = null;
+        if ($energyLevel !== null) {
+            if ($energyLevel <= 1 && $completions7d <= 3) {
+                $colorSignal = 'red';
+                $colorReason = 'Exhausted energy and very low completions this week. This looks like depression territory — time to name it and choose: force the basics (exercise, shower, food, gratitude) or go to the GP.';
+            } elseif ($energyLevel <= 2 && ($anticipationToday === 'nothing' || $completions7d < 5)) {
+                $colorSignal = 'orange';
+                $reason_parts = [];
+                if ($anticipationToday === 'nothing') $reason_parts[] = 'not looking forward to anything';
+                if ($completions7d < 5) $reason_parts[] = 'fewer than 5 completions this week';
+                $colorReason = 'Low energy with ' . implode(' and ', $reason_parts) . '. Getting depleted.';
+            } elseif ($energyLevel <= 2 || ($foodLogToday === 0 && (int)date('H') >= 13) || $anticipationToday === 'nothing') {
+                $colorSignal = 'yellow';
+                $reason_parts = [];
+                if ($energyLevel <= 2) $reason_parts[] = 'energy is low';
+                if ($foodLogToday === 0 && (int)date('H') >= 13) $reason_parts[] = 'no food logged past 1pm';
+                if ($anticipationToday === 'nothing') $reason_parts[] = 'nothing to look forward to today';
+                $colorReason = ucfirst(implode(', ', $reason_parts)) . '.';
+            }
+        }
+
         json_response([
             'ok'            => true,
             'context'       => $context,
@@ -216,6 +259,17 @@ if ($method === 'GET') {
             'config'        => $cfg,
             'pages'         => (int)($data['pages'] ?? 0),
             'meal_plan_today' => $todayMealPlan,
+            'fuel_signals'  => [
+                'energy_level'       => $energyLevel,
+                'energy_label'       => $energyLevel ? ($energyLabels[$energyLevel] ?? null) : null,
+                'completions_today'  => $completionsToday,
+                'completions_7d'     => $completions7d,
+                'food_log_today'     => $foodLogToday,
+                'dance_today_secs'   => $danceToday,
+                'anticipation_today' => $anticipationToday,
+                'color_signal'       => $colorSignal,
+                'color_reason'       => $colorReason,
+            ],
         ]);
     }
 

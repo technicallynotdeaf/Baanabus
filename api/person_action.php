@@ -17,7 +17,7 @@ $action   = $body['action'] ?? '';
 
 if (!$personId) json_response(['error' => 'Missing person_id'], 400);
 
-$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'edit_note', 'delete_note', 'update_qualities', 'update_interval', 'dismiss_birthday_today'];
+$allowed = ['mark_reviewed', 'snooze', 'archive', 'unarchive', 'add_note', 'edit_note', 'delete_note', 'update_qualities', 'update_interval', 'dismiss_birthday_today', 'update_friendship'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -132,6 +132,20 @@ try {
         $deleted = vaultDeletePeopleNote($noteId);
         if (!$deleted) json_response(['error' => 'Note not found'], 404);
         json_response(['ok' => true, 'note_id' => $noteId]);
+
+    } elseif ($action === 'update_friendship') {
+        $goal  = array_key_exists('friendship_goal', $body) ? $body['friendship_goal'] : false;
+        $feel  = array_key_exists('interaction_feel', $body) ? $body['interaction_feel'] : false;
+        $validGoals = ['occasional_coffee', 'encouragement', 'shared_interest', 'infrequent_meaningful', 'not_sure', '', null];
+        $validFeels = ['nourishing', 'neutral', 'depleting', null];
+        if ($goal !== false && !in_array($goal, $validGoals, true)) json_response(['error' => 'Invalid friendship_goal'], 400);
+        if ($feel !== false && !in_array($feel, $validFeels, true)) json_response(['error' => 'Invalid interaction_feel'], 400);
+        $fields = [];
+        if ($goal !== false) $fields['friendship_goal'] = $goal ?: null;
+        if ($feel !== false) $fields['last_interaction_feel'] = $feel;
+        if (empty($fields)) json_response(['error' => 'Nothing to update'], 400);
+        vaultUpdatePerson($personId, $fields);
+        json_response(['ok' => true]);
     }
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);

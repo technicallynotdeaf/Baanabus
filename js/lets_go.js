@@ -76,6 +76,8 @@ window.initLetsGo = function() {
       case 'quote':          renderQuote(d);         break;
       case 'dance':          renderDance(d);         break;
       case 'tip':            renderTip(d);           break;
+      case 'want_to_capture':    renderWantToCapture(d);    break;
+      case 'want_to_suggestion': renderWantToSuggestion(d); break;
       case 'missing_info':   renderMissingInfo(d);   break;
       case 'onboarding_step': renderOnboarding(d);   break;
       case 'empty':
@@ -2286,6 +2288,78 @@ window.initLetsGo = function() {
     }));
 
     const quoteTimer = setTimeout(advance, 10000);
+  }
+
+  function renderWantToCapture(d) {
+    c.innerHTML = `
+      <p style="font-size:0.72em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Things I enjoy</p>
+      <p style="margin-bottom:0.75rem;">${esc(d.prompt)}</p>
+      <input type="text" id="want-to-input" placeholder="Something good…" maxlength="200"
+             style="width:100%;box-sizing:border-box;margin-bottom:0.6rem;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="action-button" id="btn-want-to-add">Add it</button>
+        <button class="action-button" id="btn-want-to-skip"
+                style="background:transparent;color:#aaa;border:1.5px solid #ddd;">Skip</button>
+      </div>
+      <p id="want-to-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+
+    function submitItem() {
+      const val = document.getElementById('want-to-input').value.trim();
+      if (!val) { document.getElementById('want-to-status').textContent = 'Type something first.'; return; }
+      document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = true);
+      fetch('api/want_to.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({action: 'add', text: val}),
+      }).then(r => r.json()).then(() => {
+        document.getElementById('want-to-status').textContent = 'Added.';
+        setTimeout(() => loadSpeechBubble('lets-go.php'), 500);
+      }).catch(() => {
+        document.getElementById('want-to-status').textContent = 'Could not save — try again.';
+        document.querySelectorAll('#activity-container .action-button').forEach(b => b.disabled = false);
+      });
+    }
+
+    document.getElementById('btn-want-to-add').addEventListener('click', submitItem);
+    document.getElementById('btn-want-to-skip').addEventListener('click', () => loadSpeechBubble('lets-go.php'));
+    document.getElementById('want-to-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitItem(); });
+  }
+
+  function renderWantToSuggestion(d) {
+    const itemBtns = d.items.map(i =>
+      `<button class="action-button" data-id="${i.id}"
+               style="text-align:left;padding:8px 12px;font-size:0.92em;line-height:1.4;width:100%;"
+               onclick="window._wantToChosen(${i.id})">${esc(i.text)}</button>`
+    ).join('');
+    c.innerHTML = `
+      <p style="font-size:0.72em;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">How about one of these?</p>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:0.75rem;">${itemBtns}</div>
+      <button class="action-button" id="btn-want-to-none"
+              style="background:transparent;color:#aaa;border:1.5px solid #ddd;font-size:0.85em;">
+        None of these appeal right now
+      </button>
+      <p id="want-to-none-status" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>`;
+
+    window._wantToChosen = function(id) {
+      fetch('api/want_to.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({action: 'mark_offered', id}),
+      }).catch(() => {});
+      loadSpeechBubble('lets-go.php');
+    };
+
+    document.getElementById('btn-want-to-none').addEventListener('click', function() {
+      this.disabled = true;
+      fetch('api/want_to.php', {
+        method:  'POST',
+        headers: {'Content-Type': 'application/json'},
+        body:    JSON.stringify({action: 'none'}),
+      }).then(() => {
+        document.getElementById('want-to-none-status').textContent = "That\'s okay. Keep going.";
+        setTimeout(() => loadSpeechBubble('lets-go.php'), 1200);
+      }).catch(() => loadSpeechBubble('lets-go.php'));
+    });
   }
 
   function renderMissingInfo(d) {

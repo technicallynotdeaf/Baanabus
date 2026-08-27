@@ -1154,6 +1154,57 @@ function addQuote(string $text): array {
     return $item;
 }
 
+// ---------- Want-to vault ----------
+// A list of pleasant activities captured when Alison is well, surfaced when depleted.
+// Anhedonia signal: rate of "none of these appeal" taps, stored in diary.enc per day.
+
+function wantToPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/want_to.enc";
+}
+
+function getWantTo(): array {
+    $path = wantToPath();
+    if (!is_file($path)) return ['next_id' => 1, 'items' => []];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('WantTo: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('WantTo decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'items' => []];
+}
+
+function saveWantTo(array $data): void {
+    $path = wantToPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX);
+    @chmod($path, 0600);
+}
+
+function addWantToItem(string $text): int {
+    $data            = getWantTo();
+    $id              = (int)($data['next_id'] ?? 1);
+    $data['items'][] = ['id' => $id, 'text' => $text, 'added' => date('Y-m-d'), 'last_offered' => null, 'skips' => 0];
+    $data['next_id'] = $id + 1;
+    saveWantTo($data);
+    return $id;
+}
+
 // ---------- People vault ----------
 
 function peoplePath(): string {

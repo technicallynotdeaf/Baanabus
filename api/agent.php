@@ -226,22 +226,31 @@ if ($method === 'GET') {
         } catch (Throwable $e) {}
         $danceToday = (int)(($cfg['dance_log'] ?? [])[$today] ?? 0);
         $anticipationToday = $todayEntry['anticipation'] ?? null;
+        $wantToNones7d = 0;
+        try {
+            $diary = getDiary();
+            for ($i = 0; $i < 7; $i++) {
+                $d = date('Y-m-d', strtotime("-{$i} days"));
+                $wantToNones7d += (int)(($diary[$d]['want_to_nones'] ?? 0));
+            }
+        } catch (Throwable $e) {}
         $energyLevel = $context['energy'];
         $energyLabels = [1 => 'Exhausted', 2 => 'Low', 3 => 'Okay', 4 => 'Good', 5 => 'On fire'];
 
         // Simple color signal — rough initial thresholds, tunable on real data
         $colorSignal = null; $colorReason = null;
-        if ($energyLevel !== null) {
-            if ($energyLevel <= 1 && $completions7d <= 3) {
+        if ($energyLevel !== null || $wantToNones7d >= 3) {
+            if ($energyLevel !== null && $energyLevel <= 1 && $completions7d <= 3) {
                 $colorSignal = 'red';
                 $colorReason = 'Exhausted energy and very low completions this week. This looks like depression territory — time to name it and choose: force the basics (exercise, shower, food, gratitude) or go to the GP.';
-            } elseif ($energyLevel <= 2 && ($anticipationToday === 'nothing' || $completions7d < 5)) {
+            } elseif ($wantToNones7d >= 3 || ($energyLevel !== null && $energyLevel <= 2 && ($anticipationToday === 'nothing' || $completions7d < 5))) {
                 $colorSignal = 'orange';
                 $reason_parts = [];
                 if ($anticipationToday === 'nothing') $reason_parts[] = 'not looking forward to anything';
                 if ($completions7d < 5) $reason_parts[] = 'fewer than 5 completions this week';
+                if ($wantToNones7d >= 3) $reason_parts[] = 'found nothing appealing 3+ times this week';
                 $colorReason = 'Low energy with ' . implode(' and ', $reason_parts) . '. Getting depleted.';
-            } elseif ($energyLevel <= 2 || ($foodLogToday === 0 && (int)date('H') >= 13) || $anticipationToday === 'nothing') {
+            } elseif ($energyLevel !== null && ($energyLevel <= 2 || ($foodLogToday === 0 && (int)date('H') >= 13) || $anticipationToday === 'nothing')) {
                 $colorSignal = 'yellow';
                 $reason_parts = [];
                 if ($energyLevel <= 2) $reason_parts[] = 'energy is low';
@@ -266,11 +275,17 @@ if ($method === 'GET') {
                 'completions_7d'     => $completions7d,
                 'food_log_today'     => $foodLogToday,
                 'dance_today_secs'   => $danceToday,
-                'anticipation_today' => $anticipationToday,
+                'anticipation_today'  => $anticipationToday,
+                'want_to_nones_7d'   => $wantToNones7d,
                 'color_signal'       => $colorSignal,
                 'color_reason'       => $colorReason,
             ],
         ]);
+    }
+
+    if ($view === 'want_to') {
+        try { $wt = getWantTo(); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'items' => $wt['items'] ?? []]);
     }
 
     if ($view === 'food_log') {
@@ -1103,6 +1118,24 @@ if ($method === 'POST') {
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }
+    }
+
+    if ($action === 'add_want_to') {
+        $text = mb_substr(trim($body['text'] ?? ''), 0, 200);
+        if (!$text) json_response(['error' => 'text required'], 400);
+        try { $id = addWantToItem($text); } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true, 'id' => $id]);
+    }
+
+    if ($action === 'remove_want_to') {
+        $id = (int)($body['id'] ?? 0);
+        if (!$id) json_response(['error' => 'id required'], 400);
+        try {
+            $wt = getWantTo();
+            $wt['items'] = array_values(array_filter($wt['items'], fn($i) => (int)$i['id'] !== $id));
+            saveWantTo($wt);
+        } catch (Throwable $e) { json_response(['error' => $e->getMessage()], 500); }
+        json_response(['ok' => true]);
     }
 
     if ($action === 'add_quote') {

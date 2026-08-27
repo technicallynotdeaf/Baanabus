@@ -522,6 +522,16 @@ try {
     }
 } catch (Throwable $e) {}
 
+$hasWantToCapture    = false;
+$hasWantToSuggestion = false;
+try {
+    $wantToData = getWantTo();
+    // Capture: fire on good days (energy >= 4); multiple items welcome, no daily cap
+    if ($energy >= 4) $hasWantToCapture = true;
+    // Suggestion: fire when energy is low and the list has items to offer
+    $hasWantToSuggestion = $energy <= 2 && !empty($wantToData['items']);
+} catch (Throwable $e) {}
+
 $hasPersonReview = false;
 try {
     $peopleData = getPeople();
@@ -587,6 +597,8 @@ $pool = array_merge(
     array_fill(0, 1,                                   'joke'),
     array_fill(0, 1,                                   'nutrition'),
     array_fill(0, 1,                                   'bible_verse'),
+    array_fill(0, $hasWantToCapture    ? 1 : 0, 'want_to_capture'),
+    array_fill(0, $hasWantToSuggestion ? 2 : 0, 'want_to_suggestion'),
     array_fill(0, $hasPersonReview ? 1 : 0,            'person_review'),
     array_fill(0, $hasEventPrebrief ? 1 : 0,           'event_prebrief'),
     array_fill(0, $hasEventDebrief  ? 1 : 0,           'event_debrief'),
@@ -655,6 +667,14 @@ if ($choice === 'other_daily') {
 if ($choice === 'house_task') {
     $ht = pick_house_task();
     if ($ht) json_response($ht);
+    json_response(pick_fun_task());
+}
+if ($choice === 'want_to_capture') {
+    json_response(pick_want_to_capture());
+}
+if ($choice === 'want_to_suggestion') {
+    $ws = pick_want_to_suggestion();
+    if ($ws) json_response($ws);
     json_response(pick_fun_task());
 }
 if ($choice === 'person_review') {
@@ -1059,6 +1079,29 @@ function pick_tip(): ?array {
     } catch (Throwable $e) {
         return null;
     }
+}
+
+function pick_want_to_capture(): array {
+    $prompts = [
+        "What's something good from today, or something you'd enjoy doing soon?",
+        "What's been enjoyable lately?",
+        "Anything you're looking forward to doing, even something small?",
+        "What's something that sounds good to you right now?",
+    ];
+    return ['type' => 'want_to_capture', 'prompt' => $prompts[array_rand($prompts)]];
+}
+
+function pick_want_to_suggestion(): ?array {
+    $data  = getWantTo();
+    $items = $data['items'] ?? [];
+    if (empty($items)) return null;
+    // Prefer least-recently-offered items
+    usort($items, fn($a, $b) => strcmp($a['last_offered'] ?? '', $b['last_offered'] ?? ''));
+    $picks = array_slice($items, 0, min(3, count($items)));
+    return [
+        'type'  => 'want_to_suggestion',
+        'items' => array_map(fn($i) => ['id' => (int)$i['id'], 'text' => $i['text']], $picks),
+    ];
 }
 
 function pick_quote(): ?array {

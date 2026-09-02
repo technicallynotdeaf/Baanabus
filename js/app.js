@@ -320,6 +320,13 @@ function setupOverlayListeners() {
         });
   }
 
+  const events_link = document.getElementById('events-link');
+  if (events_link) {
+    events_link.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadOverlay('api/events.php');
+        });
+  }
 
   const food_log_link = document.getElementById('food-log-link');
   if (food_log_link) {

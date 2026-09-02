@@ -895,6 +895,11 @@ function pick_person_review(): ?array {
         $active = array_values(array_filter($data['people'], fn($p) => !personIsArchived($p)));
         if (empty($active)) return null;
 
+        // Exclude people with birthdays today — birthdays are not visits
+        $birthdaysToday = array_column(getUpcomingBirthdays(0), 'person_id');
+        $active = array_values(array_filter($active, fn($p) => !in_array((int)$p['person_id'], $birthdaysToday, true)));
+        if (empty($active)) return null;
+
         // Prefer overdue or never-reviewed
         $due = array_values(array_filter($active, fn($p) => empty($p['next_review']) || $p['next_review'] <= $today));
         if (!empty($due)) {

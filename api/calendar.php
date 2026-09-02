@@ -44,7 +44,27 @@ try {
     $birthdays = [];
     try { $birthdays = getBirthdaysInMonth($month); } catch (Throwable $e) {}
 
-    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks, 'birthdays' => $birthdays]);
+    $events = [];
+    try {
+        $eventsData = getEvents();
+        $events = array_values(array_filter($eventsData['events'] ?? [], fn($e) =>
+            !empty($e['date']) && str_starts_with($e['date'], $month)
+        ));
+        $events = array_map(fn($e) => [
+            'id'           => (int)$e['id'],
+            'title'        => $e['title'],
+            'date'         => $e['date'],
+            'time_start'   => $e['time_start'] ?? null,
+            'time_end'     => $e['time_end'] ?? null,
+            'recurring'    => $e['recurring'] ?? null,
+            'people_ids'   => is_array($e['people_ids'] ?? null) ? $e['people_ids'] : [],
+            'task_ids'     => is_array($e['task_ids'] ?? null) ? $e['task_ids'] : [],
+            'prebriefed'   => !empty($e['prebriefed']),
+            'debriefed'    => !empty($e['debriefed']),
+        ], $events);
+    } catch (Throwable $e) {}
+
+    json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks, 'birthdays' => $birthdays, 'events' => $events]);
 } catch (Throwable $e) {
     json_response(['error' => $e->getMessage()], 500);
 }

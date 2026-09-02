@@ -48,6 +48,13 @@ try {
     $dayBirthdays   = array_values(array_filter($monthBirthdays, fn($b) => $b['date'] === $date));
 } catch (Throwable $e) {}
 
+$dayEvents = [];
+try {
+    $eventsData = getEvents();
+    $dayEvents = array_values(array_filter($eventsData['events'] ?? [], fn($e) => ($e['date'] ?? '') === $date));
+    usort($dayEvents, fn($a, $b) => strcmp($a['time_start'] ?? '00:00', $b['time_start'] ?? '00:00'));
+} catch (Throwable $e) {}
+
 $mealPlan      = [];
 $diaryDayType  = null;
 try {
@@ -87,6 +94,46 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
   ?>
     <div style="background:#fdf2e6;border-left:3px solid #e0a458;border-radius:6px;padding:0.5rem 0.85rem;margin-bottom:1rem;font-size:0.9em;">
       🎂 <?= htmlspecialchars($bText) ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($dayEvents):
+    $people = getPeople()['people'] ?? [];
+    $peopleIndex = [];
+    foreach ($people as $p) $peopleIndex[(int)$p['person_id']] = $p;
+  ?>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.78em;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Events</div>
+      <?php foreach ($dayEvents as $e): ?>
+        <div style="background:#e8f4f8;border-left:3px solid #0066cc;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:0.5rem;font-size:0.9em;">
+          <div style="font-weight:600;margin-bottom:0.3rem;"><?= htmlspecialchars($e['title'] ?? '') ?></div>
+          <?php if (!empty($e['time_start'])): ?>
+            <div style="font-size:0.8em;color:#666;margin-bottom:0.3rem;">
+              ⏰ <?= htmlspecialchars($e['time_start']) ?>
+              <?php if (!empty($e['time_end'])): ?>
+                –<?= htmlspecialchars($e['time_end']) ?>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
+          <?php if (!empty($e['people_ids'])): ?>
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:0.3rem;">
+              <?php foreach ((array)$e['people_ids'] as $pid):
+                $p = $peopleIndex[$pid] ?? null;
+                if ($p):
+              ?>
+                <span style="font-size:0.75em;background:#d4e8ff;color:#0066cc;padding:2px 6px;border-radius:3px;">
+                  <?= htmlspecialchars($p['name'] ?? '') ?>
+                </span>
+              <?php endif; endforeach; ?>
+            </div>
+          <?php endif; ?>
+          <?php if (!empty($e['notes'])): ?>
+            <div style="font-size:0.8em;color:#555;margin-top:0.3rem;">
+              <?= htmlspecialchars($e['notes']) ?>
+            </div>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
     </div>
   <?php endif; ?>
   <div id="day-type-picker" data-date="<?= $date ?>" style="display:none;margin-bottom:0.75rem;">

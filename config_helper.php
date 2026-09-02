@@ -2849,3 +2849,86 @@ function pickUnstuckTechnique(): ?array {
     return $pool[array_rand($pool)];
 }
 
+// ---- Events vault ----
+
+function eventsPath(): string {
+    sess();
+    $uid = preg_replace('/[^A-Za-z0-9_\-]/', '_', $_SESSION['user_id'] ?? 'default');
+    return __DIR__ . "/config/$uid/events.enc";
+}
+
+function getEvents(): array {
+    $path = eventsPath();
+    if (!is_file($path)) return ['next_id' => 1, 'events' => []];
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $blob  = json_decode(file_get_contents($path), true);
+    $nonce = base64_decode($blob['nonce'] ?? '');
+    $ct    = base64_decode($blob['ct']    ?? '');
+    if (!$nonce || !$ct) throw new Exception('Events: corrupt file');
+    $plain = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt($ct, '', $nonce, $dek);
+    if ($plain === false) throw new Exception('Events decrypt failed');
+    return json_decode($plain, true) ?? ['next_id' => 1, 'events' => []];
+}
+
+function saveEvents(array $data): void {
+    $path = eventsPath();
+    if (empty($_SESSION['DEK'])) throw new Exception('Vault locked');
+    if (!extension_loaded('sodium')) throw new Exception('libsodium missing');
+    $dek   = base64_decode(strtr($_SESSION['DEK'], '-_', '+/'));
+    $nonce = random_bytes(SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES);
+    $ct    = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+        json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        '', $nonce, $dek
+    );
+    @mkdir(dirname($path), 0700, true);
+    if (file_put_contents($path, json_encode([
+        'nonce' => base64_encode($nonce),
+        'ct'    => base64_encode($ct),
+    ], JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+        throw new Exception('Failed to write events.enc');
+    }
+    @chmod($path, 0600);
+}
+
+function vaultAddEvent(array $fields): int {
+    $data = getEvents();
+    $id = $data['next_id']++;
+    $event = array_merge(
+        ['id' => $id, 'created_at' => date('c')],
+        array_intersect_key($fields, array_flip([
+            'title', 'date', 'time_start', 'time_end', 'recurring',
+            'people_ids', 'task_ids', 'prereq_tasks', 'prebriefed',
+            'debriefed', 'notes'
+        ]))
+    );
+    $data['events'][] = $event;
+    saveEvents($data);
+    return $id;
+}
+
+function vaultUpdateEvent(int $eventId, array $fields): bool {
+    $data = getEvents();
+    foreach ($data['events'] as &$e) {
+        if ((int)$e['id'] === $eventId) {
+            foreach (array_intersect_key($fields, array_flip([
+                'title', 'date', 'time_start', 'time_end', 'recurring',
+                'people_ids', 'task_ids', 'prereq_tasks', 'prebriefed',
+                'debriefed', 'notes'
+            ])) as $k => $v) {
+                $e[$k] = $v;
+            }
+            saveEvents($data);
+            return true;
+        }
+    }
+    return false;
+}
+
+function vaultDeleteEvent(int $eventId): bool {
+    $data = getEvents();
+    $data['events'] = array_values(array_filter($data['events'], fn($e) => (int)$e['id'] !== $eventId));
+    saveEvents($data);
+    return true;
+}
+

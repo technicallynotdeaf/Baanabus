@@ -21,6 +21,7 @@
  * GET ?view=food_packs&food_id=N → pack-size/cost entries for a food (all stores)
  * GET ?view=food_pack_gaps&limit=N → foods with zero recorded pack-size entries (prompt queue)
  * GET ?view=food_pack_stale&days=90&limit=N → pack entries not confirmed in `days`, oldest first (recheck queue)
+ * GET ?view=events              → all calendar events (title, date, time, people_ids, task_ids, etc.)
  *
  * POST {"action":"update_task","task_id":N,"fields":{...}}
  *      → update urgency / snoozed_until / deadline / context / task_type / energy / time / status / parent_id / goal_id
@@ -99,6 +100,17 @@
  *
  * POST {"action":"delete_food_pack","pack_id":N}
  *      → remove a pack-size entry
+ *
+ * POST {"action":"add_event","title":"...","date":"YYYY-MM-DD","fields":{...}}
+ *      → add a calendar event; fields can include time_start, time_end, recurring,
+ *        people_ids, task_ids, prereq_tasks, prebriefed, debriefed, notes
+ *
+ * POST {"action":"update_event","event_id":N,"fields":{...}}
+ *      → update event fields (title, date, time_start, time_end, recurring,
+ *        people_ids, task_ids, prereq_tasks, prebriefed, debriefed, notes)
+ *
+ * POST {"action":"delete_event","event_id":N}
+ *      → delete a calendar event
  */
 require_once __DIR__ . '/../init.php';
 require_once __DIR__ . '/../config_helper.php';
@@ -475,6 +487,30 @@ if ($method === 'GET') {
                 'title'  => $t['text']  ?? null,
                 'notes'  => $t['notes'] ?? null,
             ], $dailies)]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($view === 'events') {
+        try {
+            $data = getEvents();
+            $eventMap = fn($e) => [
+                'id'           => (int)$e['id'],
+                'title'        => $e['title']        ?? null,
+                'date'         => $e['date']         ?? null,
+                'time_start'   => $e['time_start']   ?? null,
+                'time_end'     => $e['time_end']     ?? null,
+                'recurring'    => $e['recurring']    ?? null,
+                'people_ids'   => is_array($e['people_ids'] ?? null) ? $e['people_ids'] : [],
+                'task_ids'     => is_array($e['task_ids'] ?? null) ? $e['task_ids'] : [],
+                'prereq_tasks' => is_array($e['prereq_tasks'] ?? null) ? $e['prereq_tasks'] : [],
+                'prebriefed'   => !empty($e['prebriefed']),
+                'debriefed'    => !empty($e['debriefed']),
+                'notes'        => $e['notes']        ?? null,
+                'created_at'   => $e['created_at']   ?? null,
+            ];
+            json_response(['ok' => true, 'events' => array_map($eventMap, $data['events'] ?? [])]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }
@@ -2097,6 +2133,51 @@ if ($method === 'POST') {
             if ((int)$stmt->fetchColumn() === 0) json_response(['error' => 'Unknown study set'], 400);
             toggleActiveStudySet($setName, $active);
             json_response(['ok' => true, 'set_name' => $setName, 'active' => $active, 'study_active_sets' => getActiveStudySets()]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'add_event') {
+        $title = trim($body['title'] ?? '');
+        $date  = trim($body['date'] ?? '');
+        if (!$title || !$date) json_response(['error' => 'Missing title or date'], 400);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) json_response(['error' => 'Invalid date format (YYYY-MM-DD)'], 400);
+        try {
+            $fields = array_intersect_key($body['fields'] ?? [], array_flip([
+                'time_start', 'time_end', 'recurring', 'people_ids', 'task_ids',
+                'prereq_tasks', 'prebriefed', 'debriefed', 'notes'
+            ]));
+            $fields['title'] = $title;
+            $fields['date'] = $date;
+            $eventId = vaultAddEvent($fields);
+            json_response(['ok' => true, 'event_id' => $eventId]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'update_event') {
+        $eventId = (int)($body['event_id'] ?? 0);
+        if (!$eventId) json_response(['error' => 'Missing event_id'], 400);
+        try {
+            $fields = $body['fields'] ?? [];
+            if (isset($fields['date']) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fields['date'])) {
+                json_response(['error' => 'Invalid date format (YYYY-MM-DD)'], 400);
+            }
+            if (!vaultUpdateEvent($eventId, $fields)) json_response(['error' => 'Event not found'], 404);
+            json_response(['ok' => true, 'event_id' => $eventId]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    if ($action === 'delete_event') {
+        $eventId = (int)($body['event_id'] ?? 0);
+        if (!$eventId) json_response(['error' => 'Missing event_id'], 400);
+        try {
+            vaultDeleteEvent($eventId);
+            json_response(['ok' => true, 'event_id' => $eventId]);
         } catch (Throwable $e) {
             json_response(['error' => $e->getMessage()], 500);
         }

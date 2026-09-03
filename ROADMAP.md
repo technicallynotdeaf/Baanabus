@@ -50,6 +50,20 @@ The two main data views.
 - [ ] Pre-visit reminder: before you see someone, surface what you were going to do for them / ask them. Could be a speech bubble activity type ("You're seeing Jordan soon — here's what you had noted") or a manual trigger from the person panel.
 - [ ] Inbox triage: full GTD flow lives in speech bubble (lets-go.php); may want a standalone triage overlay too
 
+## M2.1 — Calendar Events ✅
+
+Link people, tasks, and time blocks to calendar events. Solve the birthday false-positive bug (birthdays ≠ visits).
+
+- ✅ **Vault store** (`events.enc`): events with fields title, date, time_start/end, recurring (weekly/monthly/yearly), people_ids, task_ids, prereq_tasks, prebriefed, debriefed, notes
+- ✅ **Agent API**: GET ?view=events; POST add_event/update_event/delete_event
+- ✅ **Events overlay** (📍 button): browse events, add/delete forms, display linked people + tasks
+- ✅ **Calendar integration**: events appear in `api/calendar.php` response; rendered in day view with times, people tags, notes
+- ✅ **Birthday false-positive fix** (2026-09-03): `pick_person_review()` now excludes people with birthdays today via `getUpcomingBirthdays(0)` filter — prevents "you saw Laura yesterday" message when it was just her birthday
+- [ ] People/task multi-select in add-event form (currently accepts empty arrays)
+- [ ] Inline edit for existing events; pre/debrief toggles
+- [ ] Pre-event reminder activity: "Church is Sunday — you might see Laura & James; here's what you wanted to ask"
+- [ ] Google Calendar integration (research done; ready to implement)
+
 ---
 
 ## M2.5 — Trivia & Minigame Quality

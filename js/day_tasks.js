@@ -251,4 +251,31 @@ window.initDayTasks = function() {
       .catch(() => picker.querySelectorAll('button').forEach(b => b.disabled = false));
     });
   };
+
+  window._pushToGcal = function(taskId, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    fetch('api/gcal_task_push.php', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({task_id: taskId}),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok || data.already_pushed) {
+        const span = document.createElement('span');
+        span.textContent = 'In Calendar';
+        span.style.cssText = 'font-size:0.75em;color:#00897b;padding:3px 0;';
+        btn.replaceWith(span);
+      } else {
+        btn.disabled    = false;
+        btn.textContent = '+ GCal';
+        alert(data.error || 'Could not push to Google Calendar.');
+      }
+    })
+    .catch(() => {
+      btn.disabled    = false;
+      btn.textContent = '+ GCal';
+    });
+  };
 };

@@ -55,6 +55,18 @@ try {
     usort($dayEvents, fn($a, $b) => strcmp($a['time_start'] ?? '00:00', $b['time_start'] ?? '00:00'));
 } catch (Throwable $e) {}
 
+$gcalDayEvents = [];
+$useGcal = false;
+try {
+    $gcalCfg = getConfig() ?? [];
+    $useGcal = !empty($gcalCfg['preferences']['uses_gcal']);
+    if ($useGcal) {
+        $gcalCache = getGcalCache();
+        $gcalDayEvents = array_values(array_filter($gcalCache['events'] ?? [], fn($e) => ($e['date'] ?? '') === $date));
+        usort($gcalDayEvents, fn($a, $b) => strcmp($a['time_start'] ?? '00:00', $b['time_start'] ?? '00:00'));
+    }
+} catch (Throwable $e) {}
+
 $mealPlan      = [];
 $diaryDayType  = null;
 try {
@@ -109,7 +121,7 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
           <div style="font-weight:600;margin-bottom:0.3rem;"><?= htmlspecialchars($e['title'] ?? '') ?></div>
           <?php if (!empty($e['time_start'])): ?>
             <div style="font-size:0.8em;color:#666;margin-bottom:0.3rem;">
-              ⏰ <?= htmlspecialchars($e['time_start']) ?>
+              <?= htmlspecialchars($e['time_start']) ?>
               <?php if (!empty($e['time_end'])): ?>
                 –<?= htmlspecialchars($e['time_end']) ?>
               <?php endif; ?>
@@ -130,6 +142,35 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
           <?php if (!empty($e['notes'])): ?>
             <div style="font-size:0.8em;color:#555;margin-top:0.3rem;">
               <?= htmlspecialchars($e['notes']) ?>
+            </div>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($gcalDayEvents): ?>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.78em;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">
+        Google Calendar
+      </div>
+      <?php foreach ($gcalDayEvents as $e): ?>
+        <div style="background:#e8f5f3;border-left:3px solid #00897b;border-radius:6px;padding:0.6rem 0.85rem;margin-bottom:0.5rem;font-size:0.9em;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.2rem;">
+            <span style="font-weight:600;"><?= htmlspecialchars($e['title'] ?? '') ?></span>
+            <span style="font-size:0.7em;background:#00897b;color:#fff;padding:1px 5px;border-radius:3px;">GCal</span>
+          </div>
+          <?php if (!empty($e['time_start'])): ?>
+            <div style="font-size:0.8em;color:#666;">
+              <?= htmlspecialchars($e['time_start']) ?>
+              <?php if (!empty($e['time_end'])): ?>
+                –<?= htmlspecialchars($e['time_end']) ?>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
+          <?php if (!empty($e['description'])): ?>
+            <div style="font-size:0.8em;color:#555;margin-top:0.3rem;">
+              <?= htmlspecialchars(mb_substr($e['description'], 0, 150)) ?>
             </div>
           <?php endif; ?>
         </div>
@@ -193,6 +234,12 @@ $btnStyle = 'font-size:0.75em;padding:3px 8px;min-height:28px;background:transpa
             <?php if (!$isPast && !$isWoke): ?>
               <button style="<?= $btnStyle ?>color:#c06060;border-color:#e8cccc;"
                       onclick="window._removeFromDay(<?= $id ?>, '<?= $date ?>')">Remove</button>
+            <?php endif; ?>
+            <?php if ($useGcal && empty($t['gcal_event_id'])): ?>
+              <button style="<?= $btnStyle ?>color:#00897b;border-color:#b2dfdb;"
+                      onclick="window._pushToGcal(<?= $id ?>, this)">+ GCal</button>
+            <?php elseif ($useGcal && !empty($t['gcal_event_id'])): ?>
+              <span style="font-size:0.75em;color:#00897b;padding:3px 0;">In Calendar</span>
             <?php endif; ?>
           </div>
         </li>

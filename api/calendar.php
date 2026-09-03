@@ -47,7 +47,7 @@ try {
     $events = [];
     try {
         $eventsData = getEvents();
-        $events = array_values(array_filter($eventsData['events'] ?? [], fn($e) =>
+        $vaultEvents = array_values(array_filter($eventsData['events'] ?? [], fn($e) =>
             !empty($e['date']) && str_starts_with($e['date'], $month)
         ));
         $events = array_map(fn($e) => [
@@ -61,7 +61,26 @@ try {
             'task_ids'     => is_array($e['task_ids'] ?? null) ? $e['task_ids'] : [],
             'prebriefed'   => !empty($e['prebriefed']),
             'debriefed'    => !empty($e['debriefed']),
-        ], $events);
+            'source'       => 'vault',
+        ], $vaultEvents);
+    } catch (Throwable $e) {}
+
+    // Merge in Google Calendar events from cache (if connected)
+    try {
+        $gcalCache  = getGcalCache();
+        $gcalEvents = array_values(array_filter($gcalCache['events'] ?? [], fn($e) =>
+            !empty($e['date']) && str_starts_with($e['date'], $month)
+        ));
+        foreach ($gcalEvents as $ge) {
+            $events[] = [
+                'gcal_id'    => $ge['gcal_id'],
+                'title'      => $ge['title'],
+                'date'       => $ge['date'],
+                'time_start' => $ge['time_start'] ?? null,
+                'time_end'   => $ge['time_end'] ?? null,
+                'source'     => 'gcal',
+            ];
+        }
     } catch (Throwable $e) {}
 
     json_response(['ok' => true, 'month' => $month, 'tasks' => $tasks, 'birthdays' => $birthdays, 'events' => $events]);

@@ -156,6 +156,8 @@ try {
                 if ($taskForDel) {
                     require_once __DIR__ . '/habitica_helper.php';
                     habiticaDeleteTaskBestEffort($taskForDel);
+                    require_once __DIR__ . '/gcal_helper.php';
+                    gcalDeleteEventBestEffort($taskForDel);
                 }
             } else {
                 json_response(['error' => 'Unknown response'], 400);

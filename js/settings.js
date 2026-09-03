@@ -298,6 +298,82 @@ window.initSettings = function() {
     });
   }
 
+  // ── Account: Google Calendar ──────────────────────────────────────
+  const gcalForm = document.getElementById('gcal-form');
+  if (gcalForm) {
+    gcalForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const statusEl = document.getElementById('gcalStatus');
+      statusEl.textContent = 'Saving…';
+      statusEl.style.color = '';
+      const id  = document.getElementById('gcal-client-id').value.trim();
+      const sec = document.getElementById('gcal-client-secret').value.trim();
+      if (!id) { statusEl.textContent = 'Client ID required.'; return; }
+      const payload = { google: { client_id: id } };
+      if (sec) payload.google.client_secret = sec;
+      try {
+        const resp   = await fetch('api/integrations.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        if (result.ok) { statusEl.textContent = 'Saved — now click Connect Google Calendar.'; }
+        else { throw new Error(result.error || 'Save failed'); }
+      } catch(e) {
+        statusEl.textContent = e.message;
+        statusEl.style.color = 'crimson';
+      }
+    });
+  }
+
+  const btnShowCreds = document.getElementById('btn-gcal-show-creds');
+  if (btnShowCreds) {
+    btnShowCreds.addEventListener('click', () => {
+      const f = document.getElementById('gcal-form');
+      if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+
+  const btnGcalSync = document.getElementById('btn-gcal-sync');
+  if (btnGcalSync) {
+    btnGcalSync.addEventListener('click', async () => {
+      const statusEl = document.getElementById('gcalSyncStatus');
+      statusEl.textContent = 'Syncing…';
+      statusEl.style.color = '';
+      btnGcalSync.disabled = true;
+      try {
+        const resp   = await fetch('api/gcal_sync.php?force=1');
+        const result = await resp.json();
+        if (result.ok) {
+          statusEl.textContent = `Synced ${result.count} event${result.count === 1 ? '' : 's'}.`;
+        } else if (result.already_ran) {
+          statusEl.textContent = 'Already synced today.';
+        } else {
+          throw new Error(result.error || 'Sync failed');
+        }
+      } catch(e) {
+        statusEl.textContent = e.message;
+        statusEl.style.color = 'crimson';
+      } finally {
+        btnGcalSync.disabled = false;
+      }
+    });
+  }
+
+  const btnGcalDisconnect = document.getElementById('btn-gcal-disconnect');
+  if (btnGcalDisconnect) {
+    btnGcalDisconnect.addEventListener('click', async () => {
+      if (!confirm('Disconnect Google Calendar? Your cached events will be cleared.')) return;
+      try {
+        const resp   = await fetch('api/gcal_disconnect.php', { method: 'POST' });
+        const result = await resp.json();
+        if (result.ok) { loadOverlay('api/settings.php?tab=account'); }
+        else { alert(result.error || 'Disconnect failed'); }
+      } catch(e) { alert(e.message); }
+    });
+  }
+
   // ── Account: CSV probe ─────────────────────────────────────────────
   const csvForm = document.getElementById('csv-probe-form');
   if (csvForm) {

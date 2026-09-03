@@ -509,6 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .catch(() => habPill.remove());
 
+    // Google Calendar sync — fire-and-forget, once per day (daily guard in gcal_sync.php).
+    fetch('api/gcal_sync.php').catch(() => {});
+
     // Keep-alive ping — refreshes the session's mtime so a tab left open
     // through a longer task (or backgrounded on mobile) doesn't come back to
     // a dead session. Fires on an interval and again whenever the tab

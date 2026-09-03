@@ -21,6 +21,14 @@ $habiticaKey  = $cassowary['habitica']['api_key']  ?? '';
 $pipeKey      = $cassowary['pipe']['api_key']      ?? '';
 $pipeKeyMsk   = $pipeKey ? '••••' . substr($pipeKey, -4) : '';
 $pipeUrl      = $cassowary['pipe']['api_url']      ?? '';
+$googleClientId      = $cassowary['google']['client_id']     ?? '';
+$googleClientSecret  = $cassowary['google']['client_secret'] ?? '';
+$googleConnected     = !empty($cassowary['google']['refresh_token']);
+$googleConfigured    = !empty($googleClientId) && !empty($googleClientSecret);
+$gcalLastSync = null;
+if ($vaultOpen && $googleConnected) {
+    try { $gcalLastSync = (getGcalCache())['synced_at'] ?? null; } catch (Throwable $e) {}
+}
 $checkinOn      = $cfg['checkin_enabled'] ?? true;
 $weeklySchedule = $cfg['weekly_schedule'] ?? [];
 
@@ -286,6 +294,62 @@ if ($database) {
           <button type="submit" class="btn" style="margin-top:0.75rem;">Save</button>
           <p id="pipeStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
         </form>
+      <?php else: ?>
+        <p class="muted">Vault locked.</p>
+      <?php endif; ?>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.5rem;">Google Calendar</h3>
+      <?php if ($vaultOpen): ?>
+        <?php if ($googleConnected): ?>
+          <!-- Phase 3: connected -->
+          <p style="font-size:0.88em;margin-bottom:0.75rem;">
+            <span style="display:inline-block;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:3px;font-size:0.9em;margin-right:6px;">Connected</span>
+            <?php if ($gcalLastSync): ?>
+              Last synced: <?= htmlspecialchars(date('j M g:ia', strtotime($gcalLastSync))) ?>
+            <?php endif; ?>
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" id="btn-gcal-sync" style="font-size:0.88em;">Sync now</button>
+            <button class="btn" id="btn-gcal-disconnect" style="font-size:0.88em;background:transparent;color:#c0392b;border:1px solid #e0b0b0;">Disconnect</button>
+          </div>
+          <p id="gcalSyncStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;font-size:0.85em;"></p>
+        <?php elseif ($googleConfigured): ?>
+          <!-- Phase 2: credentials saved, not yet authorized -->
+          <p class="muted" style="font-size:0.88em;margin-bottom:0.75rem;">
+            Client ID saved. Click below to authorize Baanabus to access your Google Calendar.
+          </p>
+          <a href="gcal_oauth.php" class="btn" style="display:inline-block;text-decoration:none;font-size:0.88em;">Connect Google Calendar</a>
+          <p class="muted" style="margin-top:0.75rem;font-size:0.8em;">
+            Wrong credentials? <button id="btn-gcal-show-creds" style="background:none;border:none;color:#888;text-decoration:underline;cursor:pointer;font-size:1em;padding:0;">Update them</button>
+          </p>
+          <form id="gcal-form" style="display:none;margin-top:0.75rem;">
+            <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.3rem;">Client ID</label>
+            <input type="text" id="gcal-client-id" value="<?= htmlspecialchars($googleClientId) ?>" autocomplete="off">
+            <label style="display:block;font-size:0.88em;color:#555;margin:0.6rem 0 0.3rem;">Client Secret</label>
+            <input type="password" id="gcal-client-secret" placeholder="(hidden)" autocomplete="new-password">
+            <button type="submit" class="btn" style="margin-top:0.75rem;font-size:0.88em;">Save</button>
+            <p id="gcalStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+          </form>
+        <?php else: ?>
+          <!-- Phase 1: no credentials yet -->
+          <p class="muted" style="font-size:0.88em;margin-bottom:0.75rem;">
+            Sync events from Google Calendar into your Baanabus calendar view, and push scheduled tasks to Google Calendar as reminders.
+          </p>
+          <p class="muted" style="font-size:0.82em;margin-bottom:0.75rem;">
+            You need a Google Cloud project with Calendar API enabled and an OAuth 2.0 Web Client ID.
+            Add <code>https://baanabus.app/api/gcal_oauth_callback.php</code> as an authorized redirect URI.
+          </p>
+          <form id="gcal-form">
+            <label style="display:block;font-size:0.88em;color:#555;margin-bottom:0.3rem;">Client ID</label>
+            <input type="text" id="gcal-client-id" placeholder="…apps.googleusercontent.com" autocomplete="off">
+            <label style="display:block;font-size:0.88em;color:#555;margin:0.6rem 0 0.3rem;">Client Secret</label>
+            <input type="password" id="gcal-client-secret" placeholder="GOCSPX-…" autocomplete="new-password">
+            <button type="submit" class="btn" style="margin-top:0.75rem;font-size:0.88em;">Save credentials</button>
+            <p id="gcalStatus" class="muted" style="margin-top:0.5rem;min-height:1.4em;"></p>
+          </form>
+        <?php endif; ?>
       <?php else: ?>
         <p class="muted">Vault locked.</p>
       <?php endif; ?>

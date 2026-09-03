@@ -10,11 +10,13 @@
   let curYear, curMonth;
   let taskCache     = {};
   let birthdayCache = {};
+  let eventCache    = {};
   let cellBounds = [];
 
   window.calendarInvalidate = function(month) {
     delete taskCache[month];
     delete birthdayCache[month];
+    delete eventCache[month];
     const key = `${curYear}-${String(curMonth).padStart(2,'0')}`;
     if (!month || month === key) loadAndDraw();
   };
@@ -28,7 +30,7 @@
     loadAndDraw();
     window.addEventListener('resize', () => {
       const key = `${curYear}-${String(curMonth).padStart(2,'0')}`;
-      drawCalendar(curYear, curMonth, taskCache[key] || [], birthdayCache[key] || []);
+      drawCalendar(curYear, curMonth, taskCache[key] || [], birthdayCache[key] || [], eventCache[key] || []);
     });
     document.getElementById('cal-prev').addEventListener('click', prevMonth);
     document.getElementById('cal-next').addEventListener('click', nextMonth);
@@ -55,15 +57,17 @@
         const d = await r.json();
         taskCache[key]     = d.tasks || [];
         birthdayCache[key] = d.birthdays || [];
+        eventCache[key]    = d.events || [];
       } catch(e) {
         taskCache[key]     = [];
         birthdayCache[key] = [];
+        eventCache[key]    = [];
       }
     }
-    drawCalendar(curYear, curMonth, taskCache[key], birthdayCache[key] || []);
+    drawCalendar(curYear, curMonth, taskCache[key], birthdayCache[key] || [], eventCache[key] || []);
   }
 
-  function drawCalendar(year, month, tasks, birthdays) {
+  function drawCalendar(year, month, tasks, birthdays, events) {
     const canvas = document.getElementById('calCanvas');
     const ctx    = canvas.getContext('2d');
     canvas.width  = window.innerWidth;
@@ -77,6 +81,17 @@
     tasks.forEach(t => {
       if (!byDate[t.scheduled_date]) byDate[t.scheduled_date] = [];
       if (byDate[t.scheduled_date].length < 3) byDate[t.scheduled_date].push(t);
+    });
+
+    const gcalByDate = {};
+    (events || []).filter(e => e.source === 'gcal').forEach(e => {
+      if (!gcalByDate[e.date]) gcalByDate[e.date] = [];
+      gcalByDate[e.date].push(e);
+    });
+    const vaultEventsByDate = {};
+    (events || []).filter(e => e.source === 'vault').forEach(e => {
+      if (!vaultEventsByDate[e.date]) vaultEventsByDate[e.date] = [];
+      vaultEventsByDate[e.date].push(e);
     });
 
     const birthdaysByDate = {};
@@ -170,6 +185,31 @@
           ctx.arc(dotX0 + i * gap, dotY, dotR, 0, Math.PI * 2);
           ctx.fill();
         });
+        ctx.globalAlpha = 1;
+      }
+
+      // GCal event indicator — small teal dot at bottom-right of cell
+      const dayGcalEvents = gcalByDate[dateStr] || [];
+      if (dayGcalEvents.length > 0) {
+        const dotR2 = Math.max(2, Math.min(4, Math.floor(cellH / 9)));
+        ctx.globalAlpha = isPast ? 0.3 : 0.85;
+        ctx.fillStyle   = '#00897b';
+        ctx.beginPath();
+        ctx.arc(cx + cellW - dotR2 - 4, cy + cellH - dotR2 - 4, dotR2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Vault event indicator — small blue dot at bottom-right (offset left if gcal dot present)
+      const dayVaultEvents = vaultEventsByDate[dateStr] || [];
+      if (dayVaultEvents.length > 0) {
+        const dotR2 = Math.max(2, Math.min(4, Math.floor(cellH / 9)));
+        const offsetX = dayGcalEvents.length > 0 ? dotR2 * 2 + 5 : 0;
+        ctx.globalAlpha = isPast ? 0.3 : 0.85;
+        ctx.fillStyle   = '#1a73e8';
+        ctx.beginPath();
+        ctx.arc(cx + cellW - dotR2 - 4 - offsetX, cy + cellH - dotR2 - 4, dotR2, 0, Math.PI * 2);
+        ctx.fill();
         ctx.globalAlpha = 1;
       }
 

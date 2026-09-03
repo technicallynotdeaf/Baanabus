@@ -1549,6 +1549,8 @@ if ($method === 'POST') {
             if ($taskToDelete) {
                 require_once __DIR__ . '/habitica_helper.php';
                 habiticaDeleteTaskBestEffort($taskToDelete);
+                require_once __DIR__ . '/gcal_helper.php';
+                gcalDeleteEventBestEffort($taskToDelete);
             }
 
             json_response(['ok' => true, 'top3_completed' => top3DrainCompleted()]);

@@ -24,6 +24,10 @@
       parts.push(`<p style="font-size:0.88em;color:#666;line-height:1.5;margin:0.3rem 0 0.5rem;">${esc(task.description)}</p>`);
     }
 
+    if (task.task_type === 'phone_call') {
+      parts.push(`<span style="display:inline-block;font-size:0.72em;background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:3px;margin:0.2rem 0 0.3rem;">Phone call</span>`);
+    }
+
     const tags = [];
     if (task.person_name) tags.push(`with ${esc(task.person_name)}`);
     if (task.context)     tags.push(esc(task.context));

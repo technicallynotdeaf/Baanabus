@@ -25,7 +25,7 @@ $action = $body['action'] ?? '';
 
 if (!$taskId) json_response(['error' => 'Missing task_id'], 400);
 
-$allowed = ['next_action', 'someday', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_urgency', 'save_importance', 'quick_win', 'reference', 'waiting_start'];
+$allowed = ['next_action', 'someday', 'project', 'delete', 'mark_actionable', 'save_time', 'save_energy', 'save_urgency', 'save_importance', 'quick_win', 'phone_call', 'reference', 'waiting_start'];
 if (!in_array($action, $allowed, true)) {
     json_response(['error' => "Unknown action '$action'"], 400);
 }
@@ -55,6 +55,13 @@ try {
 
     } elseif ($action === 'quick_win') {
         $pipResult = vaultUpdateTask($taskId, ['triage_actionable' => true, 'task_type' => 'next_action'])['pip'] ?? null;
+
+    } elseif ($action === 'phone_call') {
+        $pipResult = vaultUpdateTask($taskId, [
+            'triage_actionable' => true,
+            'task_type'         => 'phone_call',
+            'location'          => ['phone'],
+        ])['pip'] ?? null;
 
     } elseif ($action === 'reference') {
         // GTD "Reference" endpoint — worth keeping, nothing to do. No further

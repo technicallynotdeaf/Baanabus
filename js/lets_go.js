@@ -1634,6 +1634,8 @@ window.initLetsGo = function() {
     if (question === 'actionable') {
       el.append(
         mkBtn("Yes — quick win", () => save({action:'quick_win'})),
+        mkBtn("Yes — it's a call", () => save({action:'phone_call'}),
+          'background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9;'),
         mkBtn("Yes — needs scheduling", () => save({action:'mark_actionable'})),
         mkBtn("Already done!", () => {
           el.querySelectorAll('button').forEach(b => b.disabled = true);

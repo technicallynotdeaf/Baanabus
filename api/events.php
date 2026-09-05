@@ -8,35 +8,55 @@ if (empty($_SESSION['DEK']))              { http_response_code(423); echo '<p cl
 try {
     $eventsData = getEvents();
     $events = $eventsData['events'] ?? [];
-    $people = getPeople()['people'] ?? [];
-    $tasks  = getTasks()['tasks'] ?? [];
+    $allPeople = getPeople()['people'] ?? [];
+    $allTasks  = getTasks()['tasks'] ?? [];
 
-    // Build people index for easy lookup
+    // Build people index for easy lookup (row display)
     $peopleIndex = [];
-    foreach ($people as $p) {
+    foreach ($allPeople as $p) {
         $peopleIndex[(int)$p['person_id']] = $p;
     }
 
     // Build task index
     $taskIndex = [];
-    foreach ($tasks as $t) {
+    foreach ($allTasks as $t) {
         $taskIndex[(int)$t['id']] = $t;
     }
 
-    // Sort events by date
+    // Candidate lists for the picker checkboxes: active people (not archived),
+    // active non-someday tasks. Sorted alphabetically for browsability.
+    $pickablePeople = array_values(array_filter($allPeople, fn($p) => empty($p['archived'])));
+    usort($pickablePeople, fn($a, $b) => strcasecmp($a['name'] ?? '', $b['name'] ?? ''));
+
+    $pickableTasks = array_values(array_filter($allTasks, function ($t) {
+        $status = $t['status'] ?? 'active';
+        $type   = $t['task_type'] ?? '';
+        return $status === 'active' && in_array($type, ['next_action', 'waiting', 'project'], true);
+    }));
+    usort($pickableTasks, fn($a, $b) => strcasecmp($a['title'] ?? '', $b['title'] ?? ''));
+
+    // Sort events by date descending (most recent first)
     usort($events, fn($a, $b) => strcmp($b['date'] ?? '', $a['date'] ?? ''));
+
+    // Full event data keyed by id, for the edit form to populate from client-side
+    $eventsById = [];
+    foreach ($events as $e) {
+        $eventsById[(int)$e['id']] = $e;
+    }
 } catch (Throwable $e) {
     echo '<p class="muted">Error loading events: ' . htmlspecialchars($e->getMessage()) . '</p>';
     exit;
 }
+
+$esc = fn($v) => htmlspecialchars((string)($v ?? ''));
 ?>
 
 <div data-init="initEventsOverlay" style="padding-bottom:2rem;">
   <h2 style="margin-bottom:1rem;">Calendar events</h2>
 
-  <!-- Add event form (initially hidden) -->
+  <!-- Add/Edit event form (initially hidden) -->
   <div id="add-event-form" style="display:none;background:#f8f9fa;border-radius:10px;padding:1rem;margin-bottom:1.5rem;">
-    <h3 style="margin-top:0;font-size:1em;">New event</h3>
+    <h3 id="event-form-title" style="margin-top:0;font-size:1em;">New event</h3>
 
     <div style="margin-bottom:0.75rem;">
       <label style="display:block;font-size:0.85em;color:#555;margin-bottom:4px;">Title</label>
@@ -70,8 +90,47 @@ try {
     </div>
 
     <div style="margin-bottom:0.75rem;">
+      <label style="display:block;font-size:0.85em;color:#555;margin-bottom:4px;">Who might you see? (opt.)</label>
+      <input type="text" id="event-people-filter" placeholder="Filter people…"
+             style="width:100%;box-sizing:border-box;margin-bottom:4px;font-size:0.85em;">
+      <div id="event-people-list" style="max-height:150px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;padding:6px;background:#fff;">
+        <?php foreach ($pickablePeople as $p): ?>
+        <label class="event-picker-row" data-name="<?= $esc(strtolower($p['name'] ?? '')) ?>"
+               style="display:flex;align-items:center;gap:6px;font-size:0.88em;padding:3px 2px;cursor:pointer;">
+          <input type="checkbox" class="event-person-cb" value="<?= (int)$p['person_id'] ?>">
+          <?= $esc($p['name']) ?>
+        </label>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <div style="margin-bottom:0.75rem;">
+      <label style="display:block;font-size:0.85em;color:#555;margin-bottom:4px;">Tasks for this (opt.)</label>
+      <input type="text" id="event-tasks-filter" placeholder="Filter tasks…"
+             style="width:100%;box-sizing:border-box;margin-bottom:4px;font-size:0.85em;">
+      <div id="event-tasks-list" style="max-height:150px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;padding:6px;background:#fff;">
+        <?php foreach ($pickableTasks as $t): ?>
+        <label class="event-picker-row" data-name="<?= $esc(strtolower($t['title'] ?? '')) ?>"
+               style="display:flex;align-items:center;gap:6px;font-size:0.88em;padding:3px 2px;cursor:pointer;">
+          <input type="checkbox" class="event-task-cb" value="<?= (int)$t['id'] ?>">
+          <?= $esc($t['title']) ?>
+        </label>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <div style="margin-bottom:0.75rem;">
       <label style="display:block;font-size:0.85em;color:#555;margin-bottom:4px;">Notes</label>
       <textarea id="event-notes" placeholder="Context, reminders, etc." rows="2" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+    </div>
+
+    <div style="display:flex;gap:1.25rem;margin-bottom:0.75rem;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.88em;cursor:pointer;">
+        <input type="checkbox" id="event-prebriefed"> Prebriefed
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.88em;cursor:pointer;">
+        <input type="checkbox" id="event-debriefed"> Debriefed
+      </label>
     </div>
 
     <div style="display:flex;gap:8px;margin-top:1rem;">
@@ -147,14 +206,18 @@ try {
           </div>
         <?php endif; ?>
 
-        <!-- Status badges -->
+        <!-- Status toggles -->
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <?php if (!empty($e['prebriefed'])): ?>
-            <span style="font-size:0.75em;background:#c8e6c9;color:#2e7d32;padding:2px 6px;border-radius:3px;">Prebriefed</span>
-          <?php endif; ?>
-          <?php if (!empty($e['debriefed'])): ?>
-            <span style="font-size:0.75em;background:#c8e6c9;color:#2e7d32;padding:2px 6px;border-radius:3px;">Debriefed</span>
-          <?php endif; ?>
+          <button class="event-toggle-prebrief" data-on="<?= !empty($e['prebriefed']) ? '1' : '0' ?>"
+                  style="font-size:0.75em;padding:2px 8px;border-radius:3px;cursor:pointer;border:1px solid <?= !empty($e['prebriefed']) ? '#2e7d32' : '#ccc' ?>;
+                         background:<?= !empty($e['prebriefed']) ? '#c8e6c9' : 'transparent' ?>;color:<?= !empty($e['prebriefed']) ? '#2e7d32' : '#888' ?>;">
+            <?= !empty($e['prebriefed']) ? 'Prebriefed ✓' : 'Mark prebriefed' ?>
+          </button>
+          <button class="event-toggle-debrief" data-on="<?= !empty($e['debriefed']) ? '1' : '0' ?>"
+                  style="font-size:0.75em;padding:2px 8px;border-radius:3px;cursor:pointer;border:1px solid <?= !empty($e['debriefed']) ? '#2e7d32' : '#ccc' ?>;
+                         background:<?= !empty($e['debriefed']) ? '#c8e6c9' : 'transparent' ?>;color:<?= !empty($e['debriefed']) ? '#2e7d32' : '#888' ?>;">
+            <?= !empty($e['debriefed']) ? 'Debriefed ✓' : 'Mark debriefed' ?>
+          </button>
           <?php if (!empty($e['recurring'])): ?>
             <span style="font-size:0.75em;background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:3px;">
               <?= htmlspecialchars(ucfirst($e['recurring'])) ?>
@@ -168,25 +231,97 @@ try {
 </div>
 
 <script>
+const EVENTS_DATA = <?= json_encode($eventsById, JSON_UNESCAPED_UNICODE) ?>;
+
 function initEventsOverlay() {
   const btnAdd = document.getElementById('btn-add-event');
   const formAdd = document.getElementById('add-event-form');
+  const formTitle = document.getElementById('event-form-title');
   const btnSave = document.getElementById('btn-save-event');
   const btnCancel = document.getElementById('btn-cancel-event');
   const statusAdd = document.getElementById('add-event-status');
+  let editingId = null;
 
-  btnAdd.addEventListener('click', () => {
-    formAdd.style.display = formAdd.style.display === 'none' ? 'block' : 'none';
-  });
+  function bskHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + document.body.getAttribute('data-bsk')
+    };
+  }
 
-  btnCancel.addEventListener('click', () => {
-    formAdd.style.display = 'none';
+  function clearForm() {
     document.getElementById('event-title').value = '';
     document.getElementById('event-date').value = '';
     document.getElementById('event-time-start').value = '';
     document.getElementById('event-time-end').value = '';
     document.getElementById('event-recurring').value = '';
     document.getElementById('event-notes').value = '';
+    document.getElementById('event-prebriefed').checked = false;
+    document.getElementById('event-debriefed').checked = false;
+    document.querySelectorAll('.event-person-cb').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.event-task-cb').forEach(cb => cb.checked = false);
+    document.getElementById('event-people-filter').value = '';
+    document.getElementById('event-tasks-filter').value = '';
+    filterPickerList('event-people-filter', 'event-people-list');
+    filterPickerList('event-tasks-filter', 'event-tasks-list');
+    statusAdd.textContent = '';
+  }
+
+  function openAddForm() {
+    editingId = null;
+    clearForm();
+    formTitle.textContent = 'New event';
+    formAdd.style.display = 'block';
+  }
+
+  function openEditForm(eventId) {
+    const ev = EVENTS_DATA[eventId];
+    if (!ev) return;
+    editingId = eventId;
+    clearForm();
+    formTitle.textContent = 'Edit event';
+    document.getElementById('event-title').value = ev.title || '';
+    document.getElementById('event-date').value = ev.date || '';
+    document.getElementById('event-time-start').value = ev.time_start || '';
+    document.getElementById('event-time-end').value = ev.time_end || '';
+    document.getElementById('event-recurring').value = ev.recurring || '';
+    document.getElementById('event-notes').value = ev.notes || '';
+    document.getElementById('event-prebriefed').checked = !!ev.prebriefed;
+    document.getElementById('event-debriefed').checked = !!ev.debriefed;
+    (ev.people_ids || []).forEach(pid => {
+      const cb = document.querySelector('.event-person-cb[value="' + pid + '"]');
+      if (cb) cb.checked = true;
+    });
+    (ev.task_ids || []).forEach(tid => {
+      const cb = document.querySelector('.event-task-cb[value="' + tid + '"]');
+      if (cb) cb.checked = true;
+    });
+    formAdd.style.display = 'block';
+    formAdd.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function filterPickerList(filterInputId, listId) {
+    const term = document.getElementById(filterInputId).value.trim().toLowerCase();
+    document.querySelectorAll('#' + listId + ' .event-picker-row').forEach(row => {
+      row.style.display = (!term || row.getAttribute('data-name').includes(term)) ? 'flex' : 'none';
+    });
+  }
+
+  document.getElementById('event-people-filter').addEventListener('input', () => filterPickerList('event-people-filter', 'event-people-list'));
+  document.getElementById('event-tasks-filter').addEventListener('input', () => filterPickerList('event-tasks-filter', 'event-tasks-list'));
+
+  btnAdd.addEventListener('click', () => {
+    if (formAdd.style.display !== 'none' && editingId === null) {
+      formAdd.style.display = 'none';
+    } else {
+      openAddForm();
+    }
+  });
+
+  btnCancel.addEventListener('click', () => {
+    formAdd.style.display = 'none';
+    editingId = null;
+    clearForm();
   });
 
   btnSave.addEventListener('click', async () => {
@@ -198,30 +333,36 @@ function initEventsOverlay() {
       return;
     }
 
-    const payload = {
-      action: 'add_event',
-      title: title,
-      date: date,
-      fields: {
-        time_start: document.getElementById('event-time-start').value || null,
-        time_end: document.getElementById('event-time-end').value || null,
-        recurring: document.getElementById('event-recurring').value || null,
-        notes: document.getElementById('event-notes').value || null,
-        people_ids: [],
-        task_ids: [],
-        prereq_tasks: [],
-      }
+    const peopleIds = Array.from(document.querySelectorAll('.event-person-cb:checked')).map(cb => parseInt(cb.value));
+    const taskIds = Array.from(document.querySelectorAll('.event-task-cb:checked')).map(cb => parseInt(cb.value));
+
+    const fields = {
+      time_start: document.getElementById('event-time-start').value || null,
+      time_end: document.getElementById('event-time-end').value || null,
+      recurring: document.getElementById('event-recurring').value || null,
+      notes: document.getElementById('event-notes').value || null,
+      people_ids: peopleIds,
+      task_ids: taskIds,
+      prereq_tasks: (editingId && EVENTS_DATA[editingId]) ? (EVENTS_DATA[editingId].prereq_tasks || []) : [],
+      prebriefed: document.getElementById('event-prebriefed').checked,
+      debriefed: document.getElementById('event-debriefed').checked,
     };
+
+    let payload;
+    if (editingId) {
+      fields.title = title;
+      fields.date = date;
+      payload = { action: 'update_event', event_id: editingId, fields: fields };
+    } else {
+      payload = { action: 'add_event', title: title, date: date, fields: fields };
+    }
 
     statusAdd.textContent = 'Saving...';
     statusAdd.style.color = '#888';
     try {
       const resp = await fetch('/api/agent.php', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + document.body.getAttribute('data-bsk')
-        },
+        headers: bskHeaders(),
         body: JSON.stringify(payload)
       });
       const result = await resp.json();
@@ -237,6 +378,16 @@ function initEventsOverlay() {
     }
   });
 
+  // Edit buttons
+  document.querySelectorAll('.event-btn-edit').forEach(btn => {
+    btn.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      const row = btn.closest('.event-row');
+      const eventId = parseInt(row.getAttribute('data-event-id'));
+      openEditForm(eventId);
+    });
+  });
+
   // Delete buttons
   document.querySelectorAll('.event-btn-delete').forEach(btn => {
     btn.addEventListener('click', async (evt) => {
@@ -248,10 +399,7 @@ function initEventsOverlay() {
       try {
         const resp = await fetch('/api/agent.php', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + document.body.getAttribute('data-bsk')
-          },
+          headers: bskHeaders(),
           body: JSON.stringify({ action: 'delete_event', event_id: eventId })
         });
         const result = await resp.json();
@@ -262,5 +410,35 @@ function initEventsOverlay() {
       } catch (e) {}
     });
   });
+
+  // Prebrief / debrief quick toggles
+  function wireToggle(selector, field) {
+    document.querySelectorAll(selector).forEach(btn => {
+      btn.addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const row = btn.closest('.event-row');
+        const eventId = parseInt(row.getAttribute('data-event-id'));
+        const newVal = btn.getAttribute('data-on') !== '1';
+        btn.disabled = true;
+        try {
+          const resp = await fetch('/api/agent.php', {
+            method: 'POST',
+            headers: bskHeaders(),
+            body: JSON.stringify({ action: 'update_event', event_id: eventId, fields: { [field]: newVal } })
+          });
+          const result = await resp.json();
+          if (result.ok) {
+            location.reload();
+          } else {
+            btn.disabled = false;
+          }
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+  wireToggle('.event-toggle-prebrief', 'prebriefed');
+  wireToggle('.event-toggle-debrief', 'debriefed');
 }
 </script>

@@ -105,7 +105,7 @@ window.initLetsGo = function() {
       ${info}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:0.6rem;">
         ${doneBtn}
-        <button class="action-button" onclick="window._showBlocked(${d.id})">Blocked</button>
+        <button class="action-button" onclick="window._showBlocked(${d.id})">Not now</button>
         <button class="action-button" onclick="snoozeTask(${d.id})">Snooze</button>
       </div>${pagesHint}`;
   }

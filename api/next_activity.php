@@ -1403,7 +1403,7 @@ function pick_physical_object(): ?array {
 function pick_easy_task(): array {
     global $physicalLocation;
     // 'location' uses the same tag vocabulary + matching rules as task.location
-    // (see locationTagsAllow() in config_helper.php) — home/work/shops/phone/online,
+    // (see locationTagsAllow() in config_helper.php) — home/work/shops/phone/online/transit,
     // matched against today's physical location (Home/Work/Out/Rest/WFH/Transit).
     // Empty/omitted = doable anywhere. This is what keeps "step outside" from
     // firing while already Out, or "chop a carrot" from firing away from a kitchen.

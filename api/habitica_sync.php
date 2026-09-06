@@ -233,7 +233,7 @@ try {
         $locTags  = [];
         foreach ($taskLocs as $l) {
             $l = strtolower(trim((string)$l));
-            if (in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true)) $locTags[] = 'location:' . $l;
+            if (in_array($l, ['home', 'work', 'shops', 'phone', 'online', 'transit'], true)) $locTags[] = 'location:' . $l;
         }
         if (!$locTags) $locTags = ['location:anywhere'];
         $desired = array_merge([$snoozed ? 'snoozed' : 'doable'], $locTags);

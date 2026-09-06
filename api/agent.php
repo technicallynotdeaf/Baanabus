@@ -1099,7 +1099,7 @@ if ($method === 'POST') {
             $locs   = array_values(array_unique(array_filter(array_map(
                 fn($l) => strtolower(trim((string)$l)),
                 $locs
-            ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true))));
+            ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online', 'transit'], true))));
             vaultAppendTask($data, [
                 'id'            => $taskId,
                 'title'         => $title,

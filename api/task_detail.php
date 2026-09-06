@@ -99,7 +99,7 @@ $focusFields = preg_replace('/[^a-z_,]/', '', strtolower($_GET['focus'] ?? ''));
     <div style="flex:2;min-width:220px;">
       <label style="font-size:0.78em;color:#555;display:block;margin-bottom:3px;">Location (any that apply)</label>
       <div id="td-location-group" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding:6px 0 2px;">
-        <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone'] as $loc => $label): ?>
+        <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone','transit'=>'Transit'] as $loc => $label): ?>
         <label style="display:flex;align-items:center;gap:4px;font-size:0.88em;white-space:nowrap;cursor:pointer;">
           <input type="checkbox" class="td-location-cb" value="<?= $loc ?>" <?= in_array($loc, $taskLocations, true) ? 'checked' : '' ?>>
           <?= $label ?>

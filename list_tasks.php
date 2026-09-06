@@ -294,7 +294,7 @@ $typeLabels = [
       <div style="flex:2;min-width:200px;">
         <label style="font-size:0.8em;color:#555;display:block;margin-bottom:3px;">Location (any that apply)</label>
         <div id="new-task-location-group" style="display:flex;flex-wrap:wrap;gap:4px 10px;padding:4px 0;">
-          <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone'] as $loc => $label): ?>
+          <?php foreach (['home'=>'Home','work'=>'Work','shops'=>'Shops','online'=>'Online','phone'=>'Phone','transit'=>'Transit'] as $loc => $label): ?>
           <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;white-space:nowrap;cursor:pointer;">
             <input type="checkbox" class="new-task-location-cb" value="<?= $loc ?>"> <?= $label ?>
           </label>

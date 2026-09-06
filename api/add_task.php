@@ -23,7 +23,7 @@ $locRaw    = is_array($rawLoc) ? $rawLoc : (is_string($rawLoc) && $rawLoc !== ''
 $location  = array_values(array_unique(array_filter(array_map(
     fn($l) => strtolower(trim((string)$l)),
     $locRaw
-), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true)))) ?: null;
+), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online', 'transit'], true)))) ?: null;
 $personId  = isset($body['person_id']) && is_int($body['person_id']) ? $body['person_id'] : null;
 $parentId  = isset($body['parent_id']) && (int)$body['parent_id'] > 0 ? (int)$body['parent_id'] : null;
 

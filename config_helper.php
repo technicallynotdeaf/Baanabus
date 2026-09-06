@@ -324,6 +324,8 @@ function locationTagsAllow($rawLocation, ?int $physicalLocation): bool {
         : (is_string($rawLocation) && $rawLocation !== '' ? [$rawLocation] : []);
     if (empty($locs) || !$physicalLocation) return true;
     $canDo = function(string $loc) use ($physicalLocation): bool {
+        // Transit-tagged tasks only surface when physically on transit (6)
+        if ($loc === 'transit') return $physicalLocation === 6;
         if ($physicalLocation === 1) return $loc !== 'work';
         if ($physicalLocation === 2) return !in_array($loc, ['home', 'shops'], true);
         if ($physicalLocation === 3) return !in_array($loc, ['work', 'home', 'shops', 'phone'], true);
@@ -852,7 +854,7 @@ function updateTaskFieldsShared(int $taskId, array $rawFields): array {
         $locs = array_values(array_unique(array_filter(array_map(
             fn($l) => strtolower(trim((string)$l)),
             $locs
-        ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online'], true))));
+        ), fn($l) => in_array($l, ['home', 'work', 'shops', 'phone', 'online', 'transit'], true))));
         $fields['location'] = $locs ?: null;
     }
 

@@ -365,7 +365,7 @@ if ($method === 'GET') {
         if (!$q) json_response(['error' => 'q parameter required'], 400);
         try {
             $stmt = $database->prepare(
-                "SELECT f.food_id, f.name, f.category, f.suggested_serving_g,
+                "SELECT f.food_id, f.name, f.category, f.suggested_serving_g, f.liked,
                         fs.serving_id, fs.unit_label, fs.weight_g AS serving_weight_g, fs.is_default
                  FROM foods f
                  JOIN food_servings fs ON f.food_id = fs.food_id
@@ -385,6 +385,7 @@ if ($method === 'GET') {
                         'name'               => $row['name'],
                         'category'           => $row['category'],
                         'suggested_serving_g'=> $row['suggested_serving_g'],
+                        'liked'              => isset($row['liked']) ? (int)$row['liked'] : null,
                         'servings'           => [],
                     ];
                 }
@@ -1360,6 +1361,24 @@ if ($method === 'POST') {
             'tasks'    => $imported,
             'skipped_detail' => $skipped,
         ]);
+    }
+
+    if ($action === 'rate_food') {
+        if (!$database) json_response(['error' => 'Database unavailable'], 503);
+        $foodId = (int)($body['food_id'] ?? 0);
+        $liked  = $body['liked'] ?? null;
+        if (!$foodId) json_response(['error' => 'Missing food_id'], 400);
+        if ($liked !== null && (!is_int($liked) || $liked < 1 || $liked > 5)) {
+            json_response(['error' => 'liked must be 1–5 or null'], 400);
+        }
+        try {
+            $stmt = $database->prepare("UPDATE foods SET liked = ? WHERE food_id = ?");
+            $stmt->execute([$liked, $foodId]);
+            if ($stmt->rowCount() === 0) json_response(['error' => 'Food not found'], 404);
+            json_response(['ok' => true, 'food_id' => $foodId, 'liked' => $liked]);
+        } catch (Throwable $e) {
+            json_response(['error' => $e->getMessage()], 500);
+        }
     }
 
     if ($action === 'log_food') {
